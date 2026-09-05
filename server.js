@@ -16,7 +16,9 @@ const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_
 let WEB_APP_URL = process.argv[2] || process.env.WEB_APP_URL || (process.env.PORT ? 'https://kuzavnoy-app.onrender.com' : `http://localhost:${PORT}`);
 
 // Adminlarning Telegram ID raqamlari (yangi zakaz tushganda bularga to'g'ridan-to'g'ri xabar boradi)
-let ADMIN_CHAT_IDS = ['5361309526'];
+let ADMIN_CHAT_IDS = process.env.ADMIN_CHAT_IDS 
+  ? process.env.ADMIN_CHAT_IDS.split(',').map(s => s.trim()) 
+  : ['5361309526'];
 
 // 2. MA'LUMOTLAR BAZASI (POSTGRESQL - NEON)
 const pool = new Pool({
@@ -62,6 +64,23 @@ async function initDatabase() {
         status VARCHAR(50) DEFAULT 'Kutilmoqda',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS stories (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        tag VARCHAR(100) DEFAULT 'Yangi',
+        image_url TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Eski umumiy kategoriyalarni yangi mashina modellariga yangilash
+    await client.query(`
+      UPDATE products SET category = 'Malibu 1 / 2' WHERE category = 'Rul va Salon';
+      UPDATE products SET category = 'Gentra / Lacetti' WHERE category = 'Oynalar';
+      UPDATE products SET category = 'Cobalt' WHERE category = 'Balon va Disklar';
+      UPDATE products SET category = 'Tracker 1 / 2' WHERE category = 'Kuzov qismlari';
     `);
 
     // Dastlabki avto-ehtiyot qismlarni (seed) bazaga kiritish (agar baza bo'sh bo'lsa)
@@ -80,7 +99,7 @@ async function initDatabase() {
           ]),
           old_price: 1850000,
           new_price: 1450000,
-          category: "Rul va Salon",
+          category: "Malibu 1 / 2",
           image_url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80"
         },
         {
@@ -94,7 +113,7 @@ async function initDatabase() {
           ]),
           old_price: 1250000,
           new_price: 980000,
-          category: "Rul va Salon",
+          category: "Malibu 1 / 2",
           image_url: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=800&q=80"
         },
         {
@@ -108,7 +127,7 @@ async function initDatabase() {
           ]),
           old_price: 1650000,
           new_price: 1290000,
-          category: "Oynalar",
+          category: "Gentra / Lacetti",
           image_url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80"
         },
         {
@@ -122,7 +141,7 @@ async function initDatabase() {
           ]),
           old_price: 1100000,
           new_price: 850000,
-          category: "Oynalar",
+          category: "Tracker 1 / 2",
           image_url: "https://images.unsplash.com/photo-1508974239320-0a029497e820?auto=format&fit=crop&w=800&q=80"
         },
         {
@@ -136,7 +155,7 @@ async function initDatabase() {
           ]),
           old_price: 1950000,
           new_price: 1600000,
-          category: "Balon va Disklar",
+          category: "Cobalt",
           image_url: "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?auto=format&fit=crop&w=800&q=80"
         },
         {
@@ -150,7 +169,7 @@ async function initDatabase() {
           ]),
           old_price: 890000,
           new_price: 690000,
-          category: "Kuzov qismlari",
+          category: "Universal / Boshqa",
           image_url: "https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=800&q=80"
         }
       ];
@@ -163,6 +182,25 @@ async function initDatabase() {
         );
       }
       console.log('✅ 6 ta avto-ehtiyot qism bazaga muvaffaqiyatli saqlandi!');
+    }
+
+    // Dastlabki istoriyalarni (seed) bazaga kiritish (agar bo'sh bo'lsa)
+    const storiesCount = await client.query('SELECT COUNT(*) FROM stories');
+    if (parseInt(storiesCount.rows[0].count) === 0) {
+      console.log('🌱 Dastlabki istoriyalar (Stories) yuklanmoqda...');
+      const initialStories = [
+        { tag: "Yangi", title: "🔥 Yangi partiya", description: "Original M-Sport anatomik rullari qayta keldi!", image_url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80" },
+        { tag: "Chegirma", title: "⚡️ -30% Oynalarga", description: "Benson va Fuyao labavoy oynalari ulgurji narxda!", image_url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80" },
+        { tag: "Xizmat", title: "🛠 O'rnatib berish", description: "Servis markazimizda bepul o'rnatish kafolati mavjud.", image_url: "https://images.unsplash.com/photo-1508974239320-0a029497e820?auto=format&fit=crop&w=800&q=80" },
+        { tag: "Original", title: "⭐️ Sifat kafolati", description: "Barcha mahsulotlar zavod kafolati bilan beriladi.", image_url: "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?auto=format&fit=crop&w=800&q=80" }
+      ];
+      for (const s of initialStories) {
+        await client.query(
+          `INSERT INTO stories (tag, title, description, image_url) VALUES ($1, $2, $3, $4)`,
+          [s.tag, s.title, s.description, s.image_url]
+        );
+      }
+      console.log('✅ Dastlabki istoriyalar bazaga saqlandi!');
     }
     client.release();
   } catch (err) {
@@ -286,7 +324,46 @@ try {
 // 4. EXPRESS SERVER VA REST API
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// API: Barcha istoriyalarni olish (Stories)
+app.get('/api/stories', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM stories ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Yangi istoriya qo'shish (Admin)
+app.post('/api/stories', async (req, res) => {
+  try {
+    const { title, description, tag, image_url } = req.body;
+    if (!title || !image_url) {
+      return res.status(400).json({ error: "Sarlavha va rasm kiritilishi shart!" });
+    }
+    const result = await pool.query(
+      `INSERT INTO stories (title, description, tag, image_url) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [title, description || '', tag || 'Yangi', image_url]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Istoriyani o'chirish (Admin)
+app.delete('/api/stories/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM stories WHERE id=$1', [id]);
+    res.json({ success: true, message: "Istoriya muvaffaqiyatli o'chirildi" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // API: Barcha mahsulotlarni olish
 app.get('/api/products', async (req, res) => {
@@ -615,6 +692,7 @@ function getMiniAppHtml() {
       const [addOnFragrance, setAddOnFragrance] = useState(false);
       const [userOrders, setUserOrders] = useState([]);
       const [activeStory, setActiveStory] = useState(null);
+      const [stories, setStories] = useState([]);
       const [showOnboarding, setShowOnboarding] = useState(false);
       const [onboardSlide, setOnboardSlide] = useState(0);
 
@@ -643,6 +721,7 @@ function getMiniAppHtml() {
         }
 
         fetchProducts();
+        fetchStories();
         if (tgUser?.id) fetchUserOrders(tgUser.id);
       }, []);
 
@@ -651,6 +730,16 @@ function getMiniAppHtml() {
           const res = await fetch('/api/products');
           const data = await res.json();
           setProducts(data);
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
+      const fetchStories = async () => {
+        try {
+          const res = await fetch('/api/stories');
+          const data = await res.json();
+          setStories(data);
         } catch (e) {
           console.error(e);
         }
@@ -744,18 +833,22 @@ function getMiniAppHtml() {
         }
       };
 
-      const categories = ['Barchasi', 'Rul va Salon', 'Oynalar', 'Balon va Disklar', 'Kuzov qismlari'];
+      const carPresets = [
+        'Barchasi', 
+        'Cobalt', 
+        'Gentra / Lacetti', 
+        'Malibu 1 / 2', 
+        'Tracker 1 / 2', 
+        'Onix', 
+        'Nexia 1 / 2 / 3', 
+        'Monjaro / Xitoy', 
+        'Kia / Hyundai', 
+        'Universal / Boshqa'
+      ];
+      const categories = ['Barchasi', ...new Set([...carPresets.slice(1), ...products.map(p => p.category).filter(Boolean)])];
       const filteredProducts = selectedCategory === 'Barchasi' 
         ? products 
-        : products.filter(p => p.category === selectedCategory);
-
-      // Stories ro'yxati
-      const stories = [
-        { id: 1, tag: "Yangi", title: "🔥 Yangi partiya", desc: "Original M-Sport anatomik rullari qayta keldi!", img: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80" },
-        { id: 2, tag: "Chegirma", title: "⚡️ -30% Oynalarga", desc: "Benson va Fuyao labavoy oynalari ulgurji narxda!", img: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80" },
-        { id: 3, tag: "Xizmat", title: "🛠 O'rnatib berish", desc: "Servis markazimizda bepul o'rnatish kafolati mavjud.", img: "https://images.unsplash.com/photo-1508974239320-0a029497e820?auto=format&fit=crop&w=800&q=80" },
-        { id: 4, tag: "Original", title: "⭐️ Sifat kafolati", desc: "Barcha mahsulotlar zavod kafolati bilan beriladi.", img: "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?auto=format&fit=crop&w=800&q=80" }
-      ];
+        : products.filter(p => p.category === selectedCategory || (p.category && p.category.toLowerCase().includes(selectedCategory.toLowerCase())));
 
       return (
         <div className="max-w-md mx-auto min-h-screen bg-white text-slate-900 flex flex-col">
@@ -855,9 +948,9 @@ function getMiniAppHtml() {
                 <button onClick={() => setActiveStory(null)} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">✕</button>
               </div>
               <div className="my-auto text-center px-4">
-                <img src={activeStory.img} className="w-full max-h-72 object-cover rounded-2xl mb-4 border border-white/10" />
+                <img src={activeStory.image_url || activeStory.img} className="w-full max-h-72 object-cover rounded-2xl mb-4 border border-white/10 shadow-2xl" />
                 <h3 className="text-xl font-bold mb-2">{activeStory.title}</h3>
-                <p className="text-sm text-slate-300">{activeStory.desc}</p>
+                <p className="text-sm text-slate-300">{activeStory.description || activeStory.desc}</p>
               </div>
               <button 
                 onClick={() => { setActiveStory(null); setActiveTab('catalog'); }}
@@ -890,20 +983,22 @@ function getMiniAppHtml() {
               </div>
 
               {/* Stories Bloki */}
-              <div className="flex gap-3 overflow-x-auto no-scrollbar py-2 -mx-4 px-4 mb-4">
-                {stories.map(s => (
-                  <div 
-                    key={s.id} 
-                    onClick={() => setActiveStory(s)}
-                    className="flex-shrink-0 flex flex-col items-center gap-1.5 cursor-pointer"
-                  >
-                    <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-red-500 via-rose-400 to-amber-400">
-                      <img src={s.img} className="w-full h-full rounded-full object-cover border-2 border-white" />
+              {stories.length > 0 && (
+                <div className="flex gap-3 overflow-x-auto no-scrollbar py-2 -mx-4 px-4 mb-4">
+                  {stories.map(s => (
+                    <div 
+                      key={s.id} 
+                      onClick={() => setActiveStory(s)}
+                      className="flex-shrink-0 flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition"
+                    >
+                      <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-red-500 via-rose-400 to-amber-400">
+                        <img src={s.image_url || s.img} className="w-full h-full rounded-full object-cover border-2 border-white" />
+                      </div>
+                      <span className="text-[11px] font-medium text-slate-700 w-16 text-center truncate">{s.tag || 'Yangi'}</span>
                     </div>
-                    <span className="text-[11px] font-medium text-slate-700 w-16 text-center truncate">{s.tag}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {/* Asosiy Hero Vidjet */}
               <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-5 mb-6 shadow-xl">
@@ -1415,10 +1510,11 @@ function getAdminPanelHtml() {
     }
 
     function AdminApp() {
-      const [tab, setTab] = useState("dashboard"); // dashboard | orders | products | crm | broadcast
+      const [tab, setTab] = useState("dashboard"); // dashboard | orders | products | stories | crm | broadcast
       const [orders, setOrders] = useState([]);
       const [products, setProducts] = useState([]);
       const [users, setUsers] = useState([]);
+      const [stories, setStories] = useState([]);
       const [loading, setLoading] = useState(false);
       const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -1434,9 +1530,18 @@ function getAdminPanelHtml() {
       // Mahsulot Modal
       const [showProductModal, setShowProductModal] = useState(false);
       const [editingProduct, setEditingProduct] = useState(null);
+      const [productImagePreview, setProductImagePreview] = useState("");
       const [formData, setFormData] = useState({
-        name: "", category: "Rul va Salon", new_price: "", old_price: "",
+        name: "", category: "Cobalt", new_price: "", old_price: "",
         image_url: "", description: "", detailsText: ""
+      });
+
+      // Istoriyalar (Stories) Modal
+      const [showStoryModal, setShowStoryModal] = useState(false);
+      const [storyImagePreview, setStoryImagePreview] = useState("");
+      const [storySaving, setStorySaving] = useState(false);
+      const [storyFormData, setStoryFormData] = useState({
+        title: "", tag: "Yangi", description: "", image_url: ""
       });
 
       // Broadcast form
@@ -1444,6 +1549,36 @@ function getAdminPanelHtml() {
       const [broadcastPhoto, setBroadcastPhoto] = useState("");
       const [broadcastSending, setBroadcastSending] = useState(false);
       const [broadcastResult, setBroadcastResult] = useState(null);
+
+      // Rasmni brauzerda siqish va Base64 qilish (Telefon galereyasi va kameradan yuklash uchun)
+      const handleImageUpload = (file, onSuccess) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            let width = img.width;
+            let height = img.height;
+            const maxDim = 800;
+            if (width > height && width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+            onSuccess(dataUrl);
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      };
 
       useEffect(() => {
         const tg = window.Telegram?.WebApp;
@@ -1457,7 +1592,7 @@ function getAdminPanelHtml() {
 
       const loadAllData = async () => {
         setLoading(true);
-        await Promise.all([fetchOrders(), fetchProducts(), fetchUsers()]);
+        await Promise.all([fetchOrders(), fetchProducts(), fetchUsers(), fetchStories()]);
         setLoading(false);
       };
 
@@ -1496,6 +1631,52 @@ function getAdminPanelHtml() {
           const data = await res.json();
           setUsers(data);
         } catch(e) {}
+      };
+
+      const fetchStories = async () => {
+        try {
+          const res = await fetch("/api/stories");
+          const data = await res.json();
+          setStories(data);
+        } catch(e) {}
+      };
+
+      const handleSaveStory = async (e) => {
+        e.preventDefault();
+        if (!storyFormData.title.trim() || !storyFormData.image_url) {
+          alert("Iltimos, sarlavha va rasm kiriting!");
+          return;
+        }
+        setStorySaving(true);
+        try {
+          const res = await fetch("/api/stories", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(storyFormData)
+          });
+          if (res.ok) {
+            setShowStoryModal(false);
+            setStoryFormData({ title: "", tag: "Yangi", description: "", image_url: "" });
+            setStoryImagePreview("");
+            fetchStories();
+          } else {
+            alert("Saqlashda xatolik yuz berdi!");
+          }
+        } catch(err) {
+          alert("Xatolik: " + err.message);
+        } finally {
+          setStorySaving(false);
+        }
+      };
+
+      const handleDeleteStory = async (id) => {
+        if (!confirm("Haqiqatdan ham bu istoriyani o'chirmoqchimisiz?")) return;
+        try {
+          await fetch("/api/stories/" + id, { method: "DELETE" });
+          fetchStories();
+        } catch(err) {
+          alert("O'chirishda xatolik!");
+        }
       };
 
       // Buyurtma holatini yangilash
@@ -1696,6 +1877,7 @@ function getAdminPanelHtml() {
                 { id: "dashboard", label: "📊 Analitika", count: null },
                 { id: "orders", label: "📦 Buyurtmalar", count: pendingOrders.length ? pendingOrders.length + " ta yangi" : orders.length },
                 { id: "products", label: "🛠 Zapchastlar Ombori", count: products.length },
+                { id: "stories", label: "📱 Istoriyalar", count: stories.length },
                 { id: "crm", label: "👥 Mijozlar Bazasi", count: users.length },
                 { id: "broadcast", label: "📢 Xabar Tarqatish", count: "Bot" }
               ].map(item => (
@@ -1983,9 +2165,10 @@ function getAdminPanelHtml() {
                     <button 
                       onClick={() => {
                         setEditingProduct(null);
+                        setProductImagePreview("");
                         setFormData({
-                          name: "", category: "Rul va Salon", new_price: "", old_price: "",
-                          image_url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80",
+                          name: "", category: "Cobalt", new_price: "", old_price: "",
+                          image_url: "",
                           description: "", detailsText: "Original sifat\\nKafolat beriladi"
                         });
                         setShowProductModal(true);
@@ -1997,9 +2180,9 @@ function getAdminPanelHtml() {
                   </div>
                 </div>
 
-                {/* Kategoriyalar filtri */}
+                {/* Kategoriyalar filtri (Mashina Modellari) */}
                 <div className="px-6 py-2.5 bg-slate-950/50 border-b border-slate-800 flex gap-2 overflow-x-auto no-scrollbar">
-                  {["Barchasi", "Rul va Salon", "Oynalar", "Balon va Disklar", "Kuzov qismlari"].map(cat => (
+                  {["Barchasi", "Cobalt", "Gentra / Lacetti", "Malibu 1 / 2", "Tracker 1 / 2", "Onix", "Nexia 1 / 2 / 3", "Monjaro / Xitoy", "Universal / Boshqa"].map(cat => (
                     <button
                       key={cat}
                       onClick={() => setProductCategoryFilter(cat)}
@@ -2062,9 +2245,10 @@ function getAdminPanelHtml() {
                               <button 
                                 onClick={() => {
                                   setEditingProduct(prod);
+                                  setProductImagePreview(prod.image_url);
                                   setFormData({
                                     name: prod.name,
-                                    category: prod.category || "Rul va Salon",
+                                    category: prod.category || "Cobalt",
                                     new_price: prod.new_price,
                                     old_price: prod.old_price || "",
                                     image_url: prod.image_url,
@@ -2093,7 +2277,67 @@ function getAdminPanelHtml() {
               </div>
             )}
 
-            {/* 4. CRM / MIJOZLAR BAZASI */}
+            {/* 4. ISTORIYALAR (STORIES) BOSHQARUVI */}
+            {tab === "stories" && (
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+                
+                <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-black text-white">📱 Telegram Mini App Istoriyalari (Stories)</h2>
+                    <p className="text-xs text-slate-400">Mini App yuqori qismida aylanib turadigan aksiyalar va yangiliklarni boshqaring</p>
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      setStoryFormData({ title: "", tag: "Yangi", description: "", image_url: "" });
+                      setStoryImagePreview("");
+                      setShowStoryModal(true);
+                    }}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black shadow-lg shadow-red-950/40 active:scale-95 transition flex items-center gap-1.5"
+                  >
+                    <span>+ Yangi Istoriya Qo'shish</span>
+                  </button>
+                </div>
+
+                <div className="p-4 md:p-6">
+                  {stories.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500 text-xs">
+                      Hozircha hech qanday istoriya yo'q. Yangi qo'shish uchun yuqoridagi tugmani bosing.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {stories.map(s => (
+                        <div key={s.id} className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between group hover:border-slate-700 transition">
+                          <div className="relative aspect-[4/5] w-full bg-slate-900 overflow-hidden">
+                            <img src={s.image_url || s.img} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                            <span className="absolute top-2 left-2 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-red-600 text-white shadow">
+                              {s.tag || 'Yangi'}
+                            </span>
+                          </div>
+                          <div className="p-3.5 flex-1 flex flex-col justify-between">
+                            <div>
+                              <h4 className="text-xs font-black text-white line-clamp-1">{s.title}</h4>
+                              <p className="text-[11px] text-slate-400 line-clamp-2 mt-1 leading-relaxed">{s.description || s.desc}</p>
+                            </div>
+                            <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between">
+                              <span className="text-[10px] text-slate-500 font-mono">#{s.id}</span>
+                              <button 
+                                onClick={() => handleDeleteStory(s.id)}
+                                className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-[11px] font-bold transition"
+                              >
+                                🗑 O'chirish
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 5. CRM / MIJOZLAR BAZASI */}
             {tab === "crm" && (
               <div className="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-sm">
                 <div className="p-6 border-b border-slate-800 flex justify-between items-center">
@@ -2295,16 +2539,21 @@ function getAdminPanelHtml() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-slate-400 block mb-1 font-semibold">Kategoriya</label>
+                      <label className="text-slate-400 block mb-1 font-semibold">Kategoriya (Mashina Modeli)</label>
                       <select 
                         value={formData.category}
                         onChange={e => setFormData({ ...formData, category: e.target.value })}
                         className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none"
                       >
-                        <option value="Rul va Salon">Rul va Salon</option>
-                        <option value="Oynalar">Oynalar</option>
-                        <option value="Balon va Disklar">Balon va Disklar</option>
-                        <option value="Kuzov qismlari">Kuzov qismlari</option>
+                        <option value="Cobalt">Cobalt</option>
+                        <option value="Gentra / Lacetti">Gentra / Lacetti</option>
+                        <option value="Malibu 1 / 2">Malibu 1 / 2</option>
+                        <option value="Tracker 1 / 2">Tracker 1 / 2</option>
+                        <option value="Onix">Onix</option>
+                        <option value="Nexia 1 / 2 / 3">Nexia 1 / 2 / 3</option>
+                        <option value="Monjaro / Xitoy">Monjaro / Xitoy</option>
+                        <option value="Kia / Hyundai">Kia / Hyundai</option>
+                        <option value="Universal / Boshqa">Universal / Boshqa</option>
                       </select>
                     </div>
 
@@ -2333,14 +2582,47 @@ function getAdminPanelHtml() {
                   </div>
 
                   <div>
-                    <label className="text-slate-400 block mb-1 font-semibold">Rasm URL Manzili</label>
+                    <label className="text-slate-400 block mb-1 font-semibold">Mahsulot Rasmi (Telefondan tanlash yoki URL)</label>
+                    
+                    <div className="border-2 border-dashed border-slate-700 hover:border-red-500 rounded-2xl p-4 text-center cursor-pointer bg-slate-950/60 transition relative mb-2">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        onChange={(e) => {
+                          const file = e.target.files && e.target.files[0];
+                          if (file) {
+                            handleImageUpload(file, (dataUrl) => {
+                              setFormData(prev => ({ ...prev, image_url: dataUrl }));
+                              setProductImagePreview(dataUrl);
+                            });
+                          }
+                        }}
+                      />
+                      {productImagePreview || formData.image_url ? (
+                        <div className="flex flex-col items-center">
+                          <img src={productImagePreview || formData.image_url} className="w-24 h-24 object-cover rounded-xl border border-slate-700 shadow-md mb-2" />
+                          <span className="text-[11px] text-emerald-400 font-bold">✅ Rasm tanlandi (Almashtirish uchun bosing)</span>
+                        </div>
+                      ) : (
+                        <div className="py-2">
+                          <div className="text-3xl mb-1">📸</div>
+                          <p className="text-xs font-bold text-white">Telefondan rasm tanlash</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Galereya yoki kameradan rasm yuklang</p>
+                        </div>
+                      )}
+                    </div>
+
                     <input 
                       type="url" 
-                      required
-                      value={formData.image_url}
-                      onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                      placeholder="https://..." 
-                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none"
+                      value={(formData.image_url && formData.image_url.startsWith("data:")) ? "" : (formData.image_url || "")}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setFormData(prev => ({ ...prev, image_url: val }));
+                        setProductImagePreview(val);
+                      }}
+                      placeholder="yoki internetdagi rasm havolasi (URL): https://..." 
+                      className="w-full p-2 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-300 focus:outline-none"
                     />
                   </div>
 
@@ -2379,6 +2661,121 @@ function getAdminPanelHtml() {
                       className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold"
                     >
                       Saqlash
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ISTORIYA QO'SHISH MODAL */}
+          {showStoryModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl text-white">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-base font-black text-white">📱 Yangi Istoriya (Story) Qo'shish</h3>
+                  <button onClick={() => setShowStoryModal(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
+                </div>
+
+                <form onSubmit={handleSaveStory} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">Sarlavha (Title)</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={storyFormData.title}
+                      onChange={e => setStoryFormData({ ...storyFormData, title: e.target.value })}
+                      placeholder="Masalan: 🔥 Qaynoq Chegirma!" 
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">Teg (Belgisi)</label>
+                    <select 
+                      value={storyFormData.tag}
+                      onChange={e => setStoryFormData({ ...storyFormData, tag: e.target.value })}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none"
+                    >
+                      <option value="Yangi">Yangi</option>
+                      <option value="Chegirma">Chegirma</option>
+                      <option value="Aksiya">Aksiya</option>
+                      <option value="Xizmat">Xizmat</option>
+                      <option value="Original">Original</option>
+                      <option value="Top">Top</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">Qisqa Tavsif</label>
+                    <textarea 
+                      rows="2"
+                      value={storyFormData.description}
+                      onChange={e => setStoryFormData({ ...storyFormData, description: e.target.value })}
+                      placeholder="Barcha Malibu va Tracker zapchastlariga 30% chegirma..." 
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1 font-semibold">Istoriya Rasmi (Telefondan yoki URL)</label>
+                    
+                    <div className="border-2 border-dashed border-slate-700 hover:border-red-500 rounded-2xl p-4 text-center cursor-pointer bg-slate-950/60 transition relative mb-2">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        onChange={(e) => {
+                          const file = e.target.files && e.target.files[0];
+                          if (file) {
+                            handleImageUpload(file, (dataUrl) => {
+                              setStoryFormData(prev => ({ ...prev, image_url: dataUrl }));
+                              setStoryImagePreview(dataUrl);
+                            });
+                          }
+                        }}
+                      />
+                      {storyImagePreview || storyFormData.image_url ? (
+                        <div className="flex flex-col items-center">
+                          <img src={storyImagePreview || storyFormData.image_url} className="w-24 h-24 object-cover rounded-xl border border-slate-700 shadow-md mb-2" />
+                          <span className="text-[11px] text-emerald-400 font-bold">✅ Rasm yuklandi (Almashtirish uchun bosing)</span>
+                        </div>
+                      ) : (
+                        <div className="py-2">
+                          <div className="text-3xl mb-1">📸</div>
+                          <p className="text-xs font-bold text-white">Telefondan rasm tanlash</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Galereya yoki kameradan rasm yuklang</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <input 
+                      type="url" 
+                      value={(storyFormData.image_url && storyFormData.image_url.startsWith("data:")) ? "" : (storyFormData.image_url || "")}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setStoryFormData(prev => ({ ...prev, image_url: val }));
+                        setStoryImagePreview(val);
+                      }}
+                      placeholder="yoki internetdagi rasm havolasi (URL): https://..." 
+                      className="w-full p-2 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-300 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-3">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowStoryModal(false)}
+                      className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700"
+                    >
+                      Bekor qilish
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={storySaving}
+                      className="px-5 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl font-bold"
+                    >
+                      {storySaving ? "Saqlanmoqda..." : "Saqlash va Joylash"}
                     </button>
                   </div>
                 </form>

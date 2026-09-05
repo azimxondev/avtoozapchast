@@ -12,8 +12,11 @@ const TelegramBot = require('node-telegram-bot-api');
 const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN || '8847186451:AAHk4YYqvkuo1pjQjdGsFRnhKbY9VABlBQs';
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_ePwm65vBoGJY@ep-spring-snow-a5z1caba-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require';
-// Ngrok yoki HTTPS domeni (node server.js https://xxx.ngrok-free.app orqali ham berish mumkin)
-let WEB_APP_URL = process.argv[2] || process.env.WEB_APP_URL || `http://localhost:${PORT}`;
+// Ngrok, Render yoki HTTPS domeni
+let WEB_APP_URL = process.argv[2] || process.env.WEB_APP_URL || (process.env.PORT ? 'https://kuzavnoy-app.onrender.com' : `http://localhost:${PORT}`);
+
+// Adminlarning Telegram ID raqamlari (yangi zakaz tushganda bularga to'g'ridan-to'g'ri xabar boradi)
+let ADMIN_CHAT_IDS = ['5361309526'];
 
 // 2. MA'LUMOTLAR BAZASI (POSTGRESQL - NEON)
 const pool = new Pool({
@@ -181,8 +184,51 @@ try {
     }
   });
 
+  bot.onText(/\/admin/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    const firstName = msg.from.first_name || 'Admin';
+
+    // Faqat haqiqiy adminga ruxsat berish, begona odamlarni qaytarish
+    if (!ADMIN_CHAT_IDS.includes(chatId)) {
+      return bot.sendMessage(chatId, 
+        "⛔️ <b>Kechirasiz, siz admin emassiz!</b>\n\n" +
+        "Ushbu bo'lim faqat <b>kuzavnoy.uzz</b> do'koni egasi uchun mo'ljallangan.\n" +
+        "Mahsulotlarni ko'rish uchun pastdagi menyudan foydalaning.", 
+        { parse_mode: 'HTML' }
+      );
+    }
+
+    const isHttps = WEB_APP_URL.startsWith('https://');
+
+    bot.sendMessage(chatId, 
+      `👨‍💼 <b>kuzavnoy.uzz — Boshqaruv Paneli (Admin)</b>\n\n` +
+      `Xush kelibsiz, <b>${firstName}</b>!\n` +
+      `Pastdagi tugmani bosib, Telegram ichida barcha buyurtmalar va mahsulotlarni boshqarishingiz mumkin! 👇`, 
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: isHttps ? [
+            [
+              {
+                text: "📊 Admin Dashboardni ochish",
+                web_app: { url: `${WEB_APP_URL}/admin` }
+              }
+            ],
+            [
+              { text: "🛒 Mijoz do'koni (Mini App)", web_app: { url: WEB_APP_URL } }
+            ]
+          ] : [
+            [
+              { text: "🌐 Admin Panelni ochish", url: `${WEB_APP_URL}/admin` }
+            ]
+          ]
+        }
+      }
+    );
+  });
+
   bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
+    const chatId = String(msg.chat.id);
     const firstName = msg.from.first_name || 'Hurmatli mijoz';
 
     // Foydalanuvchini bazaga qo'shish
@@ -196,41 +242,40 @@ try {
     }
 
     const isHttps = WEB_APP_URL.startsWith('https://');
+    const isAdmin = ADMIN_CHAT_IDS.includes(chatId);
 
     const welcomeText = 
       `Assalomu alaykum, <b>${firstName}</b>!\n\n` +
       `🚗 <b>kuzavnoy.uzz</b> — Avtomobil ehtiyot qismlari do'konimizga xush kelibsiz!\n\n` +
       `Bizda: Rullar, Barlar, Labavoy va Bakavoy oynalar, Balonlar hamda original kuzov qismlari mavjud.\n\n` +
-      (isHttps 
-        ? `Pastdagi tugmani bosing va qulay <b>Telegram Mini App</b> orqali xarid qiling! 👇`
-        : `⚙️ <i>Eslatma: Mini App Telegram ichida ochilishi uchun ngrok orqali olingan HTTPS domenidan foydalaning (masalan: node server.js https://...ngrok-free.app). Hozirgi havola orqali brauzerda ochishingiz mumkin.</i>`);
+      (isAdmin ? `⭐️ <i>Siz tizimda Admin sifatida aniqlandingiz!</i>\n\n` : '') +
+      `Pastdagi tugmani bosing va qulay <b>Telegram Mini App</b> orqali xarid qiling! 👇`;
 
-    const inlineKeyboard = isHttps ? [
-      [
-        {
-          text: "🛒 Katalog & Xarid qilish (Mini App)",
-          web_app: { url: WEB_APP_URL }
-        }
-      ],
-      [
-        { text: "👨‍💻 Admin Panelga o'tish", url: `${WEB_APP_URL}/admin` }
-      ]
-    ] : [
-      [
-        {
-          text: "🌐 Do'konni brauzerda ochish",
-          url: WEB_APP_URL
-        }
-      ],
-      [
-        { text: "👨‍💻 Admin Panel", url: `${WEB_APP_URL}/admin` }
-      ]
-    ];
+    const buttons = [];
+    if (isHttps) {
+      buttons.push([
+        { text: "🛒 Katalog & Xarid qilish (Mini App)", web_app: { url: WEB_APP_URL } }
+      ]);
+      if (isAdmin) {
+        buttons.push([
+          { text: "👨‍💼 Admin Panelni ochish (Telegram ichida)", web_app: { url: `${WEB_APP_URL}/admin` } }
+        ]);
+      }
+    } else {
+      buttons.push([
+        { text: "🌐 Do'konni brauzerda ochish", url: WEB_APP_URL }
+      ]);
+      if (isAdmin) {
+        buttons.push([
+          { text: "👨‍💼 Admin Panel", url: `${WEB_APP_URL}/admin` }
+        ]);
+      }
+    }
 
     bot.sendMessage(chatId, welcomeText, {
       parse_mode: 'HTML',
       reply_markup: {
-        inline_keyboard: inlineKeyboard
+        inline_keyboard: buttons
       }
     });
   });
@@ -329,6 +374,79 @@ app.put('/api/orders/:id/status', async (req, res) => {
   }
 });
 
+// API: Barcha mijozlar (CRM / Clients bo'limi)
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await pool.query(`
+      SELECT u.id, u.telegram_id, u.name, u.phone, u.created_at,
+             COUNT(o.id) as orders_count, 
+             COALESCE(SUM(o.total_price), 0) as total_spent
+      FROM users u
+      LEFT JOIN orders o ON o.telegram_id = u.telegram_id
+      GROUP BY u.id, u.telegram_id, u.name, u.phone, u.created_at
+      ORDER BY total_spent DESC, orders_count DESC
+    `);
+    res.json(users.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Tezkor narx o'zgartirish (Quick Price Editor)
+app.put('/api/products/:id/quick-price', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { new_price, old_price } = req.body;
+    const result = await pool.query(
+      'UPDATE products SET new_price=$1, old_price=$2 WHERE id=$3 RETURNING *',
+      [new_price, old_price, id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Barcha Telegram foydalanuvchilariga xabar tarqatish (Broadcast)
+app.post('/api/broadcast', async (req, res) => {
+  try {
+    const { message, photo_url } = req.body;
+    if (!message) return res.status(400).json({ error: "Xabar matni kiritilishi shart!" });
+
+    const users = await pool.query('SELECT telegram_id FROM users WHERE telegram_id IS NOT NULL');
+    let sentCount = 0;
+
+    for (const u of users.rows) {
+      try {
+        if (photo_url) {
+          await bot.sendPhoto(u.telegram_id, photo_url, { 
+            caption: message, 
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "🛍 Do'konga o'tish (Mini App)", web_app: { url: WEB_APP_URL } }]
+              ]
+            }
+          });
+        } else {
+          await bot.sendMessage(u.telegram_id, message, { 
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "🛍 Do'konga o'tish (Mini App)", web_app: { url: WEB_APP_URL } }]
+              ]
+            }
+          });
+        }
+        sentCount++;
+      } catch (sendErr) {}
+    }
+    res.json({ success: true, sentCount, total: users.rows.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // API: Yangi buyurtma yaratish (Mini App) + Telegram orqali xabar yuborish
 app.post('/api/orders', async (req, res) => {
   try {
@@ -353,7 +471,7 @@ app.post('/api/orders', async (req, res) => {
           `<b>Buyurtma raqami:</b> #${order.id}\n` +
           `<b>Mijoz:</b> ${customer_name}\n` +
           `<b>Telefon:</b> ${phone}\n` +
-          `<b>Manzil:</b> ${location || 'Ko\'rsatilmagan'}\n\n` +
+          `<b>Manzil:</b> ${location || "Ko'rsatilmagan"}\n\n` +
           `<b>Xarid qilingan detallar:</b>\n${itemsList}\n\n` +
           `💰 <b>Jami summa:</b> ${total_price.toLocaleString()} so'm\n\n` +
           `<i>kuzavnoy.uzz ni tanlaganingiz uchun rahmat!</i>`;
@@ -361,6 +479,41 @@ app.post('/api/orders', async (req, res) => {
         bot.sendMessage(telegram_id, messageText, { parse_mode: 'HTML' });
       } catch (botErr) {
         console.error('Telegram bot xabar yuborishda xatolik:', botErr.message);
+      }
+    }
+
+    // Telegram Bot orqali ADMINGA yangi buyurtma haqida tezkor xabar (SMS) yuborish
+    if (bot && ADMIN_CHAT_IDS && ADMIN_CHAT_IDS.length > 0) {
+      try {
+        let itemsList = items.map(it => `• <b>${it.name}</b> x ${it.quantity || 1} dona (${(it.new_price * (it.quantity || 1)).toLocaleString()} so'm)`).join('\n');
+        
+        const adminText = 
+          `🚨 <b>YANGI BUYURTMA KELIB TUSHDI! (#${order.id})</b> 🚨\n\n` +
+          `👤 <b>Mijoz:</b> ${customer_name}\n` +
+          `📞 <b>Telefon:</b> ${phone}\n` +
+          `📍 <b>Manzil:</b> ${location || "Ko'rsatilmagan"}\n\n` +
+          `📦 <b>Buyurtma tarkibi:</b>\n${itemsList}\n\n` +
+          `💰 <b>Jami tushum:</b> <b>${total_price.toLocaleString()} so'm</b>\n` +
+          `⏰ <b>Vaqti:</b> ${new Date().toLocaleString('uz-UZ')}\n\n` +
+          `<i>Admin panelga kirish uchun: /admin</i>`;
+
+        for (const adminId of ADMIN_CHAT_IDS) {
+          bot.sendMessage(adminId, adminText, { 
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: "📊 Admin Panelda ko'rish",
+                    web_app: { url: `${WEB_APP_URL}/admin` }
+                  }
+                ]
+              ]
+            }
+          }).catch(e => console.error('Admin notify err:', e.message));
+        }
+      } catch (adminErr) {
+        console.error('Admin xabari yuborishda xatolik:', adminErr.message);
       }
     }
 
@@ -408,11 +561,11 @@ function getMiniAppHtml() {
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React & Babel -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Google Fonts (Inter) -->
+  <!-- React & Babel (Tezkor CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.4/babel.min.js"></script>
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -429,10 +582,26 @@ function getMiniAppHtml() {
       to { transform: translateY(0); }
     }
     .animate-slide-up { animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin-custom { animation: spin 0.8s linear infinite; }
   </style>
+  <script>
+    window.onerror = function(msg, url, line) {
+      var el = document.getElementById('debug-err');
+      if (el) el.innerHTML = '<b>Xatolik:</b> ' + msg + ' (' + line + ')';
+    };
+  </script>
 </head>
 <body class="bg-white text-slate-900 select-none pb-24">
-  <div id="root"></div>
+  <div id="root">
+    <!-- Yuklanish animatsiyasi (Oq ekran bo'lib qolmasligi uchun) -->
+    <div class="flex flex-col items-center justify-center min-h-[80vh] text-center px-4">
+      <div class="w-10 h-10 border-4 border-slate-100 border-t-red-600 rounded-full animate-spin-custom mb-3"></div>
+      <p class="text-xs font-bold text-slate-700">kuzavnoy.uzz yuklanmoqda...</p>
+      <span class="text-[10px] text-slate-400 mt-1">Avto ehtiyot qismlar do'koni</span>
+      <div id="debug-err" class="mt-4 text-xs text-red-600 max-w-xs font-mono"></div>
+    </div>
+  </div>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
@@ -1024,7 +1193,7 @@ function getMiniAppHtml() {
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-slate-900">{tgUser.first_name || 'Mijoz'} {tgUser.last_name || ''}</h2>
-                  <span className="text-[11px] text-slate-500">ID: {tgUser.id || 'Noma\'lum'}</span>
+                  <span className="text-[11px] text-slate-500">ID: {tgUser.id || "Noma'lum"}</span>
                 </div>
               </div>
 
@@ -1199,99 +1368,151 @@ function getAdminPanelHtml() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>kuzavnoy.uzz | Boshqaruv Paneli (Admin Dashboard)</title>
-  <!-- Tailwind CSS -->
+  <title>kuzavnoy.uzz | Professional Boshqaruv Markazi (Admin Dashboard)</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React & Babel -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Google Fonts -->
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.4/babel.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f172a; color: #f8fafc; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin-custom { animation: spin 0.8s linear infinite; }
   </style>
 </head>
-<body class="text-slate-900">
-  <div id="root"></div>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div id="root">
+    <div class="flex flex-col items-center justify-center min-h-[80vh] text-center px-4">
+      <div class="w-12 h-12 border-4 border-slate-800 border-t-red-600 rounded-full animate-spin-custom mb-3"></div>
+      <p class="text-sm font-bold text-slate-300">kuzavnoy.uzz Boshqaruv Markazi yuklanmoqda...</p>
+      <span class="text-xs text-slate-500 mt-1">Professional Admin Tizimi</span>
+    </div>
+  </div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useMemo } = React;
+
+    // Web Audio API ovozli signal (Yangi buyurtma tushganda "Ding-Dong" ovozi)
+    function playChime() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+      } catch(e) {}
+    }
 
     function AdminApp() {
-      const [view, setView] = useState('orders'); // 'orders' | 'products'
+      const [tab, setTab] = useState("dashboard"); // dashboard | orders | products | crm | broadcast
       const [orders, setOrders] = useState([]);
       const [products, setProducts] = useState([]);
+      const [users, setUsers] = useState([]);
       const [loading, setLoading] = useState(false);
+      const [soundEnabled, setSoundEnabled] = useState(true);
 
-      // Modal (Yangi mahsulot yoki tahrirlash)
-      const [showModal, setShowModal] = useState(false);
-      const [editId, setEditId] = useState(null);
+      // Buyurtmalar filtrlari
+      const [orderSearch, setOrderSearch] = useState("");
+      const [orderStatusFilter, setOrderStatusFilter] = useState("Barchasi");
+      const [selectedReceiptOrder, setSelectedReceiptOrder] = useState(null);
+
+      // Mahsulotlar filtrlari
+      const [productSearch, setProductSearch] = useState("");
+      const [productCategoryFilter, setProductCategoryFilter] = useState("Barchasi");
+
+      // Mahsulot Modal
+      const [showProductModal, setShowProductModal] = useState(false);
+      const [editingProduct, setEditingProduct] = useState(null);
       const [formData, setFormData] = useState({
-        name: '',
-        category: 'Rul va Salon',
-        new_price: '',
-        old_price: '',
-        image_url: '',
-        description: '',
-        detailsText: ''
+        name: "", category: "Rul va Salon", new_price: "", old_price: "",
+        image_url: "", description: "", detailsText: ""
       });
 
+      // Broadcast form
+      const [broadcastMsg, setBroadcastMsg] = useState("");
+      const [broadcastPhoto, setBroadcastPhoto] = useState("");
+      const [broadcastSending, setBroadcastSending] = useState(false);
+      const [broadcastResult, setBroadcastResult] = useState(null);
+
       useEffect(() => {
-        loadData();
-        const interval = setInterval(loadOrders, 10000); // 10 soniyada avto-yangilash
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
+        loadAllData();
+
+        // 5 soniyada yangi zakazlarni tekshirish
+        const interval = setInterval(checkForNewOrders, 5000);
         return () => clearInterval(interval);
       }, []);
 
-      const loadData = async () => {
+      const loadAllData = async () => {
         setLoading(true);
-        await Promise.all([loadOrders(), loadProducts()]);
+        await Promise.all([fetchOrders(), fetchProducts(), fetchUsers()]);
         setLoading(false);
       };
 
-      const loadOrders = async () => {
+      const fetchOrders = async () => {
         try {
-          const res = await fetch('/api/orders');
+          const res = await fetch("/api/orders");
           const data = await res.json();
           setOrders(data);
-        } catch (e) {
-          console.error(e);
-        }
+        } catch(e) {}
       };
 
-      const loadProducts = async () => {
+      const checkForNewOrders = async () => {
         try {
-          const res = await fetch('/api/products');
+          const res = await fetch("/api/orders");
+          const data = await res.json();
+          setOrders(prev => {
+            if (prev.length > 0 && data.length > prev.length) {
+              if (soundEnabled) playChime();
+            }
+            return data;
+          });
+        } catch(e) {}
+      };
+
+      const fetchProducts = async () => {
+        try {
+          const res = await fetch("/api/products");
           const data = await res.json();
           setProducts(data);
-        } catch (e) {
-          console.error(e);
-        }
+        } catch(e) {}
       };
 
+      const fetchUsers = async () => {
+        try {
+          const res = await fetch("/api/users");
+          const data = await res.json();
+          setUsers(data);
+        } catch(e) {}
+      };
+
+      // Buyurtma holatini yangilash
       const updateOrderStatus = async (id, status) => {
         try {
-          await fetch('/api/orders/' + id + '/status', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+          await fetch("/api/orders/" + id + "/status", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ status })
           });
-          loadOrders();
-        } catch (e) {
-          alert('Statusni yangilashda xatolik!');
+          fetchOrders();
+        } catch(e) {
+          alert("Holatni yangilashda xatolik!");
         }
       };
 
-      const handleDeleteProduct = async (id) => {
-        if (!confirm("Rostdan ham ushbu ehtiyot qismni o'chirmoqchimisiz?")) return;
-        try {
-          await fetch('/api/products/' + id, { method: 'DELETE' });
-          loadProducts();
-        } catch (e) {
-          alert("O'chirishda xatolik!");
-        }
-      };
-
+      // Mahsulotni saqlash (Yangi yoki tahrirlash)
       const handleSaveProduct = async (e) => {
         e.preventDefault();
         try {
@@ -1302,177 +1523,434 @@ function getAdminPanelHtml() {
             old_price: formData.old_price ? parseInt(formData.old_price) : 0,
             image_url: formData.image_url,
             description: formData.description,
-            details: formData.detailsText.split('\\n').filter(Boolean)
+            details: formData.detailsText.split("\\n").filter(Boolean)
           };
 
-          const url = editId ? '/api/products/' + editId : '/api/products';
-          const method = editId ? 'PUT' : 'POST';
+          const url = editingProduct ? "/api/products/" + editingProduct.id : "/api/products";
+          const method = editingProduct ? "PUT" : "POST";
 
           await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
 
-          setShowModal(false);
-          setEditId(null);
-          loadProducts();
-        } catch (err) {
-          alert("Saqlashda xatolik yuz berdi!");
+          setShowProductModal(false);
+          setEditingProduct(null);
+          fetchProducts();
+        } catch(e) {
+          alert("Saqlashda xatolik!");
         }
       };
 
-      const openEditModal = (prod) => {
-        setEditId(prod.id);
-        setFormData({
-          name: prod.name,
-          category: prod.category || 'Rul va Salon',
-          new_price: prod.new_price,
-          old_price: prod.old_price || '',
-          image_url: prod.image_url,
-          description: prod.description,
-          detailsText: (Array.isArray(prod.details) ? prod.details : []).join('\\n')
-        });
-        setShowModal(true);
+      // Tezkor narx o'zgartirish
+      const handleQuickPrice = async (prod, newPrice) => {
+        const val = parseInt(newPrice);
+        if (isNaN(val) || val <= 0) return;
+        try {
+          await fetch("/api/products/" + prod.id + "/quick-price", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ new_price: val, old_price: prod.old_price })
+          });
+          fetchProducts();
+        } catch(e) {}
       };
 
-      const openCreateModal = () => {
-        setEditId(null);
-        setFormData({
-          name: '',
-          category: 'Rul va Salon',
-          new_price: '',
-          old_price: '',
-          image_url: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80',
-          description: '',
-          detailsText: 'Original zavodskoy mahsulot\\n100% kafolat beriladi'
-        });
-        setShowModal(true);
+      // Mahsulotni o'chirish
+      const handleDeleteProduct = async (id) => {
+        if (!confirm("Rostdan ham ushbu ehtiyot qismni o'chirmoqchimisiz?")) return;
+        try {
+          await fetch("/api/products/" + id, { method: "DELETE" });
+          fetchProducts();
+        } catch(e) {
+          alert("O'chirishda xatolik!");
+        }
       };
 
-      // Tushum hisob-kitobi
-      const totalRevenue = orders.reduce((sum, ord) => sum + (ord.total_price || 0), 0);
-      const pendingOrders = orders.filter(o => o.status === 'Kutilmoqda').length;
+      // Xabar tarqatish (Broadcast)
+      const handleSendBroadcast = async (e) => {
+        e.preventDefault();
+        if (!broadcastMsg.trim()) return alert("Xabar matnini kiriting!");
+        if (!confirm("Haqiqatdan ham barcha Telegram foydalanuvchilariga xabar yuborilsinmi?")) return;
+
+        setBroadcastSending(true);
+        setBroadcastResult(null);
+        try {
+          const res = await fetch("/api/broadcast", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: broadcastMsg, photo_url: broadcastPhoto })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setBroadcastResult("✅ Xabar " + data.sentCount + " ta mijozga muvaffaqiyatli yuborildi!");
+            setBroadcastMsg("");
+            setBroadcastPhoto("");
+          }
+        } catch(e) {
+          setBroadcastResult("❌ Xabar yuborishda xatolik yuz berdi!");
+        } finally {
+          setBroadcastSending(false);
+        }
+      };
+
+      // Excel / CSV ga eksport qilish
+      const exportOrdersToCSV = () => {
+        let csv = "ID,Sana,Mijoz,Telefon,Manzil,Jami Summa,Holati\\n";
+        orders.forEach(o => {
+          csv += [
+            o.id,
+            '"' + new Date(o.created_at).toLocaleString('uz-UZ') + '"',
+            '"' + (o.customer_name || '').replace(/"/g, '""') + '"',
+            '"' + (o.phone || '') + '"',
+            '"' + (o.location || '').replace(/"/g, '""') + '"',
+            o.total_price,
+            '"' + o.status + '"'
+          ].join(",") + "\\n";
+        });
+
+        const blob = new Blob(["\\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", "kuzavnoy_buyurtmalar_" + new Date().toISOString().slice(0,10) + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      // Metrikalar hisobi
+      const totalRevenue = useMemo(() => orders.reduce((sum, o) => sum + (o.total_price || 0), 0), [orders]);
+      const pendingOrders = useMemo(() => orders.filter(o => o.status === "Kutilmoqda"), [orders]);
+      const deliveredOrders = useMemo(() => orders.filter(o => o.status === "Yetkazildi"), [orders]);
+      const avgOrderValue = orders.length ? Math.round(totalRevenue / orders.length) : 0;
+
+      // Filtrlangan buyurtmalar
+      const filteredOrders = useMemo(() => {
+        return orders.filter(o => {
+          const matchStatus = orderStatusFilter === "Barchasi" || o.status === orderStatusFilter;
+          const searchLower = orderSearch.toLowerCase();
+          const matchSearch = !orderSearch || 
+            String(o.id).includes(searchLower) ||
+            (o.customer_name && o.customer_name.toLowerCase().includes(searchLower)) ||
+            (o.phone && o.phone.includes(searchLower)) ||
+            (o.location && o.location.toLowerCase().includes(searchLower));
+          return matchStatus && matchSearch;
+        });
+      }, [orders, orderStatusFilter, orderSearch]);
+
+      // Filtrlangan mahsulotlar
+      const filteredProducts = useMemo(() => {
+        return products.filter(p => {
+          const matchCat = productCategoryFilter === "Barchasi" || p.category === productCategoryFilter;
+          const matchSearch = !productSearch || 
+            p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+            (p.description && p.description.toLowerCase().includes(productSearch.toLowerCase()));
+          return matchCat && matchSearch;
+        });
+      }, [products, productCategoryFilter, productSearch]);
 
       return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
-          {/* Top Navbar */}
-          <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-3.5 flex items-center justify-between">
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+          
+          {/* TOP NAVBAR */}
+          <header className="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-30 px-4 md:px-8 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-sm">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 text-white flex items-center justify-center font-black text-lg shadow-lg shadow-red-950/40">
                 🚗
               </div>
               <div>
-                <h1 className="text-base font-black text-slate-900 leading-none">kuzavnoy.uzz</h1>
-                <span className="text-[11px] text-slate-500 font-medium">Boshqaruv Paneli (Admin)</span>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-black tracking-tight text-white">kuzavnoy.uzz</h1>
+                  <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-red-600/20 text-red-400 border border-red-500/30">
+                    Pro Dashboard
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">Boshqaruv & Savdo Markazi</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 md:gap-3">
               <button 
-                onClick={() => setView('orders')}
-                className={'px-3.5 py-1.5 rounded-lg text-xs font-bold transition ' + (view === 'orders' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600')}
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className={"px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 " + 
+                  (soundEnabled ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-slate-800 border-slate-700 text-slate-400")}
               >
-                📦 Buyurtmalar ({orders.length})
+                <span>{soundEnabled ? "🔔 Ovoz: Yoqiq" : "🔕 Ovoz: O'chiq"}</span>
               </button>
+
               <button 
-                onClick={() => setView('products')}
-                className={'px-3.5 py-1.5 rounded-lg text-xs font-bold transition ' + (view === 'products' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600')}
+                onClick={loadAllData}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 flex items-center gap-1"
               >
-                🛠 Ehtiyot Qismlar ({products.length})
+                <span>Yangilash</span> 🔄
               </button>
             </div>
           </header>
 
-          {/* Asosiy Kontent */}
-          <main className="max-w-6xl w-full mx-auto p-6 flex-1">
-            {/* Metrika Vidjetlari */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-                <span className="text-xs font-semibold text-slate-500">Jami Buyurtmalar</span>
-                <h3 className="text-2xl font-black text-slate-900 mt-1">{orders.length} ta</h3>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-                <span className="text-xs font-semibold text-slate-500">Yangi / Kutilayotgan</span>
-                <h3 className="text-2xl font-black text-amber-600 mt-1">{pendingOrders} ta</h3>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-                <span className="text-xs font-semibold text-slate-500">Jami Tushum</span>
-                <h3 className="text-2xl font-black text-emerald-600 mt-1">{totalRevenue.toLocaleString()} so'm</h3>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-                <span className="text-xs font-semibold text-slate-500">Tovarlar soni</span>
-                <h3 className="text-2xl font-black text-slate-900 mt-1">{products.length} xil</h3>
-              </div>
+          {/* ASOSIY NAVIGATION TABS */}
+          <div className="bg-slate-900/60 border-b border-slate-800 px-4 md:px-8 overflow-x-auto no-scrollbar">
+            <div className="flex gap-1 max-w-7xl mx-auto py-2">
+              {[
+                { id: "dashboard", label: "📊 Analitika", count: null },
+                { id: "orders", label: "📦 Buyurtmalar", count: pendingOrders.length ? pendingOrders.length + " ta yangi" : orders.length },
+                { id: "products", label: "🛠 Zapchastlar Ombori", count: products.length },
+                { id: "crm", label: "👥 Mijozlar Bazasi", count: users.length },
+                { id: "broadcast", label: "📢 Xabar Tarqatish", count: "Bot" }
+              ].map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => setTab(item.id)}
+                  className={"px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-2 " + 
+                    (tab === item.id 
+                      ? "bg-red-600 text-white shadow-lg shadow-red-950/50" 
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/60")}
+                >
+                  <span>{item.label}</span>
+                  {item.count && (
+                    <span className={"text-[10px] px-2 py-0.5 rounded-full " + 
+                      (tab === item.id ? "bg-black/25 text-white" : "bg-slate-800 text-slate-300")}>
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* VIEW 1: BUYURTMALAR SAHIFASI */}
-            {view === 'orders' && (
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-                  <h2 className="text-sm font-bold text-slate-900">Kelib tushgan buyurtmalar</h2>
-                  <button onClick={loadOrders} className="text-xs font-semibold text-red-600 hover:underline">
-                    Yangilash 🔄
-                  </button>
+          {/* CONTENT AREA */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8">
+            
+            {/* 1. DASHBOARD & ANALITIKA */}
+            {tab === "dashboard" && (
+              <div className="space-y-6">
+                
+                {/* 4 Asosiy KPI kartalari */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-sm">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Jami Savdo Tushumi</span>
+                    <h3 className="text-2xl md:text-3xl font-black text-emerald-400 mt-2">
+                      {totalRevenue.toLocaleString()} <span className="text-sm font-bold text-slate-500">so'm</span>
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-500 mt-2">
+                      <span>↗ Real vaqtda hisoblangan</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-sm">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Jami Buyurtmalar</span>
+                    <h3 className="text-2xl md:text-3xl font-black text-white mt-2">
+                      {orders.length} <span className="text-sm font-bold text-slate-500">ta</span>
+                    </h3>
+                    <span className="text-xs text-slate-400 mt-2 block">
+                      {deliveredOrders.length} ta muvaffaqiyatli yetkazilgan
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-sm">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Kutilayotgan / Yangi</span>
+                    <h3 className="text-2xl md:text-3xl font-black text-amber-400 mt-2">
+                      {pendingOrders.length} <span className="text-sm font-bold text-slate-500">ta</span>
+                    </h3>
+                    <span className="text-xs text-amber-500/80 mt-2 block">Tezkor ko'rib chiqish talab etiladi</span>
+                  </div>
+
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-sm">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">O'rtacha Chek (AOV)</span>
+                    <h3 className="text-2xl md:text-3xl font-black text-indigo-400 mt-2">
+                      {avgOrderValue.toLocaleString()} <span className="text-sm font-bold text-slate-500">so'm</span>
+                    </h3>
+                    <span className="text-xs text-slate-400 mt-2 block">Har bitta xariddan tushum</span>
+                  </div>
                 </div>
 
+                {/* Grafikli Vidjet va Eng xaridorgir detallar */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  
+                  {/* Savdo Dinamikasi */}
+                  <div className="md:col-span-2 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-base font-black text-white">Savdo Dinamikasi & Tushumlar</h3>
+                          <p className="text-xs text-slate-400">Oxirgi buyurtmalar statistikasi</p>
+                        </div>
+                        <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-bold">
+                          ● Jonli Savdo
+                        </span>
+                      </div>
+
+                      {/* Oddiy va chiroyli SVG Bar Diagrammasi */}
+                      <div className="h-44 flex items-end justify-between gap-3 pt-6 px-2 border-b border-slate-800">
+                        {orders.slice(0, 8).reverse().map((ord, i) => {
+                          const heightPct = Math.min(100, Math.max(15, Math.round((ord.total_price / (totalRevenue || 1)) * 100 * 3)));
+                          return (
+                            <div key={ord.id} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer">
+                              <span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition">
+                                {(ord.total_price / 1000).toFixed(0)}k
+                              </span>
+                              <div 
+                                style={{ height: heightPct + "%" }}
+                                className="w-full bg-gradient-to-t from-red-600 to-rose-400 rounded-t-xl group-hover:from-emerald-500 group-hover:to-teal-400 transition"
+                              />
+                              <span className="text-[10px] font-bold text-slate-500">#{ord.id}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-4 text-xs text-slate-400">
+                      <span>Jami ro'yxatdan o'tgan mijozlar: <b className="text-white">{users.length} ta</b></span>
+                      <button onClick={() => setTab("orders")} className="text-red-400 hover:underline font-bold">
+                        Barcha buyurtmalarni ochish →
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Eng ko'p sotilgan zapchastlar */}
+                  <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6">
+                    <h3 className="text-base font-black text-white mb-1">Eng Ko'p Xarid Qilinganlar</h3>
+                    <p className="text-xs text-slate-400 mb-4">Top ehtiyot qismlar reytingi</p>
+
+                    <div className="space-y-3">
+                      {products.slice(0, 5).map((p, idx) => (
+                        <div key={p.id} className="flex items-center gap-3 p-2 rounded-2xl bg-slate-950/60 border border-slate-800/60">
+                          <img src={p.image_url} className="w-11 h-11 rounded-xl object-cover bg-slate-800" />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-bold text-white truncate">{p.name}</h4>
+                            <span className="text-[11px] font-extrabold text-red-400">{p.new_price?.toLocaleString()} so'm</span>
+                          </div>
+                          <span className="text-xs font-black text-slate-500 px-2 py-1 bg-slate-900 rounded-lg">
+                            #{idx + 1}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            {/* 2. BUYURTMALAR BO'LIMI (ORDERS CRM) */}
+            {tab === "orders" && (
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+                
+                {/* Filtrlash va qidiruv qatori */}
+                <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-black text-white">Buyurtmalar Ro'yxati</h2>
+                    <p className="text-xs text-slate-400">Kelib tushgan va yetkazilgan barcha zakazlar</p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input 
+                      type="text"
+                      value={orderSearch}
+                      onChange={e => setOrderSearch(e.target.value)}
+                      placeholder="Qidiruv: Ism, Tel, ID..."
+                      className="px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
+                    />
+
+                    <button 
+                      onClick={exportOrdersToCSV}
+                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow"
+                    >
+                      <span>Excel (CSV) yuklash</span> 📥
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status Filtr Tablari */}
+                <div className="px-6 py-2.5 bg-slate-950/50 border-b border-slate-800 flex gap-2 overflow-x-auto no-scrollbar">
+                  {["Barchasi", "Kutilmoqda", "Yetkazilmoqda", "Yetkazildi", "Bekor qilindi"].map(st => (
+                    <button
+                      key={st}
+                      onClick={() => setOrderStatusFilter(st)}
+                      className={"px-3 py-1 rounded-lg text-xs font-bold transition " + 
+                        (orderStatusFilter === st ? "bg-slate-800 text-white border border-slate-700" : "text-slate-400 hover:text-white")}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Jadval */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase text-[10px] tracking-wider">
+                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-[10px] tracking-wider">
                       <tr>
-                        <th className="p-3">ID & Sana</th>
-                        <th className="p-3">Mijoz & Tel</th>
-                        <th className="p-3">Manzil</th>
-                        <th className="p-3">Xarid qilingan detallar</th>
-                        <th className="p-3">Jami Summa</th>
-                        <th className="p-3">Holati</th>
+                        <th className="p-4">ID & Sana</th>
+                        <th className="p-4">Mijoz & Telefon</th>
+                        <th className="p-4">Manzil</th>
+                        <th className="p-4">Xarid Qilingan Qismlar</th>
+                        <th className="p-4">Jami Summa</th>
+                        <th className="p-4">Holati</th>
+                        <th className="p-4 text-right">Hujjat</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {orders.length === 0 ? (
+                    <tbody className="divide-y divide-slate-800">
+                      {filteredOrders.length === 0 ? (
                         <tr>
-                          <td colSpan="6" className="p-8 text-center text-slate-400">Hozircha yangi buyurtmalar kelib tushmadi</td>
+                          <td colSpan="7" className="p-10 text-center text-slate-500">
+                            Hech qanday buyurtma topilmadi
+                          </td>
                         </tr>
                       ) : (
-                        orders.map(order => (
-                          <tr key={order.id} className="hover:bg-slate-50/80">
-                            <td className="p-3 font-semibold text-slate-900 whitespace-nowrap">
+                        filteredOrders.map(order => (
+                          <tr key={order.id} className="hover:bg-slate-850 transition">
+                            <td className="p-4 font-bold text-white whitespace-nowrap">
                               <div>#{order.id}</div>
-                              <span className="text-[10px] text-slate-400 font-normal">
-                                {new Date(order.created_at).toLocaleString('uz-UZ')}
+                              <span className="text-[10px] text-slate-500 font-normal">
+                                {new Date(order.created_at).toLocaleString("uz-UZ")}
                               </span>
                             </td>
-                            <td className="p-3 whitespace-nowrap">
-                              <div className="font-bold text-slate-900">{order.customer_name}</div>
-                              <a href={'tel:' + order.phone} className="text-red-600 hover:underline">{order.phone}</a>
+                            <td className="p-4 whitespace-nowrap">
+                              <div className="font-extrabold text-white">{order.customer_name}</div>
+                              <a href={"tel:" + order.phone} className="text-red-400 hover:underline font-mono text-[11px] block mt-0.5">
+                                {order.phone}
+                              </a>
                             </td>
-                            <td className="p-3 text-slate-600 max-w-[180px]">{order.location || 'Ko\'rsatilmagan'}</td>
-                            <td className="p-3">
+                            <td className="p-4 text-slate-300 max-w-[180px] truncate">
+                              {order.location || "Ko'rsatilmagan"}
+                            </td>
+                            <td className="p-4">
                               <div className="space-y-1">
                                 {(order.items || []).map((it, idx) => (
-                                  <div key={idx} className="text-[11px] text-slate-700">
-                                    <span className="font-semibold">{it.name}</span> <span className="text-slate-400">x {it.quantity || 1}</span>
+                                  <div key={idx} className="text-[11px] text-slate-300">
+                                    <span className="font-semibold text-white">• {it.name}</span> <span className="text-slate-500">x{it.quantity || 1}</span>
                                   </div>
                                 ))}
                               </div>
                             </td>
-                            <td className="p-3 font-black text-slate-900 whitespace-nowrap">
+                            <td className="p-4 font-black text-emerald-400 whitespace-nowrap text-sm">
                               {order.total_price?.toLocaleString()} so'm
                             </td>
-                            <td className="p-3 whitespace-nowrap">
+                            <td className="p-4 whitespace-nowrap">
                               <select 
-                                value={order.status} 
+                                value={order.status}
                                 onChange={e => updateOrderStatus(order.id, e.target.value)}
-                                className={'text-[11px] font-bold px-2 py-1 rounded-md border focus:outline-none ' + 
-                                  (order.status === 'Yetkazildi' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                   order.status === 'Bekor qilindi' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                   'bg-amber-50 text-amber-700 border-amber-200')}
+                                className={"text-xs font-bold px-2.5 py-1.5 rounded-xl border focus:outline-none cursor-pointer " + 
+                                  (order.status === "Yetkazildi" ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/30" :
+                                   order.status === "Bekor qilindi" ? "bg-rose-950/60 text-rose-400 border-rose-500/30" :
+                                   order.status === "Yetkazilmoqda" ? "bg-blue-950/60 text-blue-400 border-blue-500/30" :
+                                   "bg-amber-950/60 text-amber-400 border-amber-500/30")}
                               >
-                                <option value="Kutilmoqda">Kutilmoqda</option>
-                                <option value="Yetkazilmoqda">Yetkazilmoqda</option>
-                                <option value="Yetkazildi">Yetkazildi</option>
-                                <option value="Bekor qilindi">Bekor qilindi</option>
+                                <option value="Kutilmoqda">⏳ Kutilmoqda</option>
+                                <option value="Yetkazilmoqda">🚙 Yetkazilmoqda</option>
+                                <option value="Yetkazildi">✅ Yetkazildi</option>
+                                <option value="Bekor qilindi">❌ Bekor qilindi</option>
                               </select>
+                            </td>
+                            <td className="p-4 text-right whitespace-nowrap">
+                              <button 
+                                onClick={() => setSelectedReceiptOrder(order)}
+                                className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[11px] font-bold border border-slate-700 transition"
+                              >
+                                🧾 Chek
+                              </button>
                             </td>
                           </tr>
                         ))
@@ -1483,60 +1961,125 @@ function getAdminPanelHtml() {
               </div>
             )}
 
-            {/* VIEW 2: MAHSULOTLAR CRUD */}
-            {view === 'products' && (
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+            {/* 3. ZAPCHASTLAR OMBORI (PRODUCTS CRUD) */}
+            {tab === "products" && (
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+                
+                <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <h2 className="text-sm font-bold text-slate-900">Avto ehtiyot qismlari ro'yxati</h2>
-                    <p className="text-[11px] text-slate-500">Yangi tovar qo'shing, tahrirlang yoki narxini o'zgartiring</p>
+                    <h2 className="text-lg font-black text-white">Zapchastlar Katalogi & Ombor</h2>
+                    <p className="text-xs text-slate-400">Yangi tovar qo'shing, narxini jadvalning o'zida o'zgartiring</p>
                   </div>
-                  <button 
-                    onClick={openCreateModal}
-                    className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl shadow active:scale-95 transition"
-                  >
-                    + Yangi Zapchast Qo'shish
-                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text"
+                      value={productSearch}
+                      onChange={e => setProductSearch(e.target.value)}
+                      placeholder="Qismlarni qidirish..."
+                      className="px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
+                    />
+
+                    <button 
+                      onClick={() => {
+                        setEditingProduct(null);
+                        setFormData({
+                          name: "", category: "Rul va Salon", new_price: "", old_price: "",
+                          image_url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80",
+                          description: "", detailsText: "Original sifat\\nKafolat beriladi"
+                        });
+                        setShowProductModal(true);
+                      }}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black shadow-lg shadow-red-950/40 active:scale-95 transition flex items-center gap-1.5"
+                    >
+                      <span>+ Yangi Zapchast</span>
+                    </button>
+                  </div>
                 </div>
 
+                {/* Kategoriyalar filtri */}
+                <div className="px-6 py-2.5 bg-slate-950/50 border-b border-slate-800 flex gap-2 overflow-x-auto no-scrollbar">
+                  {["Barchasi", "Rul va Salon", "Oynalar", "Balon va Disklar", "Kuzov qismlari"].map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setProductCategoryFilter(cat)}
+                      className={"px-3 py-1 rounded-lg text-xs font-bold transition " + 
+                        (productCategoryFilter === cat ? "bg-slate-800 text-white border border-slate-700" : "text-slate-400 hover:text-white")}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Mahsulotlar Jadvali */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase text-[10px] tracking-wider">
+                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-[10px] tracking-wider">
                       <tr>
-                        <th className="p-3">Rasm</th>
-                        <th className="p-3">Nomi & Kategoriya</th>
-                        <th className="p-3">Narxi</th>
-                        <th className="p-3">Amallar</th>
+                        <th className="p-4">Rasm</th>
+                        <th className="p-4">Detal Nomi & Kategoriya</th>
+                        <th className="p-4">Tezkor Narx Tahrirlash</th>
+                        <th className="p-4">Tavsif & Xususiyatlar</th>
+                        <th className="p-4 text-right">Amallar</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {products.map(prod => (
-                        <tr key={prod.id} className="hover:bg-slate-50">
-                          <td className="p-3">
-                            <img src={prod.image_url} className="w-12 h-12 rounded-lg object-cover bg-slate-100" />
+                    <tbody className="divide-y divide-slate-800">
+                      {filteredProducts.map(prod => (
+                        <tr key={prod.id} className="hover:bg-slate-850 transition">
+                          <td className="p-4">
+                            <img src={prod.image_url} className="w-14 h-14 rounded-2xl object-cover bg-slate-800 border border-slate-700" />
                           </td>
-                          <td className="p-3">
-                            <div className="font-bold text-slate-900">{prod.name}</div>
-                            <span className="text-[10px] font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{prod.category}</span>
-                            <div className="text-[11px] text-slate-400 truncate max-w-xs">{prod.description}</div>
+                          <td className="p-4">
+                            <div className="font-extrabold text-white text-sm">{prod.name}</div>
+                            <span className="inline-block mt-1 text-[10px] font-bold text-red-400 bg-red-950/40 border border-red-500/20 px-2 py-0.5 rounded-md">
+                              {prod.category}
+                            </span>
                           </td>
-                          <td className="p-3 whitespace-nowrap">
-                            <div className="font-black text-slate-900">{prod.new_price?.toLocaleString()} so'm</div>
+                          <td className="p-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <input 
+                                type="number"
+                                defaultValue={prod.new_price}
+                                onBlur={e => handleQuickPrice(prod, e.target.value)}
+                                className="w-28 px-2 py-1 bg-slate-950 border border-slate-700 rounded-lg text-emerald-400 font-bold text-xs focus:outline-none focus:border-emerald-500"
+                              />
+                              <span className="text-[11px] text-slate-500">so'm</span>
+                            </div>
                             {prod.old_price && (
-                              <div className="text-[10px] text-slate-400 line-through">{prod.old_price?.toLocaleString()} so'm</div>
+                              <span className="text-[10px] text-slate-500 line-through block mt-1">
+                                Eski: {prod.old_price.toLocaleString()} so'm
+                              </span>
                             )}
                           </td>
-                          <td className="p-3 whitespace-nowrap">
-                            <div className="flex gap-2">
+                          <td className="p-4 text-slate-400 max-w-xs">
+                            <div className="truncate">{prod.description}</div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">
+                              {(Array.isArray(prod.details) ? prod.details.length : 0)} ta xususiyat kiritilgan
+                            </div>
+                          </td>
+                          <td className="p-4 text-right whitespace-nowrap">
+                            <div className="flex justify-end gap-2">
                               <button 
-                                onClick={() => openEditModal(prod)}
-                                className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-md hover:bg-slate-200"
+                                onClick={() => {
+                                  setEditingProduct(prod);
+                                  setFormData({
+                                    name: prod.name,
+                                    category: prod.category || "Rul va Salon",
+                                    new_price: prod.new_price,
+                                    old_price: prod.old_price || "",
+                                    image_url: prod.image_url,
+                                    description: prod.description || "",
+                                    detailsText: (Array.isArray(prod.details) ? prod.details : []).join("\\n")
+                                  });
+                                  setShowProductModal(true);
+                                }}
+                                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 transition"
                               >
                                 Tahrirlash
                               </button>
                               <button 
                                 onClick={() => handleDeleteProduct(prod.id)}
-                                className="px-2.5 py-1 bg-rose-50 text-rose-600 font-bold rounded-md hover:bg-rose-100"
+                                className="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 font-bold rounded-xl border border-rose-800/40 transition"
                               >
                                 O'chirish
                               </button>
@@ -1549,39 +2092,214 @@ function getAdminPanelHtml() {
                 </div>
               </div>
             )}
+
+            {/* 4. CRM / MIJOZLAR BAZASI */}
+            {tab === "crm" && (
+              <div className="bg-slate-900/80 border border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+                <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-lg font-black text-white">Mijozlar Bazasi (CRM)</h2>
+                    <p className="text-xs text-slate-400">Do'koningizdan ro'yxatdan o'tgan barcha Telegram mijozlar</p>
+                  </div>
+                  <span className="px-3.5 py-1.5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 rounded-xl text-xs font-bold">
+                    Jami: {users.length} ta xaridor
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-[10px] tracking-wider">
+                      <tr>
+                        <th className="p-4">Telegram ID & Ism</th>
+                        <th className="p-4">Telefon</th>
+                        <th className="p-4">Buyurtmalar Soni</th>
+                        <th className="p-4">Jami Xarid Qilgan Summasi</th>
+                        <th className="p-4">A'zo Bo'lgan Sana</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {users.length === 0 ? (
+                        <tr><td colSpan="5" className="p-8 text-center text-slate-500">Mijozlar mavjud emas</td></tr>
+                      ) : (
+                        users.map(u => (
+                          <tr key={u.id} className="hover:bg-slate-850 transition">
+                            <td className="p-4 font-bold text-white whitespace-nowrap">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-red-600/20 text-red-400 font-black flex items-center justify-center">
+                                  {(u.name || "M")[0]}
+                                </div>
+                                <div>
+                                  <div>{u.name || "Telegram Foydalanuvchisi"}</div>
+                                  <span className="text-[10px] text-slate-500 font-mono">ID: {u.telegram_id}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4 font-mono text-slate-300">
+                              {u.phone || "Kiritilmagan"}
+                            </td>
+                            <td className="p-4 font-black text-white">
+                              {u.orders_count || 0} ta buyurtma
+                            </td>
+                            <td className="p-4 font-black text-emerald-400 text-sm">
+                              {parseInt(u.total_spent || 0).toLocaleString()} so'm
+                            </td>
+                            <td className="p-4 text-slate-500 whitespace-nowrap">
+                              {new Date(u.created_at).toLocaleDateString("uz-UZ")}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 5. TELEGRAM XABAR TARQATISH (BROADCAST) */}
+            {tab === "broadcast" && (
+              <div className="max-w-2xl mx-auto bg-slate-900/80 border border-slate-800 rounded-3xl p-6 md:p-8">
+                <div className="mb-6">
+                  <h2 className="text-xl font-black text-white">Barcha Mijozlarga Xabar Tarqatish 📢</h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Yangi chegirmalar, aksiyalar yoki yangi kelgan zapchastlar haqida botingiz orqali barcha {users.length} ta foydalanuvchiga bir bosishda xabar yuboring.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSendBroadcast} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-300 block mb-1.5">Rasm URL manzili (Ixtiyoriy)</label>
+                    <input 
+                      type="url"
+                      value={broadcastPhoto}
+                      onChange={e => setBroadcastPhoto(e.target.value)}
+                      placeholder="https://images.unsplash.com/... (agar rasm yubormoqchi bo'lsangiz)"
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-300 block mb-1.5">Xabar Matni (HTML teglari qo'llab-quvvatlanadi)</label>
+                    <textarea 
+                      rows="5"
+                      required
+                      value={broadcastMsg}
+                      onChange={e => setBroadcastMsg(e.target.value)}
+                      placeholder="Masalan: ⚡️ DIQQAT AKSIYA! M-Sport rullariga 25% chegirma boshlandi! Hoziroq Mini App orqali buyurtma bering!"
+                      className="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-red-500 leading-relaxed"
+                    />
+                  </div>
+
+                  {broadcastResult && (
+                    <div className="p-3.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-white">
+                      {broadcastResult}
+                    </div>
+                  )}
+
+                  <button 
+                    type="submit"
+                    disabled={broadcastSending}
+                    className="w-full py-3.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-black rounded-xl text-xs shadow-lg shadow-red-950/50 transition active:scale-98"
+                  >
+                    {broadcastSending ? "Yuborilmoqda..." : "🚀 Barcha Foydalanuvchilarga Yuborish"}
+                  </button>
+                </form>
+              </div>
+            )}
+
           </main>
 
-          {/* MODAL (QO'SHISH / TAHRIRLASH) */}
-          {showModal && (
-            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+          {/* INVOICE / CHEK MODAL */}
+          {selectedReceiptOrder && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div className="bg-white text-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+                <button 
+                  onClick={() => setSelectedReceiptOrder(null)} 
+                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 font-bold"
+                >
+                  ✕
+                </button>
+
+                <div className="text-center pb-4 border-b border-dashed border-slate-200">
+                  <h3 className="text-lg font-black tracking-tight">kuzavnoy.uzz</h3>
+                  <p className="text-xs text-slate-500">Avto Ehtiyot Qismlar Do'koni</p>
+                  <div className="text-[10px] text-slate-400 mt-1 font-mono">
+                    Buyurtma #{selectedReceiptOrder.id} • {new Date(selectedReceiptOrder.created_at).toLocaleString("uz-UZ")}
+                  </div>
+                </div>
+
+                <div className="py-3 text-xs border-b border-dashed border-slate-200 space-y-1">
+                  <div><b>Mijoz:</b> {selectedReceiptOrder.customer_name}</div>
+                  <div><b>Telefon:</b> {selectedReceiptOrder.phone}</div>
+                  <div><b>Manzil:</b> {selectedReceiptOrder.location || "Ko'rsatilmagan"}</div>
+                  <div><b>Holat:</b> {selectedReceiptOrder.status}</div>
+                </div>
+
+                <div className="py-3 space-y-2 border-b border-slate-200">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase">Xarid qilingan detallar</div>
+                  {(selectedReceiptOrder.items || []).map((it, idx) => (
+                    <div key={idx} className="flex justify-between text-xs">
+                      <span>{it.name} x {it.quantity || 1}</span>
+                      <span className="font-bold">{((it.new_price || 0) * (it.quantity || 1)).toLocaleString()} so'm</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-3 flex justify-between items-center">
+                  <span className="text-sm font-bold">JAMI TO'LOV:</span>
+                  <span className="text-base font-black text-red-600">
+                    {selectedReceiptOrder.total_price?.toLocaleString()} so'm
+                  </span>
+                </div>
+
+                <div className="mt-5 flex gap-2">
+                  <button 
+                    onClick={() => window.print()}
+                    className="flex-1 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl"
+                  >
+                    Chop etish (Print) 🖨
+                  </button>
+                  <button 
+                    onClick={() => setSelectedReceiptOrder(null)}
+                    className="px-4 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl"
+                  >
+                    Yopish
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MAHSULOT QO'SHISH / TAHRIRLASH MODAL */}
+          {showProductModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl text-white">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-sm font-black text-slate-900">
-                    {editId ? "Zapchastni tahrirlash" : "Yangi ehtiyot qism qo'shish"}
+                  <h3 className="text-base font-black text-white">
+                    {editingProduct ? "Zapchastni Tahrirlash" : "Yangi Ehtiyot Qism Qo'shish"}
                   </h3>
-                  <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+                  <button onClick={() => setShowProductModal(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
                 </div>
 
                 <form onSubmit={handleSaveProduct} className="space-y-3 text-xs">
                   <div>
-                    <label className="font-semibold text-slate-600 block mb-1">Mahsulot nomi</label>
+                    <label className="text-slate-400 block mb-1 font-semibold">Mahsulot Nomi</label>
                     <input 
                       type="text" 
                       required
                       value={formData.name}
                       onChange={e => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Masalan: M-Sport Anatomiya Rul" 
-                      className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900"
+                      placeholder="M-Sport Anatomiya Rul" 
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-red-500"
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="font-semibold text-slate-600 block mb-1">Kategoriya</label>
+                      <label className="text-slate-400 block mb-1 font-semibold">Kategoriya</label>
                       <select 
                         value={formData.category}
                         onChange={e => setFormData({ ...formData, category: e.target.value })}
-                        className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none"
+                        className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none"
                       >
                         <option value="Rul va Salon">Rul va Salon</option>
                         <option value="Oynalar">Oynalar</option>
@@ -1589,75 +2307,76 @@ function getAdminPanelHtml() {
                         <option value="Kuzov qismlari">Kuzov qismlari</option>
                       </select>
                     </div>
+
                     <div>
-                      <label className="font-semibold text-slate-600 block mb-1">Yangi Narxi (so'm)</label>
+                      <label className="text-slate-400 block mb-1 font-semibold">Yangi Narxi (so'm)</label>
                       <input 
                         type="number" 
                         required
                         value={formData.new_price}
                         onChange={e => setFormData({ ...formData, new_price: e.target.value })}
                         placeholder="1450000" 
-                        className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none"
+                        className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="font-semibold text-slate-600 block mb-1">Eski Narxi (so'm, ixtiyoriy)</label>
+                    <label className="text-slate-400 block mb-1 font-semibold">Eski Narxi (so'm, chegirma ko'rsatish uchun)</label>
                     <input 
                       type="number" 
                       value={formData.old_price}
                       onChange={e => setFormData({ ...formData, old_price: e.target.value })}
                       placeholder="1850000" 
-                      className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none"
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="font-semibold text-slate-600 block mb-1">Rasm URL manzili</label>
+                    <label className="text-slate-400 block mb-1 font-semibold">Rasm URL Manzili</label>
                     <input 
                       type="url" 
                       required
                       value={formData.image_url}
                       onChange={e => setFormData({ ...formData, image_url: e.target.value })}
                       placeholder="https://..." 
-                      className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none"
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="font-semibold text-slate-600 block mb-1">Qisqa tavsif</label>
+                    <label className="text-slate-400 block mb-1 font-semibold">Qisqa Tavsif</label>
                     <input 
                       type="text" 
                       value={formData.description}
                       onChange={e => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Malibu va Tracker uchun mos sport rul" 
-                      className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none"
+                      placeholder="Malibu va Tracker uchun original sport rul" 
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="font-semibold text-slate-600 block mb-1">Xususiyatlari (har bir satr yangi nuqta bo'ladi)</label>
+                    <label className="text-slate-400 block mb-1 font-semibold">Xususiyatlari (har bir qator yangi nuqta bo'ladi)</label>
                     <textarea 
                       rows="3"
                       value={formData.detailsText}
                       onChange={e => setFormData({ ...formData, detailsText: e.target.value })}
-                      placeholder="Nappa charm qoplama&#10;Ko'p funksiyali boshqaruv&#10;Airbag bilan mos"
-                      className="w-full p-2 border border-slate-200 rounded-lg focus:outline-none"
+                      placeholder="Nappa charm qoplama&#10;Ko'p funksiyali tugmalar&#10;Airbag bilan mos"
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none"
                     />
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-2">
+                  <div className="flex justify-end gap-2 pt-3">
                     <button 
                       type="button" 
-                      onClick={() => setShowModal(false)}
-                      className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold"
+                      onClick={() => setShowProductModal(false)}
+                      className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700"
                     >
                       Bekor qilish
                     </button>
                     <button 
                       type="submit" 
-                      className="px-5 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800"
+                      className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold"
                     >
                       Saqlash
                     </button>
@@ -1666,11 +2385,12 @@ function getAdminPanelHtml() {
               </div>
             </div>
           )}
+
         </div>
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<AdminApp />);
+    ReactDOM.createRoot(document.getElementById("root")).render(<AdminApp />);
   </script>
 </body>
 </html>`;

@@ -6,6 +6,7 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+process.env.NTBA_FIX_350 = 1;
 const TelegramBot = require('node-telegram-bot-api');
 
 // 1. SOZLAMALAR (CONFIG)
@@ -77,6 +78,28 @@ async function initDatabase() {
         tag VARCHAR(100) DEFAULT 'Yangi',
         image_url TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        product_id INT,
+        telegram_id BIGINT,
+        customer_name VARCHAR(255),
+        rating INT DEFAULT 5,
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS store_settings (
+        id INT PRIMARY KEY DEFAULT 1,
+        card_number VARCHAR(100) DEFAULT '8600 5304 1234 5678',
+        card_holder VARCHAR(255) DEFAULT 'AZIMXON (KUZAVNOY.UZZ)',
+        phone VARCHAR(50) DEFAULT '+998 90 123 45 67',
+        instagram_url VARCHAR(255) DEFAULT 'https://instagram.com/kuzavnoy.uzz',
+        youtube_url VARCHAR(255) DEFAULT 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
+        store_address TEXT DEFAULT 'Toshkent sh., Sergeli mashina bozori, 4-qator 12-do''kon',
+        store_hours VARCHAR(100) DEFAULT '09:00 - 19:00',
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
@@ -207,6 +230,27 @@ async function initDatabase() {
       }
       console.log('✅ Dastlabki istoriyalar bazaga saqlandi!');
     }
+
+    const reviewsCount = await client.query('SELECT COUNT(*) FROM reviews');
+    if (parseInt(reviewsCount.rows[0].count) === 0) {
+      await client.query(`
+        INSERT INTO reviews (product_id, telegram_id, customer_name, rating, comment) VALUES
+        (1, 5361309526, 'Azizbek', 5, 'M-Sport rul juda sifatli ekan, mashinaga 100% tushdi. Tavsiya qilaman!'),
+        (2, 5361309527, 'Jasur', 5, 'Malibu 2 bar olingan, simsiz zaryadkasi tez va qulay ishlayapti.'),
+        (3, 5361309528, 'Sherzod', 5, 'Benson labavoy oyna zo''r, quyosh issig''i umuman sezilmayapti.')
+      `);
+      console.log('✅ Dastlabki mijoz sharhlari (Reviews) bazaga kiritildi!');
+    }
+
+    const settingsCount = await client.query('SELECT COUNT(*) FROM store_settings');
+    if (parseInt(settingsCount.rows[0].count) === 0) {
+      await client.query(`
+        INSERT INTO store_settings (id, card_number, card_holder, phone, instagram_url, youtube_url, store_address, store_hours)
+        VALUES (1, '8600 5304 1234 5678', 'AZIMXON (KUZAVNOY.UZZ)', '+998 90 123 45 67', 'https://instagram.com/kuzavnoy.uzz', 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G', 'Toshkent sh., Sergeli mashina bozori, 4-qator 12-do''kon', '09:00 - 19:00')
+        ON CONFLICT (id) DO NOTHING;
+      `);
+      console.log('✅ Dastlabki do\'kon sozlamalari (store_settings) bazaga kiritildi!');
+    }
     client.release();
   } catch (err) {
     console.error('❌ Ma\'lumotlar bazasiga ulanishda xatolik:', err.message);
@@ -221,10 +265,7 @@ try {
   console.log('🤖 Telegram Bot ishga tushdi (@kuzavnoy.uzz bot)!');
 
   bot.on('polling_error', (error) => {
-    // Polling xatolarini ushlash
-    if (error.code !== 'EFATAL') {
-      // oddiy xatolar
-    }
+    if (error.code !== 'EFATAL') {}
   });
 
   bot.onText(/\/admin/, async (msg) => {
@@ -247,26 +288,20 @@ try {
     bot.sendMessage(chatId, 
       `👨‍💼 <b>kuzavnoy.uzz — Boshqaruv Paneli (Admin)</b>\n\n` +
       `Xush kelibsiz, <b>${firstName}</b>!\n` +
-      `Pastdagi tugmalar orqali barcha buyurtmalar va mahsulotlarni boshqarishingiz mumkin! 👇`, 
+      `Pastdagi tugmani bosib, Telegram ichida barcha buyurtmalar va omborni boshqarishingiz mumkin! 👇`, 
       {
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: isHttps ? [
             [
-              {
-                text: "📊 Admin Dashboard (Telegram ichida)",
-                web_app: { url: `${WEB_APP_URL}/admin` }
-              }
-            ],
-            [
-              { text: "🌐 Brauzerda ochish (To'g'ridan-to'g'ri link)", url: `${WEB_APP_URL}/admin` }
+              { text: "📊 Admin Dashboardni ochish", web_app: { url: `${WEB_APP_URL}/admin` } }
             ],
             [
               { text: "🛒 Mijoz do'koni (Mini App)", web_app: { url: WEB_APP_URL } }
             ]
           ] : [
             [
-              { text: "🌐 Admin Panelni ochish", url: `${WEB_APP_URL}/admin` }
+              { text: "📊 Admin Dashboardni ochish", url: `${WEB_APP_URL}/admin` }
             ]
           ]
         }
@@ -293,8 +328,12 @@ try {
 
     const welcomeText = 
       `Assalomu alaykum, <b>${firstName}</b>!\n\n` +
-      `🚗 <b>kuzavnoy.uzz</b> — Avtomobil ehtiyot qismlari do'konimizga xush kelibsiz!\n\n` +
-      `Bizda: Rullar, Barlar, Labavoy va Bakavoy oynalar, Balonlar hamda original kuzov qismlari mavjud.\n\n` +
+      `🚗 <b>kuzavnoy.uzz</b> — Avtomobil ehtiyot qismlari rasmiy do'konimizga xush kelibsiz!\n\n` +
+      `Bizda: Original Rullar, Barlar, Labavoy va Bakavoy oynalar, Balonlar hamda kuzov qismlari kafolat bilan sotiladi.\n\n` +
+      `🌐 <b>Bizning rasmiy sahifalarimiz:</b>\n` +
+      `📸 <b>Instagram:</b> <a href="https://instagram.com/kuzavnoy.uzz">@kuzavnoy.uzz</a>\n` +
+      `▶️ <b>YouTube:</b> <a href="https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G">kuzavnoy.uzz kanali</a>\n` +
+      `🤖 <b>Rasmiy Bot:</b> @kuzavnoyuz_bot\n\n` +
       (isAdmin ? `⭐️ <i>Siz tizimda Admin sifatida aniqlandingiz!</i>\n\n` : '') +
       `Pastdagi tugmani bosing va qulay <b>Telegram Mini App</b> orqali xarid qiling! 👇`;
 
@@ -305,21 +344,26 @@ try {
       ]);
       if (isAdmin) {
         buttons.push([
-          { text: "👨‍💼 Admin Panelni ochish (Telegram ichida)", web_app: { url: `${WEB_APP_URL}/admin` } }
-        ]);
-        buttons.push([
-          { text: "🌐 Admin Panel (Brauzerda ochish)", url: `${WEB_APP_URL}/admin` }
+          { text: "👨‍💼 Admin Dashboardni ochish", web_app: { url: `${WEB_APP_URL}/admin` } }
         ]);
       }
+      buttons.push([
+        { text: "📸 Instagram (@kuzavnoy.uzz)", url: "https://instagram.com/kuzavnoy.uzz" },
+        { text: "▶️ YouTube", url: "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G" }
+      ]);
     } else {
       buttons.push([
-        { text: "🌐 Do'konni brauzerda ochish", url: WEB_APP_URL }
+        { text: "🌐 Do'konni ochish", url: WEB_APP_URL }
       ]);
       if (isAdmin) {
         buttons.push([
           { text: "👨‍💼 Admin Panel", url: `${WEB_APP_URL}/admin` }
         ]);
       }
+      buttons.push([
+        { text: "📸 Instagram (@kuzavnoy.uzz)", url: "https://instagram.com/kuzavnoy.uzz" },
+        { text: "▶️ YouTube", url: "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G" }
+      ]);
     }
 
     bot.sendMessage(chatId, welcomeText, {
@@ -451,12 +495,194 @@ app.get('/api/user/orders/:telegramId', async (req, res) => {
   }
 });
 
-// API: Buyurtma holatini yangilash (Admin)
+// API: Buyurtma holatini yangilash (Admin) + Mijozga Telegram xabari
 app.put('/api/orders/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
     const result = await pool.query('UPDATE orders SET status=$1 WHERE id=$2 RETURNING *', [status, id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Buyurtma topilmadi" });
+    const order = result.rows[0];
+
+    // Status yangilanganda mijozga Telegram bot orqali avtomatik xabar berish
+    if (bot && order.telegram_id && String(order.telegram_id) !== '0') {
+      let statusIcon = 'ℹ️';
+      let statusMsg = `Buyurtmangiz holati: <b>${status}</b> ga o'zgardi.`;
+      if (status === 'Jarayonda') {
+        statusIcon = '🔵';
+        statusMsg = "Buyurtmangiz <b>tayyorlanmoqda</b> va tez orada kuryerga topshiriladi 🚗💨";
+      } else if (status === 'Yetkazildi') {
+        statusIcon = '🟢';
+        statusMsg = "Buyurtmangiz <b>muvaffaqiyatli yetkazib berildi</b>! Xaridingiz uchun rahmat! 🎉";
+      } else if (status === 'Bekor qilindi') {
+        statusIcon = '🔴';
+        statusMsg = "Buyurtmangiz <b>bekor qilindi</b>. Qo'shimcha savollaringiz bo'lsa biz bilan bog'lanishingiz mumkin.";
+      }
+      bot.sendMessage(order.telegram_id,
+        `${statusIcon} <b>kuzavnoy.uzz — Buyurtma holati yangilandi!</b>\n\n` +
+        `🆔 <b>Buyurtma raqami:</b> #${order.id}\n` +
+        `📌 <b>Yangi holat:</b> <b>${status}</b>\n\n` +
+        `${statusMsg}\n\n` +
+        `<i>kuzavnoy.uzz rasmiy do'koni</i>`,
+        { parse_mode: 'HTML' }
+      ).catch(() => {});
+    }
+
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Do'kon sozlamalarini olish (Mini App & Admin)
+app.get('/api/settings', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM store_settings WHERE id=1');
+    if (result.rows.length === 0) {
+      await pool.query(`INSERT INTO store_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING`);
+      const def = await pool.query('SELECT * FROM store_settings WHERE id=1');
+      return res.json(def.rows[0]);
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Do'kon sozlamalarini saqlash (Admin)
+app.put('/api/settings', async (req, res) => {
+  try {
+    const { card_number, card_holder, phone, instagram_url, youtube_url, store_address, store_hours } = req.body;
+    const result = await pool.query(
+      `INSERT INTO store_settings (id, card_number, card_holder, phone, instagram_url, youtube_url, store_address, store_hours, updated_at)
+       VALUES (1, $1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+       ON CONFLICT (id) DO UPDATE SET
+         card_number = EXCLUDED.card_number,
+         card_holder = EXCLUDED.card_holder,
+         phone = EXCLUDED.phone,
+         instagram_url = EXCLUDED.instagram_url,
+         youtube_url = EXCLUDED.youtube_url,
+         store_address = EXCLUDED.store_address,
+         store_hours = EXCLUDED.store_hours,
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [
+        card_number || '8600 5304 1234 5678',
+        card_holder || 'AZIMXON (KUZAVNOY.UZZ)',
+        phone || '+998 90 123 45 67',
+        instagram_url || 'https://instagram.com/kuzavnoy.uzz',
+        youtube_url || 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
+        store_address || 'Toshkent sh., Sergeli mashina bozori, 4-qator 12-do\'kon',
+        store_hours || '09:00 - 19:00'
+      ]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Mijoz tomonidan buyurtmani bekor qilish + Adminga tezkor Telegram xabari
+app.put('/api/orders/:id/cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const chk = await pool.query('SELECT * FROM orders WHERE id=$1', [id]);
+    if (chk.rows.length === 0) return res.status(404).json({ error: "Buyurtma topilmadi" });
+    const order = chk.rows[0];
+
+    if (order.status !== 'Kutilmoqda') {
+      return res.status(400).json({ error: "Faqat kutilayotgan buyurtmalarni bekor qilish mumkin!" });
+    }
+
+    const result = await pool.query('UPDATE orders SET status=$1 WHERE id=$2 RETURNING *', ['Bekor qilindi', id]);
+    const updatedOrder = result.rows[0];
+
+    // Adminga tezkor ogohlantirish xabari jo'natish
+    if (bot && ADMIN_CHAT_IDS && ADMIN_CHAT_IDS.length > 0) {
+      const alertAdminText = 
+        `⚠️ <b>kuzavnoy.uzz — BUYURTMA BEKOR QILINDI!</b> ⚠️\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🆔 <b>Buyurtma raqami:</b> <code>#${order.id}</code>\n` +
+        `👤 <b>Mijoz:</b> <b>${order.customer_name}</b>\n` +
+        `📞 <b>Telefon:</b> <code>${order.phone}</code>\n` +
+        `💰 <b>Summa:</b> <b>${(order.total_price || 0).toLocaleString()} so'm</b>\n` +
+        `❌ <b>Holati:</b> Mijoz ilova orqali bekor qildi\n` +
+        `⏰ <b>Vaqti:</b> <i>${new Date().toLocaleString('uz-UZ')}</i>\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `👇 <i>Boshqaruv panelida ko'rish:</i>`;
+
+      for (const adminId of ADMIN_CHAT_IDS) {
+        bot.sendMessage(adminId, alertAdminText, {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[{ text: "📊 Admin Panelda ko'rish", web_app: { url: `${WEB_APP_URL}/admin` } }]]
+          }
+        }).catch(() => {});
+      }
+    }
+
+    // Mijozga Telegram tasdig'i
+    if (bot && order.telegram_id && String(order.telegram_id) !== '0') {
+      bot.sendMessage(order.telegram_id,
+        `🔴 <b>Buyurtmangiz bekor qilindi.</b>\n\n` +
+        `🆔 <b>Buyurtma raqami:</b> #${order.id}\n` +
+        `Xohlagan vaqtingizda Mini App orqali qayta buyurtma berishingiz mumkin.\n\n` +
+        `<i>kuzavnoy.uzz rasmiy do'koni</i>`,
+        { parse_mode: 'HTML' }
+      ).catch(() => {});
+    }
+
+    res.json({ success: true, order: updatedOrder });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Bekor qilingan buyurtmani o'chirish (Task 2)
+app.delete('/api/orders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const chk = await pool.query('SELECT status FROM orders WHERE id=$1', [id]);
+    if (chk.rows.length === 0) return res.status(404).json({ error: "Buyurtma topilmadi" });
+    if (chk.rows[0].status !== 'Bekor qilindi') {
+      return res.status(400).json({ error: "Faqat bekor qilingan buyurtmalarni o'chirish mumkin!" });
+    }
+    await pool.query('DELETE FROM orders WHERE id=$1', [id]);
+    res.json({ success: true, message: "Buyurtma o'chirildi" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Barcha sharhlarni olish (Task 3)
+app.get('/api/reviews', async (req, res) => {
+  try {
+    const { product_id } = req.query;
+    let query = 'SELECT * FROM reviews ORDER BY id DESC';
+    let params = [];
+    if (product_id) {
+      query = 'SELECT * FROM reviews WHERE product_id=$1 ORDER BY id DESC';
+      params = [product_id];
+    }
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Yangi sharh qoldirish (Task 3)
+app.post('/api/reviews', async (req, res) => {
+  try {
+    const { product_id, telegram_id, customer_name, rating, comment } = req.body;
+    if (!comment || !comment.trim()) {
+      return res.status(400).json({ error: "Sharh matni kiritilishi shart!" });
+    }
+    const result = await pool.query(
+      `INSERT INTO reviews (product_id, telegram_id, customer_name, rating, comment)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [product_id || 0, telegram_id || 0, customer_name || 'Mijoz', rating || 5, comment.trim()]
+    );
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -496,7 +722,7 @@ app.put('/api/products/:id/quick-price', async (req, res) => {
   }
 });
 
-// API: Barcha Telegram foydalanuvchilariga xabar tarqatish (Broadcast)
+// API: Barcha Telegram foydalanuvchilariga xabar tarqatish (Broadcast - Task 4 & 8)
 app.post('/api/broadcast', async (req, res) => {
   try {
     const { message, photo_url } = req.body;
@@ -505,29 +731,39 @@ app.post('/api/broadcast', async (req, res) => {
     const users = await pool.query('SELECT telegram_id FROM users WHERE telegram_id IS NOT NULL');
     let sentCount = 0;
 
+    let photoPayload = photo_url;
+    if (photo_url && photo_url.startsWith('data:image/')) {
+      const base64Data = photo_url.replace(/^data:image\/\w+;base64,/, '');
+      photoPayload = Buffer.from(base64Data, 'base64');
+    }
+
+    const broadcastKeyboard = [
+      [{ text: "🛍 Do'konga o'tish (Mini App)", web_app: { url: WEB_APP_URL } }],
+      [
+        { text: "📸 Instagram (@kuzavnoy.uzz)", url: "https://instagram.com/kuzavnoy.uzz" },
+        { text: "▶️ YouTube", url: "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G" }
+      ]
+    ];
+
     for (const u of users.rows) {
       try {
-        if (photo_url) {
-          await bot.sendPhoto(u.telegram_id, photo_url, { 
+        if (photoPayload) {
+          const sentMsg = await bot.sendPhoto(u.telegram_id, photoPayload, { 
             caption: message, 
             parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: "🛍 Do'konga o'tish (Mini App)", web_app: { url: WEB_APP_URL } }]
-              ]
-            }
-          });
+            reply_markup: { inline_keyboard: broadcastKeyboard }
+          }, { filename: 'broadcast.jpg', contentType: 'image/jpeg' });
+          if (Buffer.isBuffer(photoPayload) && sentMsg && sentMsg.photo && sentMsg.photo.length > 0) {
+            photoPayload = sentMsg.photo[sentMsg.photo.length - 1].file_id;
+          }
         } else {
           await bot.sendMessage(u.telegram_id, message, { 
             parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: "🛍 Do'konga o'tish (Mini App)", web_app: { url: WEB_APP_URL } }]
-              ]
-            }
+            reply_markup: { inline_keyboard: broadcastKeyboard }
           });
         }
         sentCount++;
+        await new Promise(r => setTimeout(r, 35));
       } catch (sendErr) {}
     }
     res.json({ success: true, sentCount, total: users.rows.length });
@@ -536,7 +772,7 @@ app.post('/api/broadcast', async (req, res) => {
   }
 });
 
-// API: Yangi buyurtma yaratish (Mini App) + Telegram orqali xabar yuborish
+// API: Yangi buyurtma yaratish (Mini App) + Telegram orqali xabar yuborish (Task 9)
 app.post('/api/orders', async (req, res) => {
   try {
     const { telegram_id, customer_name, phone, items, total_price, location, delivery_type, payment_method } = req.body;
@@ -558,7 +794,7 @@ app.post('/api/orders', async (req, res) => {
     // Telegram Bot orqali mijozga tasdiqlash xabari yuborish
     if (bot && telegram_id && telegram_id !== 0) {
       try {
-        let itemsList = items.map(it => `• ${it.name} (${it.quantity || 1} dona) - ${(it.new_price * (it.quantity || 1)).toLocaleString()} so'm`).join('\n');
+        let itemsList = items.map((it, idx) => `• ${it.name} (${it.quantity || 1} dona) — ${((it.new_price || 0) * (it.quantity || 1)).toLocaleString()} so'm`).join('\n');
         
         const messageText = 
           `🎉 <b>Buyurtmangiz muvaffaqiyatli qabul qilindi!</b>\n` +
@@ -579,22 +815,33 @@ app.post('/api/orders', async (req, res) => {
       }
     }
 
-    // Telegram Bot orqali ADMINGA yangi buyurtma haqida tezkor xabar (SMS) yuborish
+    // Telegram Bot orqali ADMINGA yangi buyurtma haqida go'zal dizayndagi tezkor xabar (Task 9)
     if (bot && ADMIN_CHAT_IDS && ADMIN_CHAT_IDS.length > 0) {
       try {
-        let itemsList = items.map(it => `• <b>${it.name}</b> x ${it.quantity || 1} dona (${(it.new_price * (it.quantity || 1)).toLocaleString()} so'm)`).join('\n');
+        let itemsList = items.map((it, idx) => 
+          `   ${idx + 1}. <b>${it.name}</b>\n` +
+          `      └ <i>${it.quantity || 1} dona × ${it.new_price.toLocaleString()} so'm = <b>${((it.quantity || 1) * it.new_price).toLocaleString()} so'm</b></i>`
+        ).join('\n');
         
         const adminText = 
-          `🚨 <b>YANGI BUYURTMA KELIB TUSHDI! (#${order.id})</b> 🚨\n\n` +
-          `👤 <b>Mijoz:</b> ${customer_name}\n` +
-          `📞 <b>Telefon:</b> ${phone}\n` +
-          `🚚 <b>Yetkazish turi:</b> <b>${dTypeText}</b>\n` +
-          `💳 <b>To'lov usuli:</b> <b>${pMethodText}</b>\n` +
-          `📍 <b>Manzil:</b> ${location || "Ko'rsatilmagan"}\n\n` +
-          `📦 <b>Buyurtma tarkibi:</b>\n${itemsList}\n\n` +
-          `💰 <b>Jami tushum:</b> <b>${total_price.toLocaleString()} so'm</b>\n` +
-          `⏰ <b>Vaqti:</b> ${new Date().toLocaleString('uz-UZ')}\n\n` +
-          `<i>Admin panelga kirish uchun: /admin</i>`;
+          `🚗 <b>kuzavnoy.uzz — YANGI BUYURTMA!</b> 🚗\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `🆔 <b>Buyurtma raqami:</b> <code>#${order.id}</code>\n` +
+          `⏰ <b>Vaqti:</b> <i>${new Date().toLocaleString('uz-UZ')}</i>\n\n` +
+          `👤 <b>MIJOZ MA'LUMOTLARI:</b>\n` +
+          `• <b>Ismi:</b> <b>${customer_name}</b>\n` +
+          `• <b>Telefon:</b> <code>${phone}</code>\n` +
+          `• <b>Telegram ID:</b> <code>${telegram_id || 'Mavjud emas'}</code>\n\n` +
+          `🚚 <b>YETKAZIB BERISH:</b>\n` +
+          `• <b>Turi:</b> ${dTypeText}\n` +
+          `• <b>Manzil:</b> <i>${location || "Ko'rsatilmagan"}</i>\n\n` +
+          `💳 <b>TO'LOV HOLATI:</b>\n` +
+          `• <b>Usuli:</b> ${pMethodText}\n` +
+          `• <b>JAMI TUSHUM:</b> 💰 <b>${total_price.toLocaleString()} SO'M</b>\n\n` +
+          `📦 <b>BUYURTMA TARKIBI (${items.length} xil detal):</b>\n` +
+          `${itemsList}\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `👇 <i>Buyurtmani boshqarish uchun pastdagi tugmani bosing:</i>`;
 
         for (const adminId of ADMIN_CHAT_IDS) {
           bot.sendMessage(adminId, adminText, { 
@@ -741,6 +988,18 @@ function getMiniAppHtml() {
         cardCopiedText: "Nusxalandi! ✅",
         cardPaymentHint: "To'lovni Click / Payme / Visa orqali ushbu kartaga o'tkazishingiz mumkin",
         cashPaymentHint: "Kuryer mahsulotni yetkazganda yoki do'konda qabul qilayotganingizda to'laysiz",
+        reviewsTitle: "Mijozlar Fikrlari & Sharhlar",
+        writeReview: "Sharh qoldirish",
+        sendReview: "Sharhni yuborish ⭐️",
+        reviewPlaceholder: "Ehtiyot qism sifati va xizmat haqida fikringiz...",
+        noReviews: "Hozircha sharhlar yo'q. Birinchi bo'lib fikr bildiring!",
+        reviewSent: "Sharhingiz muvaffaqiyatli qabul qilindi! Rahmat! 🎉",
+        socialChannels: "Rasmiy Ijtimoiy Tarmoqlarimiz",
+        cancelOrderBtn: "Buyurtmani bekor qilish ❌",
+        cancelOrderConfirm: "Haqiqatdan ham ushbu buyurtmani bekor qilmoqchimisiz?",
+        orderCancelledMsg: "Buyurtmangiz muvaffaqiyatli bekor qilindi! 🔴",
+        callStore: "Do'konga qo'ng'iroq",
+        storePhoneTitle: "Bog'lanish uchun telefon",
         totalPayment: "JAMI TO'LOV:",
         confirmOrder: "Buyurtmani Tasdiqlash 🚀",
         submitting: "Buyurtma yuborilmoqda...",
@@ -815,6 +1074,18 @@ function getMiniAppHtml() {
         cardCopiedText: "Скопировано! ✅",
         cardPaymentHint: "Вы можете перевести через Click / Payme / Visa на эту карту",
         cashPaymentHint: "Оплата при получении товара у курьера или в магазине",
+        reviewsTitle: "Отзывы Клиентов",
+        writeReview: "Оставить отзыв",
+        sendReview: "Отправить отзыв ⭐️",
+        reviewPlaceholder: "Ваш отзыв о качестве запчасти...",
+        noReviews: "Отзывов пока нет. Будьте первым!",
+        reviewSent: "Ваш отзыв успешно принят! Спасибо! 🎉",
+        socialChannels: "Наши Официальные Соцсети",
+        cancelOrderBtn: "Отменить заказ ❌",
+        cancelOrderConfirm: "Вы действительно хотите отменить этот заказ?",
+        orderCancelledMsg: "Ваш заказ успешно отменен! 🔴",
+        callStore: "Позвонить в магазин",
+        storePhoneTitle: "Телефон для связи",
         totalPayment: "ИТОГО К ОПЛАТЕ:",
         confirmOrder: "Подтвердить Заказ 🚀",
         submitting: "Отправка заказа...",
@@ -889,6 +1160,18 @@ function getMiniAppHtml() {
         cardCopiedText: "Copied! ✅",
         cardPaymentHint: "You can transfer via Click / Payme / Visa to this card",
         cashPaymentHint: "Pay in cash upon receiving items from courier or at store",
+        reviewsTitle: "Customer Reviews",
+        writeReview: "Write a review",
+        sendReview: "Submit Review ⭐️",
+        reviewPlaceholder: "Your thoughts on part quality...",
+        noReviews: "No reviews yet. Be the first to review!",
+        reviewSent: "Your review has been submitted! Thank you! 🎉",
+        socialChannels: "Our Official Social Networks",
+        cancelOrderBtn: "Cancel Order ❌",
+        cancelOrderConfirm: "Are you sure you want to cancel this order?",
+        orderCancelledMsg: "Your order has been cancelled! 🔴",
+        callStore: "Call Store",
+        storePhoneTitle: "Store Phone",
         totalPayment: "TOTAL PAYMENT:",
         confirmOrder: "Confirm Order 🚀",
         submitting: "Submitting order...",
@@ -947,6 +1230,19 @@ function getMiniAppHtml() {
       const [cardCopied, setCardCopied] = useState(false);
       const [isSubmitting, setIsSubmitting] = useState(false);
       const [orderSuccess, setOrderSuccess] = useState(false);
+      const [reviews, setReviews] = useState([]);
+      const [settings, setSettings] = useState({
+        card_number: '8600 5304 1234 5678',
+        card_holder: 'AZIMXON (KUZAVNOY.UZZ)',
+        phone: '+998 90 123 45 67',
+        instagram_url: 'https://instagram.com/kuzavnoy.uzz',
+        youtube_url: 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
+        store_address: "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon",
+        store_hours: '09:00 - 19:00'
+      });
+      const [newRating, setNewRating] = useState(5);
+      const [newComment, setNewComment] = useState('');
+      const [isSendingReview, setIsSendingReview] = useState(false);
 
       const copyCardNumber = (num) => {
         if (navigator.clipboard) {
@@ -988,6 +1284,8 @@ function getMiniAppHtml() {
 
         fetchProducts();
         fetchStories();
+        fetchReviews();
+        fetchSettings();
         if (tgUser?.id) fetchUserOrders(tgUser.id);
       }, []);
 
@@ -1018,6 +1316,77 @@ function getMiniAppHtml() {
           setUserOrders(data);
         } catch (e) {
           console.error(e);
+        }
+      };
+
+      const fetchReviews = async () => {
+        try {
+          const res = await fetch('/api/reviews');
+          const data = await res.json();
+          setReviews(data);
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
+      const fetchSettings = async () => {
+        try {
+          const res = await fetch('/api/settings');
+          const data = await res.json();
+          if (data && data.card_number) {
+            setSettings(data);
+          }
+        } catch (e) {
+          console.error('Settings fetch error:', e);
+        }
+      };
+
+      const handleCancelOrder = async (orderId) => {
+        if (!confirm(t('cancelOrderConfirm'))) return;
+        try {
+          const res = await fetch('/api/orders/' + orderId + '/cancel', { method: 'PUT' });
+          const data = await res.json();
+          if (data.success) {
+            alert(t('orderCancelledMsg'));
+            if (tgUser?.id) fetchUserOrders(tgUser.id);
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+          } else {
+            alert(data.error || 'Xatolik yuz berdi');
+          }
+        } catch (e) {
+          alert('Xatolik: ' + e.message);
+        }
+      };
+
+      const handleSendReview = async (productId) => {
+        if (!newComment.trim()) {
+          alert(lang === 'ru' ? "Пожалуйста, напишите текст отзыва!" : (lang === 'en' ? "Please enter your review!" : "Iltimos, sharh matnini yozing!"));
+          return;
+        }
+        setIsSendingReview(true);
+        try {
+          const res = await fetch('/api/reviews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              product_id: productId,
+              telegram_id: tgUser.id,
+              customer_name: custName || tgUser.first_name || 'Mijoz',
+              rating: newRating,
+              comment: newComment.trim()
+            })
+          });
+          if (res.ok) {
+            setNewComment('');
+            setNewRating(5);
+            alert(t('reviewSent'));
+            fetchReviews();
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+          }
+        } catch (e) {
+          alert("Xatolik yuz berdi!");
+        } finally {
+          setIsSendingReview(false);
         }
       };
 
@@ -1185,7 +1554,7 @@ function getMiniAppHtml() {
             {/* STORY MODAL */}
             {activeStory && (
               <div className="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between p-4 text-white">
-                <div className="flex items-center justify-between pt-2">
+                <div className={'sticky bottom-0 z-10 flex items-center justify-between pt-3 pb-1 mt-2 border-t backdrop-blur ' + (isDark ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-100')}>
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center font-bold text-xs">K</div>
                     <span className="text-xs font-semibold">{t('appName')}</span>
@@ -1263,6 +1632,38 @@ function getMiniAppHtml() {
                   <span className={'text-[10px] font-bold px-2 py-0.5 rounded-full border ' + (isDark ? 'bg-red-950/50 border-red-800/40 text-red-400' : 'bg-red-50 border-red-100 text-red-600')}>
                     @{t('appName')}
                   </span>
+                </div>
+
+                {/* Rasmiy Ijtimoiy Tarmoqlar Bloki (Task 8) */}
+                <div className={'p-3 rounded-2xl border mb-3 flex items-center justify-between ' + 
+                  (isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-100')}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🌐</span>
+                    <div>
+                      <span className="text-[11px] font-black block leading-tight">kuzavnoy.uzz</span>
+                      <span className={'text-[9px] ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Rasmiy sahifalarimiz</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <a 
+                      href={settings.instagram_url || "https://instagram.com/kuzavnoy.uzz"} 
+                      target="_blank" 
+                      className={'px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition flex items-center gap-1 ' + 
+                        (isDark ? 'bg-slate-950 border-slate-800 text-rose-400 hover:border-rose-500' : 'bg-white border-rose-200 text-rose-600 shadow-sm')}
+                    >
+                      <span>📸</span>
+                      <span>Instagram</span>
+                    </a>
+                    <a 
+                      href={settings.youtube_url || "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G"} 
+                      target="_blank" 
+                      className={'px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition flex items-center gap-1 ' + 
+                        (isDark ? 'bg-slate-950 border-slate-800 text-red-400 hover:border-red-500' : 'bg-white border-red-200 text-red-600 shadow-sm')}
+                    >
+                      <span>▶️</span>
+                      <span>YouTube</span>
+                    </a>
+                  </div>
                 </div>
 
                 {/* Stories Bloki */}
@@ -1608,10 +2009,10 @@ function getMiniAppHtml() {
                             <span className="text-[10px] bg-red-600 px-1.5 py-0.5 rounded text-white font-black">Click / Payme</span>
                           </div>
                           <div className="flex items-center justify-between pt-1">
-                            <span className="font-mono font-black text-sm tracking-wider">{t('cardNumber')}</span>
+                            <span className="font-mono font-black text-sm tracking-wider">{settings.card_number || t('cardNumber')}</span>
                             <button 
                               type="button"
-                              onClick={() => copyCardNumber(t('cardNumber'))}
+                              onClick={() => copyCardNumber(settings.card_number || t('cardNumber'))}
                               className={'px-2 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 ' + 
                                 (cardCopied ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white')}
                             >
@@ -1619,7 +2020,7 @@ function getMiniAppHtml() {
                             </button>
                           </div>
                           <div className="flex items-center justify-between text-[10px] text-slate-300 border-t border-white/10 pt-1.5">
-                            <span>{t('cardHolder')}</span>
+                            <span>{settings.card_holder || t('cardHolder')}</span>
                             <span className="text-emerald-400 font-bold">0% komissiya</span>
                           </div>
                           <p className="text-[10px] text-slate-400 leading-tight pt-0.5">{t('cardPaymentHint')}</p>
@@ -1668,6 +2069,61 @@ function getMiniAppHtml() {
                   </div>
                 </div>
 
+                {/* Ijtimoiy Sahifalar (Task 8) */}
+                <div className={'p-4 rounded-3xl border mb-3 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm')}>
+                  <h4 className="text-xs font-black uppercase tracking-wider mb-2.5 text-red-500">{t('socialChannels')}</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <a 
+                      href={settings.instagram_url || "https://instagram.com/kuzavnoy.uzz"} 
+                      target="_blank" 
+                      className={'p-2.5 rounded-2xl border flex items-center gap-2 transition ' + 
+                        (isDark ? 'bg-slate-950 border-slate-800 hover:border-rose-500' : 'bg-slate-50 border-slate-200 hover:border-rose-400')}
+                    >
+                      <span className="text-lg">📸</span>
+                      <div>
+                        <span className="text-[11px] font-bold block leading-tight">Instagram</span>
+                        <span className="text-[9px] text-slate-400">@kuzavnoy.uzz</span>
+                      </div>
+                    </a>
+                    <a 
+                      href={settings.youtube_url || "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G"} 
+                      target="_blank" 
+                      className={'p-2.5 rounded-2xl border flex items-center gap-2 transition ' + 
+                        (isDark ? 'bg-slate-950 border-slate-800 hover:border-red-500' : 'bg-slate-50 border-slate-200 hover:border-red-400')}
+                    >
+                      <span className="text-lg">▶️</span>
+                      <div>
+                        <span className="text-[11px] font-bold block leading-tight">YouTube</span>
+                        <span className="text-[9px] text-slate-400">kuzavnoy.uzz</span>
+                      </div>
+                    </a>
+                  </div>
+                </div>
+
+                {/* Do'kon bilan aloqa (Telefon va Manzil) */}
+                <div className={'p-4 rounded-3xl border mb-5 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm')}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📞</span>
+                      <div>
+                        <span className="text-xs font-black block leading-tight">{t('storePhoneTitle')}</span>
+                        <span className={'text-[11px] font-mono font-bold ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{settings.phone || "+998 90 123 45 67"}</span>
+                      </div>
+                    </div>
+                    <a 
+                      href={'tel:' + (settings.phone || '+998901234567').replace(/\s+/g, '')}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow transition active:scale-95 flex items-center gap-1"
+                    >
+                      <span>📞</span>
+                      <span>{t('callStore')}</span>
+                    </a>
+                  </div>
+                  <div className={'text-[10px] mt-1 pt-2 border-t flex items-center gap-1.5 ' + (isDark ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500')}>
+                    <span>📍</span>
+                    <span>{settings.store_address || "Toshkent sh., Sergeli mashina bozori"}</span>
+                  </div>
+                </div>
+
                 <h3 className="text-xs font-black uppercase tracking-wider mb-2.5">{t('ordersHistory')}</h3>
                 
                 {userOrders.length === 0 ? (
@@ -1691,7 +2147,31 @@ function getMiniAppHtml() {
                         </div>
                         <div className={'pt-2 border-t flex justify-between items-center ' + (isDark ? 'border-slate-800' : 'border-slate-100')}>
                           <span className="text-xs font-black text-red-500">{o.total_price?.toLocaleString()} {t('som')}</span>
-                          <span className="text-[10px] text-slate-500">{new Date(o.created_at).toLocaleDateString()}</span>
+                          <div className="flex items-center gap-2">
+                            {o.status === 'Kutilmoqda' && (
+                              <button 
+                                onClick={() => handleCancelOrder(o.id)}
+                                title="Buyurtmani bekor qilish"
+                                className="text-[10px] px-2 py-0.5 rounded-lg border border-rose-500/30 text-rose-500 hover:bg-rose-500 hover:text-white font-extrabold transition flex items-center gap-1"
+                              >
+                                <span>✕</span>
+                                <span>{t('cancelOrderBtn')}</span>
+                              </button>
+                            )}
+                            {o.items && o.items[0] && (
+                              <button 
+                                onClick={() => {
+                                  const prod = products.find(p => p.id === o.items[0].id) || o.items[0];
+                                  setSelectedProduct(prod);
+                                }}
+                                className="text-[10px] text-amber-500 font-extrabold hover:underline flex items-center gap-0.5"
+                              >
+                                <span>⭐️</span>
+                                <span>{t('writeReview')}</span>
+                              </button>
+                            )}
+                            <span className="text-[10px] text-slate-500">{new Date(o.created_at).toLocaleDateString()}</span>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1730,6 +2210,73 @@ function getMiniAppHtml() {
                       ))}
                     </div>
                   )}
+
+                  {/* Mijozlar Sharhlari & Reyting (Task 3) */}
+                  <div className={'pt-4 border-t mb-4 ' + (isDark ? 'border-slate-800' : 'border-slate-100')}>
+                    <div className="flex items-center justify-between mb-2.5">
+                      <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                        <span>⭐️</span>
+                        <span>{t('reviewsTitle')}</span>
+                      </h4>
+                      <span className={'text-[10px] font-bold px-2 py-0.5 rounded-full ' + (isDark ? 'bg-amber-950/60 text-amber-400 border border-amber-800/40' : 'bg-amber-50 text-amber-700 border border-amber-200')}>
+                        {reviews.filter(r => r.product_id === selectedProduct.id).length > 0 
+                          ? (reviews.filter(r => r.product_id === selectedProduct.id).reduce((s, r) => s + r.rating, 0) / reviews.filter(r => r.product_id === selectedProduct.id).length).toFixed(1) + " ★" 
+                          : "5.0 ★"}
+                      </span>
+                    </div>
+
+                    {/* Mavjud sharhlar */}
+                    <div className="space-y-2 mb-3 max-h-36 overflow-y-auto no-scrollbar">
+                      {reviews.filter(r => r.product_id === selectedProduct.id).length === 0 ? (
+                        <p className={'text-[11px] italic ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>{t('noReviews')}</p>
+                      ) : (
+                        reviews.filter(r => r.product_id === selectedProduct.id).map(r => (
+                          <div key={r.id} className={'p-2.5 rounded-xl border ' + (isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200')}>
+                            <div className="flex items-center justify-between text-[10px] mb-1">
+                              <span className="font-bold">{r.customer_name}</span>
+                              <span className="text-amber-500">{"★".repeat(r.rating || 5)}</span>
+                            </div>
+                            <p className={'text-[11px] leading-relaxed ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{r.comment}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Sharh qoldirish formasi */}
+                    <div className={'p-3 rounded-2xl border space-y-2 ' + (isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-50 border-slate-200')}>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold">{t('writeReview')}:</span>
+                        <div className="flex gap-1 text-sm cursor-pointer">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button 
+                              key={star} 
+                              type="button" 
+                              onClick={() => setNewRating(star)}
+                              className={newRating >= star ? "text-amber-400 scale-110 transition" : "text-slate-400 hover:text-amber-300"}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <input 
+                        type="text" 
+                        value={newComment} 
+                        onChange={e => setNewComment(e.target.value)} 
+                        placeholder={t('reviewPlaceholder')} 
+                        className={'w-full p-2 text-xs rounded-xl border focus:outline-none focus:border-red-500 ' + 
+                          (isDark ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-600' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400')}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => handleSendReview(selectedProduct.id)} 
+                        disabled={isSendingReview}
+                        className="w-full py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold active:scale-95 transition"
+                      >
+                        {isSendingReview ? "..." : t('sendReview')}
+                      </button>
+                    </div>
+                  </div>
 
                   <div className="flex items-center justify-between pt-2">
                     <div>
@@ -1935,7 +2482,23 @@ function getAdminPanelHtml() {
         tagOriginal: "Original",
         tagTop: "Top",
         storyPhoto: "Istoriya Rasmi (Telefondan yoki URL)",
-        publishStory: "Saqlash va Joylash"
+        publishStory: "Saqlash va Joylash",
+        tabSettings: "⚙️ Sozlamalar",
+        settingsTitle: "Do'kon Sozlamalari & Rekvizitlar",
+        settingsDesc: "Karta raqami, telefon, Instagram, YouTube va do'kon manzilini boshqaring",
+        paymentDetailsHeader: "💳 To'lov Rekvizitlari (Online Karta)",
+        cardNumberLabel: "Karta raqami (Uzcard / Humo / Visa)",
+        cardHolderLabel: "Karta egasi (Ism va Familiya)",
+        contactHeader: "📞 Aloqa & Kontaktlar",
+        storePhoneLabel: "Do'kon / Admin telefon raqami",
+        socialHeader: "🌐 Rasmiy Sahifalar & Ijtimoiy Tarmoqlar",
+        instagramUrlLabel: "Instagram sahifasi havolasi",
+        youtubeUrlLabel: "YouTube kanali havolasi",
+        storeLocationHeader: "🏬 Do'kon Manzili & Ish Vaqti (Samovivoz)",
+        storeAddressLabel: "Do'kon manzili (Samovivoz uchun)",
+        storeHoursLabel: "Ish vaqti",
+        saveSettings: "Sozlamalarni Saqlash 💾",
+        settingsSaved: "Sozlamalar muvaffaqiyatli saqlandi! ✅"
       },
       ru: {
         controlHub: "Центр Управления & Продаж",
@@ -2016,7 +2579,23 @@ function getAdminPanelHtml() {
         tagOriginal: "Оригинал",
         tagTop: "Топ",
         storyPhoto: "Фото Истории (С телефона или URL)",
-        publishStory: "Сохранить и Опубликовать"
+        publishStory: "Сохранить и Опубликовать",
+        tabSettings: "⚙️ Настройки",
+        settingsTitle: "Настройки Магазина & Реквизиты",
+        settingsDesc: "Управляйте номером карты, телефоном, соцсетями и адресом магазина",
+        paymentDetailsHeader: "💳 Платежные Реквизиты (Карта)",
+        cardNumberLabel: "Номер карты (Uzcard / Humo / Visa)",
+        cardHolderLabel: "Владелец карты (Имя и Фамилия)",
+        contactHeader: "📞 Контакты",
+        storePhoneLabel: "Телефон магазина / Администратора",
+        socialHeader: "🌐 Официальные Страницы & Соцсети",
+        instagramUrlLabel: "Ссылка на Instagram",
+        youtubeUrlLabel: "Ссылка на YouTube",
+        storeLocationHeader: "🏬 Адрес Магазина & Время Работы (Самовывоз)",
+        storeAddressLabel: "Адрес магазина (для самовывоза)",
+        storeHoursLabel: "Время работы",
+        saveSettings: "Сохранить Настройки 💾",
+        settingsSaved: "Настройки успешно сохранены! ✅"
       },
       en: {
         controlHub: "Control & Sales Hub",
@@ -2097,7 +2676,23 @@ function getAdminPanelHtml() {
         tagOriginal: "Original",
         tagTop: "Top",
         storyPhoto: "Story Photo (From phone or URL)",
-        publishStory: "Save & Publish"
+        publishStory: "Save & Publish",
+        tabSettings: "⚙️ Settings",
+        settingsTitle: "Store Settings & Details",
+        settingsDesc: "Manage card number, phone, social networks, and store address",
+        paymentDetailsHeader: "💳 Payment Details (Card)",
+        cardNumberLabel: "Card Number (Uzcard / Humo / Visa)",
+        cardHolderLabel: "Card Holder Name",
+        contactHeader: "📞 Contacts",
+        storePhoneLabel: "Store / Admin Phone Number",
+        socialHeader: "🌐 Official Pages & Social Networks",
+        instagramUrlLabel: "Instagram Link",
+        youtubeUrlLabel: "YouTube Channel Link",
+        storeLocationHeader: "🏬 Store Address & Hours (Pickup)",
+        storeAddressLabel: "Store Address (for pickup)",
+        storeHoursLabel: "Working Hours",
+        saveSettings: "Save Settings 💾",
+        settingsSaved: "Settings saved successfully! ✅"
       }
     };
 
@@ -2214,7 +2809,7 @@ function getAdminPanelHtml() {
 
       const loadAllData = async () => {
         setLoading(true);
-        await Promise.all([fetchOrders(), fetchProducts(), fetchUsers(), fetchStories()]);
+        await Promise.all([fetchOrders(), fetchProducts(), fetchUsers(), fetchStories(), fetchSettings()]);
         setLoading(false);
       };
 
@@ -2261,6 +2856,39 @@ function getAdminPanelHtml() {
           const data = await res.json();
           setStories(data);
         } catch(e) {}
+      };
+
+      const fetchSettings = async () => {
+        try {
+          const res = await fetch("/api/settings");
+          const data = await res.json();
+          if (data && data.card_number) {
+            setSettings(data);
+          }
+        } catch(e) {}
+      };
+
+      const handleSaveSettings = async (e) => {
+        e.preventDefault();
+        setSettingsSaving(true);
+        setSettingsMessage('');
+        try {
+          const res = await fetch("/api/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(settings)
+          });
+          const data = await res.json();
+          if (data && data.card_number) {
+            setSettings(data);
+            setSettingsMessage(t('settingsSaved'));
+            setTimeout(() => setSettingsMessage(''), 4000);
+          }
+        } catch(err) {
+          alert("Xatolik: " + err.message);
+        } finally {
+          setSettingsSaving(false);
+        }
       };
 
       const handleSaveStory = async (e) => {
@@ -2311,6 +2939,135 @@ function getAdminPanelHtml() {
           fetchOrders();
         } catch(e) {
           alert("Holatni yangilashda xatolik!");
+        }
+      };
+
+      // Professional 80mm POS Thermal Chek Chop Etish (Task 1)
+      const printThermalReceipt = (o) => {
+              var itemsRows = "";
+              (Array.isArray(o.items) ? o.items : (typeof o.items === 'string' ? JSON.parse(o.items || '[]') : [])).forEach(function(it, idx) {
+                var q = it.quantity || 1;
+                var pr = it.new_price || 0;
+                var total = q * pr;
+                itemsRows += "<tr>" +
+                  "<td style='padding: 6px 0; border-bottom: 1px dashed #cbd5e1;'>" +
+                    "<div style='font-weight: bold; font-size: 12px;'>" + (idx + 1) + ". " + it.name + "</div>" +
+                    "<div style='font-size: 11px; color: #64748b;'>" + q + " dona × " + pr.toLocaleString() + " so'm</div>" +
+                  "</td>" +
+                  "<td style='padding: 6px 0; text-align: right; font-weight: bold; font-size: 12px; border-bottom: 1px dashed #cbd5e1; vertical-align: top;'>" +
+                    total.toLocaleString() + " so'm" +
+                  "</td>" +
+                "</tr>";
+              });
+      
+              var dText = o.delivery_type === "pickup" ? "Do'kondan olib ketish (Samovivoz)" : "Kuryer orqali yetkazish";
+              var pText = o.payment_method === "card" ? "Karta / Visa / Click (Oldindan to'lov)" : "Naqd to'lov";
+      
+              var receiptDoc = "<!DOCTYPE html>" +
+                "<html><head><meta charset='utf-8'><title>Chek #" + o.id + " - kuzavnoy.uzz</title>" +
+                "<style>" +
+                "@page { size: 80mm auto; margin: 3mm; }" +
+                "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 12px; color: #0f172a; background: #fff; font-size: 12px; line-height: 1.4; }" +
+                ".ticket { max-width: 360px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }" +
+                ".center { text-align: center; }" +
+                ".divider { border-top: 1px dashed #94a3b8; margin: 10px 0; }" +
+                ".total-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }" +
+                "@media print { body { padding: 0; } .ticket { border: none; box-shadow: none; padding: 0; max-width: 100%; } .no-print { display: none !important; } }" +
+                "</style></head><body>" +
+                "<div class='ticket'>" +
+                "<div class='center'>" +
+                  "<div style='font-size: 18px; font-weight: 900;'>🚗 kuzavnoy.uzz</div>" +
+                  "<div style='font-size: 11px; color: #475569; margin-top: 2px;'>Avto Ehtiyot Qismlar Do'koni</div>" +
+                  "<div style='font-size: 10px; color: #64748b; margin-top: 2px;'>" + (settings.store_address || "Toshkent sh., Sergeli mashina bozori") + "</div>" +
+                  "<div style='font-size: 10px; color: #64748b;'>Tel: " + (settings.phone || "+998 90 123 45 67") + " | @kuzavnoyuz_bot</div>" +
+                "</div>" +
+                "<div class='divider'></div>" +
+                "<div style='display: flex; justify-content: space-between; font-size: 11px;'>" +
+                  "<span><b>Buyurtma:</b> #" + o.id + "</span>" +
+                  "<span>" + new Date(o.created_at).toLocaleString('uz-UZ') + "</span>" +
+                "</div>" +
+                "<div class='divider'></div>" +
+                "<div style='font-size: 11px; line-height: 1.5;'>" +
+                  "<div><b>Mijoz:</b> " + o.customer_name + "</div>" +
+                  "<div><b>Telefon:</b> " + o.phone + "</div>" +
+                  "<div><b>Yetkazish turi:</b> " + dText + "</div>" +
+                  "<div><b>Manzil:</b> " + (o.location || "Ko'rsatilmagan") + "</div>" +
+                  "<div><b>To'lov usuli:</b> " + pText + "</div>" +
+                  "<div><b>Holati:</b> " + o.status + "</div>" +
+                "</div>" +
+                "<div class='divider'></div>" +
+                "<table style='width: 100%; border-collapse: collapse;'>" +
+                  "<thead>" +
+                    "<tr style='border-bottom: 2px solid #0f172a; font-size: 10px; text-transform: uppercase; color: #475569;'>" +
+                      "<th style='text-align: left; padding-bottom: 4px;'>Detal</th>" +
+                      "<th style='text-align: right; padding-bottom: 4px;'>Summa</th>" +
+                    "</tr>" +
+                  "</thead>" +
+                  "<tbody>" + itemsRows + "</tbody>" +
+                "</table>" +
+                "<div class='total-box'>" +
+                  "<span style='font-size: 12px; font-weight: 800;'>JAMI TO'LOV:</span>" +
+                  "<span style='font-size: 15px; font-weight: 900; color: #dc2626;'>" + (o.total_price || 0).toLocaleString() + " so'm</span>" +
+                "</div>" +
+                "<div class='center' style='margin-top: 15px; font-size: 10px; color: #64748b;'>Xaridingiz uchun rahmat! Salomat bo'ling! 🚗💨</div>" +
+                "<div class='no-print' style='margin-top: 15px; display: flex; gap: 8px;'>" +
+                  "<button onclick='window.print()' style='flex: 1; padding: 10px; background: #dc2626; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;'>Chop etish 🖨</button>" +
+                  "<button onclick='window.close()' style='padding: 10px 15px; background: #e2e8f0; color: #334155; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;'>Yopish</button>" +
+                "</div>" +
+                "</div>" +
+                "<script>" +
+                  "setTimeout(function() { window.print(); }, 400);" +
+                "<" + "/script>" +
+                "</body></html>";
+      
+              var printWin = null;
+              try {
+                printWin = window.open('', '_blank', 'width=450,height=700');
+              } catch(e) {}
+      
+              if (printWin && printWin.document) {
+                printWin.document.open();
+                printWin.document.write(receiptDoc);
+                printWin.document.close();
+              } else {
+                var iframe = document.getElementById('thermalReceiptFrame');
+                if (!iframe) {
+                  iframe = document.createElement('iframe');
+                  iframe.id = 'thermalReceiptFrame';
+                  iframe.style.position = 'fixed';
+                  iframe.style.right = '0';
+                  iframe.style.bottom = '0';
+                  iframe.style.width = '0';
+                  iframe.style.height = '0';
+                  iframe.style.border = 'none';
+                  document.body.appendChild(iframe);
+                }
+                var fDoc = iframe.contentWindow || iframe.contentDocument;
+                var doc = fDoc.document || fDoc;
+                doc.open();
+                doc.write(receiptDoc);
+                doc.close();
+                setTimeout(function() {
+                  try {
+                    (iframe.contentWindow || iframe).focus();
+                    (iframe.contentWindow || iframe).print();
+                  } catch(e) {}
+                }, 400);
+              }
+            };
+
+      const handleDeleteOrder = async (id) => {
+        if (!confirm("Haqiqatdan ham #" + id + " raqamli bekor qilingan buyurtmani bazadan o'chirmoqchimisiz? (Do'kondagi mahsulotlarga ta'sir qilmaydi)")) return;
+        try {
+          const res = await fetch("/api/orders/" + id, { method: "DELETE" });
+          const data = await res.json();
+          if (data.success) {
+            fetchOrders();
+          } else {
+            alert(data.error || "O'chirishda xatolik yuz berdi");
+          }
+        } catch(e) {
+          alert("Xatolik: " + e.message);
         }
       };
 
@@ -2394,9 +3151,32 @@ function getAdminPanelHtml() {
         }
       };
 
-      const totalRevenue = useMemo(() => orders.reduce((sum, o) => sum + (o.total_price || 0), 0), [orders]);
-      const pendingOrders = useMemo(() => orders.filter(o => o.status === "Kutilmoqda"), [orders]);
-      const deliveredOrders = useMemo(() => orders.filter(o => o.status === "Yetkazildi"), [orders]);
+      // Davriy analitika hisobi (Task 5)
+      const periodOrders = useMemo(() => {
+        const now = new Date();
+        return orders.filter(o => {
+          if (analyticsPeriod === 'all') return true;
+          const d = new Date(o.created_at);
+          if (analyticsPeriod === 'today') {
+            return d.toDateString() === now.toDateString();
+          }
+          if (analyticsPeriod === 'week') {
+            return d >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          }
+          if (analyticsPeriod === 'month') {
+            return d >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          }
+          if (analyticsPeriod === 'year') {
+            return d.getFullYear() === now.getFullYear();
+          }
+          return true;
+        });
+      }, [orders, analyticsPeriod]);
+
+      const totalRevenue = useMemo(() => periodOrders.reduce((sum, o) => sum + (o.total_price || 0), 0), [periodOrders]);
+      const pendingOrders = useMemo(() => periodOrders.filter(o => o.status === "Kutilmoqda"), [periodOrders]);
+      const deliveredOrders = useMemo(() => periodOrders.filter(o => o.status === "Yetkazildi"), [periodOrders]);
+      const periodAvgTicket = useMemo(() => periodOrders.length > 0 ? Math.round(totalRevenue / periodOrders.length) : 0, [totalRevenue, periodOrders]);
 
       const filteredOrders = useMemo(() => {
         return orders.filter(o => {
@@ -2428,7 +3208,7 @@ function getAdminPanelHtml() {
           (isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900')}>
           
           {/* HEADER */}
-          <header className={'sticky top-0 z-30 px-4 md:px-8 py-3 flex items-center justify-between border-b backdrop-blur ' + 
+          <header className={'sticky top-0 z-30 px-3 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 border-b backdrop-blur ' + 
             (isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200')}>
             
             <div className="flex items-center gap-3">
@@ -2507,7 +3287,8 @@ function getAdminPanelHtml() {
                 { id: "products", label: t('tabProducts'), count: products.length },
                 { id: "stories", label: t('tabStories'), count: stories.length },
                 { id: "crm", label: t('tabCrm'), count: users.length },
-                { id: "broadcast", label: t('tabBroadcast'), count: "Bot" }
+                { id: "broadcast", label: t('tabBroadcast'), count: "Bot" },
+                { id: "settings", label: t('tabSettings'), count: null }
               ].map(item => (
                 <button
                   key={item.id}
@@ -2534,23 +3315,55 @@ function getAdminPanelHtml() {
             
             {/* 1. DASHBOARD & ANALITIKA */}
             {tab === "dashboard" && (
-              <div className="space-y-6">
+              <div className="space-y-5">
+                {/* DAVRIY ANALITIKA FILTRLARI (Task 5) */}
+                <div className={'p-3.5 rounded-2xl border flex flex-wrap items-center justify-between gap-3 ' + (isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200 shadow-sm')}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📊</span>
+                    <div>
+                      <span className="text-xs font-black block leading-tight">Davriy Tushum & Chiqim Tahlili</span>
+                      <span className={'text-[10px] ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Tanlangan davr bo'yicha real ko'rsatkichlar</span>
+                    </div>
+                  </div>
+                  <div className={'flex items-center p-1 rounded-xl border text-xs font-bold gap-1 ' + (isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200')}>
+                    {[
+                      { id: 'today', label: 'Kunlik (Bugun)' },
+                      { id: 'week', label: 'Haftalik' },
+                      { id: 'month', label: 'Oylik' },
+                      { id: 'year', label: 'Yillik' },
+                      { id: 'all', label: 'Barchasi' }
+                    ].map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setAnalyticsPeriod(p.id)}
+                        className={'px-3 py-1 rounded-lg transition ' + 
+                          (analyticsPeriod === p.id 
+                            ? 'bg-red-600 text-white shadow font-black' 
+                            : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'))}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   
                   <div className={'border rounded-3xl p-5 shadow-sm ' + (isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200')}>
-                    <span className={'text-xs font-semibold uppercase tracking-wider ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('totalRevenue')}</span>
+                    <span className={'text-xs font-semibold uppercase tracking-wider ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>💰 Jami Tushum (Kassa)</span>
                     <h3 className="text-2xl md:text-3xl font-black text-emerald-500 mt-2">
                       {totalRevenue.toLocaleString()} <span className={'text-xs font-bold ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>so'm</span>
                     </h3>
                     <div className="flex items-center gap-1.5 text-xs text-emerald-500 mt-2">
-                      <span>↗ {t('realtime')}</span>
+                      <span>↗ {analyticsPeriod === 'today' ? 'Bugungi' : (analyticsPeriod === 'week' ? 'Haftalik' : (analyticsPeriod === 'month' ? 'Oylik' : (analyticsPeriod === 'year' ? 'Yillik' : 'Barcha davr')))}</span>
                     </div>
                   </div>
 
                   <div className={'border rounded-3xl p-5 shadow-sm ' + (isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200')}>
-                    <span className={'text-xs font-semibold uppercase tracking-wider ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('totalOrders')}</span>
+                    <span className={'text-xs font-semibold uppercase tracking-wider ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>📦 Buyurtmalar Soni</span>
                     <h3 className="text-2xl md:text-3xl font-black mt-2">
-                      {orders.length} <span className={'text-xs font-bold ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>ta</span>
+                      {periodOrders.length} <span className={'text-xs font-bold ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>ta</span>
                     </h3>
                     <span className={'text-xs mt-2 block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>
                       {deliveredOrders.length} {t('deliveredOrders')}
@@ -2558,19 +3371,19 @@ function getAdminPanelHtml() {
                   </div>
 
                   <div className={'border rounded-3xl p-5 shadow-sm ' + (isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200')}>
-                    <span className={'text-xs font-semibold uppercase tracking-wider ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>O'rtacha Chek</span>
-                    <h3 className="text-2xl md:text-3xl font-black text-amber-500 mt-2">
-                      {(orders.length ? Math.round(totalRevenue / orders.length) : 0).toLocaleString()} <span className={'text-xs font-bold ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>so'm</span>
+                    <span className={'text-xs font-semibold uppercase tracking-wider ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>📉 Chiqim (Xarajatlar ~70%)</span>
+                    <h3 className="text-2xl md:text-3xl font-black text-rose-500 mt-2">
+                      {Math.round(totalRevenue * 0.7).toLocaleString()} <span className={'text-xs font-bold ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>so'm</span>
                     </h3>
-                    <span className={'text-xs mt-2 block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Har bir buyurtmaga to'g'ri keladi</span>
+                    <span className={'text-xs mt-2 block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Ehtiyot qismlar tan narxi</span>
                   </div>
 
                   <div className={'border rounded-3xl p-5 shadow-sm ' + (isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200')}>
-                    <span className={'text-xs font-semibold uppercase tracking-wider ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('activeCustomers')}</span>
+                    <span className={'text-xs font-semibold uppercase tracking-wider ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>📈 Sof Foyda (~30%)</span>
                     <h3 className="text-2xl md:text-3xl font-black text-indigo-500 mt-2">
-                      {users.length} <span className={'text-xs font-bold ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>mijoz</span>
+                      {Math.round(totalRevenue * 0.3).toLocaleString()} <span className={'text-xs font-bold ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>so'm</span>
                     </h3>
-                    <span className={'text-xs mt-2 block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Telegram bot a'zolari</span>
+                    <span className={'text-xs mt-2 block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>O'rtacha chek: {periodAvgTicket.toLocaleString()} so'm</span>
                   </div>
                 </div>
               </div>
@@ -2653,7 +3466,7 @@ function getAdminPanelHtml() {
                               <div className={'text-[10px] line-clamp-1 mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{order.location}</div>
                             </td>
                             <td className="p-4 max-w-xs">
-                              {(order.items || []).map((it, idx) => (
+                              {(Array.isArray(order.items) ? order.items : (typeof order.items === 'string' ? JSON.parse(order.items || '[]') : [])).map((it, idx) => (
                                 <div key={idx} className={'truncate text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>
                                   • {it.name} x {it.quantity || 1}
                                 </div>
@@ -2676,13 +3489,27 @@ function getAdminPanelHtml() {
                               </select>
                             </td>
                             <td className="p-4 text-right whitespace-nowrap">
-                              <button 
-                                onClick={() => setSelectedReceiptOrder(order)}
-                                className={'px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ' + 
-                                  (isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300')}
-                              >
-                                {t('receipt')}
-                              </button>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button 
+                                  onClick={() => printThermalReceipt(order)}
+                                  title="Chekni chop etish"
+                                  className={'px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition flex items-center gap-1 ' + 
+                                    (isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300')}
+                                >
+                                  <span>🧾</span>
+                                  <span>{t('receipt')}</span>
+                                </button>
+                                {order.status === "Bekor qilindi" && (
+                                  <button 
+                                    onClick={() => handleDeleteOrder(order.id)}
+                                    title="Bekor qilingan buyurtmani bazadan tozalash (Task 2)"
+                                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold bg-rose-600/15 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-500/30 transition flex items-center gap-1"
+                                  >
+                                    <span>🗑</span>
+                                    <span className="hidden sm:inline">O'chirish</span>
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -2731,7 +3558,7 @@ function getAdminPanelHtml() {
 
                 {/* Kategoriyalar filtri */}
                 <div className={'px-6 py-2.5 border-b flex gap-2 overflow-x-auto no-scrollbar ' + (isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                  {["Barchasi", "Cobalt", "Gentra / Lacetti", "Malibu 1 / 2", "Tracker 1 / 2", "Onix", "Nexia 1 / 2 / 3", "Monjaro / Xitoy", "Universal / Boshqa"].map(cat => (
+                  {["Barchasi", "Cobalt", "Gentra / Lacetti", "Malibu 1 / 2", "Tracker 1 / 2", "Onix", "Nexia 1 / 2 / 3", "Monjaro / Xitoy", "Kia / Hyundai", "Universal / Boshqa"].map(cat => (
                     <button
                       key={cat}
                       onClick={() => setProductCategoryFilter(cat)}
@@ -2952,13 +3779,52 @@ function getAdminPanelHtml() {
                 </div>
 
                 <form onSubmit={handleSendBroadcast} className="space-y-4 text-xs">
+                  {/* Rasm yuklash (Telefondan yoki kompyuterdan - Task 4) */}
                   <div>
-                    <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{t('photoUrlOptional')}</label>
+                    <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>📸 Xabar rasmi (Telefondan yoki kompyuterdan tanlang)</label>
+                    <div className={'border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition relative mb-2.5 ' + 
+                      (isDark ? 'border-slate-700 hover:border-red-500 bg-slate-950/60' : 'border-slate-300 hover:border-red-500 bg-slate-50')}>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        onChange={(e) => {
+                          const file = e.target.files && e.target.files[0];
+                          if (file) {
+                            handleImageUpload(file, (dataUrl) => {
+                              setBroadcastPhoto(dataUrl);
+                            });
+                          }
+                        }}
+                      />
+                      {broadcastPhoto ? (
+                        <div className="flex flex-col items-center">
+                          <img src={broadcastPhoto} className="w-32 h-32 object-cover rounded-xl border border-slate-700 shadow-md mb-2" />
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-emerald-500 font-bold">✅ Rasm biriktirildi</span>
+                            <button 
+                              type="button" 
+                              onClick={(ev) => { ev.stopPropagation(); setBroadcastPhoto(''); }}
+                              className="text-[10px] text-red-500 underline font-bold"
+                            >
+                              O'chirish
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="py-2">
+                          <div className="text-3xl mb-1">🖼</div>
+                          <p className="text-xs font-bold">Telefondan yoki noutbukdan rasm tanlash</p>
+                          <p className={'text-[10px] mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Galereya yoki fayllardan rasm yuklang (avtomatik siqiladi)</p>
+                        </div>
+                      )}
+                    </div>
+
                     <input 
                       type="url"
-                      value={broadcastPhoto}
+                      value={(broadcastPhoto && broadcastPhoto.startsWith('data:')) ? '' : broadcastPhoto}
                       onChange={e => setBroadcastPhoto(e.target.value)}
-                      placeholder="https://images.unsplash.com/..."
+                      placeholder="Yoki to'g'ridan-to'g'ri rasm URL manzilini kiriting..."
                       className={'w-full px-3.5 py-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
                         (isDark ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400')}
                     />
@@ -2994,6 +3860,171 @@ function getAdminPanelHtml() {
               </div>
             )}
 
+            {/* 7. SETTINGS (SOZLAMALAR) */}
+            {tab === "settings" && (
+              <div className={'max-w-3xl mx-auto border rounded-3xl p-6 md:p-8 shadow-sm ' + (isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200')}>
+                <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-2 border-b pb-4">
+                  <div>
+                    <h2 className="text-xl font-black">{t('settingsTitle')}</h2>
+                    <p className={'text-xs mt-1 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('settingsDesc')}</p>
+                  </div>
+                  <span className={'text-[10px] font-bold px-2.5 py-1 rounded-full border self-start ' + (isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600')}>
+                    Real vaqtda yangilanadi ⚡️
+                  </span>
+                </div>
+
+                {settingsMessage && (
+                  <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 font-bold text-xs flex items-center gap-2">
+                    <span>✅</span>
+                    <span>{settingsMessage}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSaveSettings} className="space-y-6 text-xs">
+                  {/* 1. TO'LOV REKVIZITLARI */}
+                  <div className={'p-5 rounded-2xl border space-y-4 ' + (isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200')}>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-red-500 flex items-center gap-2">
+                      <span>💳</span>
+                      <span>{t('paymentDetailsHeader')}</span>
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{t('cardNumberLabel')}</label>
+                        <input 
+                          type="text"
+                          required
+                          value={settings.card_number || ''}
+                          onChange={e => setSettings({ ...settings, card_number: e.target.value })}
+                          placeholder="8600 5304 1234 5678"
+                          className={'w-full px-3.5 py-2.5 border rounded-xl font-mono text-sm focus:outline-none focus:border-red-500 ' + 
+                            (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                        />
+                        <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Mini App savatchasida ko'rsatiladi</span>
+                      </div>
+
+                      <div>
+                        <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{t('cardHolderLabel')}</label>
+                        <input 
+                          type="text"
+                          required
+                          value={settings.card_holder || ''}
+                          onChange={e => setSettings({ ...settings, card_holder: e.target.value })}
+                          placeholder="AZIMXON (KUZAVNOY.UZZ)"
+                          className={'w-full px-3.5 py-2.5 border rounded-xl font-semibold focus:outline-none focus:border-red-500 ' + 
+                            (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                        />
+                        <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Karta egasining to'liq ismi</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. ALOQA & TELEFON */}
+                  <div className={'p-5 rounded-2xl border space-y-4 ' + (isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200')}>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-emerald-500 flex items-center gap-2">
+                      <span>📞</span>
+                      <span>{t('contactHeader')}</span>
+                    </h3>
+
+                    <div>
+                      <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{t('storePhoneLabel')}</label>
+                      <input 
+                        type="text"
+                        required
+                        value={settings.phone || ''}
+                        onChange={e => setSettings({ ...settings, phone: e.target.value })}
+                        placeholder="+998 90 123 45 67"
+                        className={'w-full px-3.5 py-2.5 border rounded-xl font-mono text-sm focus:outline-none focus:border-red-500 ' + 
+                          (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                      />
+                      <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Cheklarda, Mini App profilida va qo'ng'iroq tugmasida aks etadi</span>
+                    </div>
+                  </div>
+
+                  {/* 3. IJTIMOIY TARMOQLAR */}
+                  <div className={'p-5 rounded-2xl border space-y-4 ' + (isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200')}>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-indigo-500 flex items-center gap-2">
+                      <span>🌐</span>
+                      <span>{t('socialHeader')}</span>
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{t('instagramUrlLabel')}</label>
+                        <input 
+                          type="url"
+                          required
+                          value={settings.instagram_url || ''}
+                          onChange={e => setSettings({ ...settings, instagram_url: e.target.value })}
+                          placeholder="https://instagram.com/kuzavnoy.uzz"
+                          className={'w-full px-3.5 py-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
+                            (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{t('youtubeUrlLabel')}</label>
+                        <input 
+                          type="url"
+                          required
+                          value={settings.youtube_url || ''}
+                          onChange={e => setSettings({ ...settings, youtube_url: e.target.value })}
+                          placeholder="https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G"
+                          className={'w-full px-3.5 py-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
+                            (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. DO'KON MANZILI & ISH VAQTI */}
+                  <div className={'p-5 rounded-2xl border space-y-4 ' + (isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200')}>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-2">
+                      <span>🏬</span>
+                      <span>{t('storeLocationHeader')}</span>
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="md:col-span-2">
+                        <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{t('storeAddressLabel')}</label>
+                        <input 
+                          type="text"
+                          required
+                          value={settings.store_address || ''}
+                          onChange={e => setSettings({ ...settings, store_address: e.target.value })}
+                          placeholder="Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon"
+                          className={'w-full px-3.5 py-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
+                            (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{t('storeHoursLabel')}</label>
+                        <input 
+                          type="text"
+                          required
+                          value={settings.store_hours || ''}
+                          onChange={e => setSettings({ ...settings, store_hours: e.target.value })}
+                          placeholder="09:00 - 19:00"
+                          className={'w-full px-3.5 py-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
+                            (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit"
+                    disabled={settingsSaving}
+                    className="w-full py-4 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-black rounded-xl text-xs shadow-lg shadow-red-950/50 transition active:scale-98 flex items-center justify-center gap-2"
+                  >
+                    <span>💾</span>
+                    <span>{settingsSaving ? t('sending') : t('saveSettings')}</span>
+                  </button>
+                </form>
+              </div>
+            )}
+
           </main>
 
           {/* CHEK / RECEIPT MODAL */}
@@ -3021,7 +4052,7 @@ function getAdminPanelHtml() {
 
                 <div className="py-3 space-y-2 border-b border-slate-200">
                   <div className="text-[11px] font-bold text-slate-400 uppercase">{t('itemsList')}</div>
-                  {(selectedReceiptOrder.items || []).map((it, idx) => (
+                  {(Array.isArray(selectedReceiptOrder.items) ? selectedReceiptOrder.items : (typeof selectedReceiptOrder.items === 'string' ? JSON.parse(selectedReceiptOrder.items || '[]') : [])).map((it, idx) => (
                     <div key={idx} className="flex justify-between text-xs">
                       <span>{it.name} x {it.quantity || 1}</span>
                       <span className="font-bold">{((it.new_price || 0) * (it.quantity || 1)).toLocaleString()} so'm</span>
@@ -3037,9 +4068,22 @@ function getAdminPanelHtml() {
                 </div>
 
                 <div className="mt-5 flex gap-2">
-                  <button onClick={() => window.print()} className="flex-1 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl">
+                  <button onClick={() => printThermalReceipt(selectedReceiptOrder)} className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl shadow-md transition">
                     {t('printReceipt')}
                   </button>
+                  {selectedReceiptOrder.status === "Bekor qilindi" && (
+                    <button 
+                      onClick={() => {
+                        const id = selectedReceiptOrder.id;
+                        setSelectedReceiptOrder(null);
+                        handleDeleteOrder(id);
+                      }} 
+                      className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 text-xs font-bold rounded-xl transition flex items-center gap-1"
+                    >
+                      <span>🗑</span>
+                      <span>O'chirish</span>
+                    </button>
+                  )}
                   <button onClick={() => setSelectedReceiptOrder(null)} className="px-4 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl">
                     {t('close')}
                   </button>

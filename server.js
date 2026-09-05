@@ -61,9 +61,14 @@ async function initDatabase() {
         items JSONB NOT NULL,
         total_price INT NOT NULL,
         location TEXT,
+        delivery_type VARCHAR(50) DEFAULT 'delivery',
+        payment_method VARCHAR(50) DEFAULT 'cash',
         status VARCHAR(50) DEFAULT 'Kutilmoqda',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_type VARCHAR(50) DEFAULT 'delivery';
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'cash';
 
       CREATE TABLE IF NOT EXISTS stories (
         id SERIAL PRIMARY KEY,
@@ -231,7 +236,8 @@ try {
       return bot.sendMessage(chatId, 
         "⛔️ <b>Kechirasiz, siz admin emassiz!</b>\n\n" +
         "Ushbu bo'lim faqat <b>kuzavnoy.uzz</b> do'koni egasi uchun mo'ljallangan.\n" +
-        "Mahsulotlarni ko'rish uchun pastdagi menyudan foydalaning.", 
+        `Sizning Telegram ID: <code>${chatId}</code>\n\n` +
+        "Agar siz do'kon egasi bo'lsangiz, ushbu ID ni adminlar ro'yxatiga qo'shish lozim.", 
         { parse_mode: 'HTML' }
       );
     }
@@ -241,16 +247,19 @@ try {
     bot.sendMessage(chatId, 
       `👨‍💼 <b>kuzavnoy.uzz — Boshqaruv Paneli (Admin)</b>\n\n` +
       `Xush kelibsiz, <b>${firstName}</b>!\n` +
-      `Pastdagi tugmani bosib, Telegram ichida barcha buyurtmalar va mahsulotlarni boshqarishingiz mumkin! 👇`, 
+      `Pastdagi tugmalar orqali barcha buyurtmalar va mahsulotlarni boshqarishingiz mumkin! 👇`, 
       {
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: isHttps ? [
             [
               {
-                text: "📊 Admin Dashboardni ochish",
+                text: "📊 Admin Dashboard (Telegram ichida)",
                 web_app: { url: `${WEB_APP_URL}/admin` }
               }
+            ],
+            [
+              { text: "🌐 Brauzerda ochish (To'g'ridan-to'g'ri link)", url: `${WEB_APP_URL}/admin` }
             ],
             [
               { text: "🛒 Mijoz do'koni (Mini App)", web_app: { url: WEB_APP_URL } }
@@ -297,6 +306,9 @@ try {
       if (isAdmin) {
         buttons.push([
           { text: "👨‍💼 Admin Panelni ochish (Telegram ichida)", web_app: { url: `${WEB_APP_URL}/admin` } }
+        ]);
+        buttons.push([
+          { text: "🌐 Admin Panel (Brauzerda ochish)", url: `${WEB_APP_URL}/admin` }
         ]);
       }
     } else {
@@ -527,15 +539,21 @@ app.post('/api/broadcast', async (req, res) => {
 // API: Yangi buyurtma yaratish (Mini App) + Telegram orqali xabar yuborish
 app.post('/api/orders', async (req, res) => {
   try {
-    const { telegram_id, customer_name, phone, items, total_price, location } = req.body;
+    const { telegram_id, customer_name, phone, items, total_price, location, delivery_type, payment_method } = req.body;
+
+    const dType = delivery_type === 'pickup' ? 'pickup' : 'delivery';
+    const pMethod = payment_method === 'card' ? 'card' : 'cash';
 
     const result = await pool.query(
-      `INSERT INTO orders (telegram_id, customer_name, phone, items, total_price, location)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [telegram_id || 0, customer_name, phone, JSON.stringify(items), total_price, location]
+      `INSERT INTO orders (telegram_id, customer_name, phone, items, total_price, location, delivery_type, payment_method)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [telegram_id || 0, customer_name, phone, JSON.stringify(items), total_price, location, dType, pMethod]
     );
 
     const order = result.rows[0];
+
+    const dTypeText = dType === 'pickup' ? "🏬 O'zi olib ketish (Do'kondan / Samovivoz)" : "🚚 Kuryer orqali yetkazib berish";
+    const pMethodText = pMethod === 'card' ? "💳 Karta orqali oldindan to'lov (Uzcard / Humo / Visa)" : "💵 Qabul qilinganda to'lash (Naqd / Kuryerga)";
 
     // Telegram Bot orqali mijozga tasdiqlash xabari yuborish
     if (bot && telegram_id && telegram_id !== 0) {
@@ -544,11 +562,13 @@ app.post('/api/orders', async (req, res) => {
         
         const messageText = 
           `🎉 <b>Buyurtmangiz muvaffaqiyatli qabul qilindi!</b>\n` +
-          `Kuryerimiz tez orada siz bilan bog'lanadi 🚗💨\n\n` +
+          (dType === 'pickup' ? `Do'konimizdan olib ketishingiz mumkin 🏬\n\n` : `Kuryerimiz tez orada siz bilan bog'lanadi 🚗💨\n\n`) +
           `<b>Buyurtma raqami:</b> #${order.id}\n` +
           `<b>Mijoz:</b> ${customer_name}\n` +
           `<b>Telefon:</b> ${phone}\n` +
-          `<b>Manzil:</b> ${location || "Ko'rsatilmagan"}\n\n` +
+          `<b>Yetkazish turi:</b> ${dTypeText}\n` +
+          `<b>To'lov usuli:</b> ${pMethodText}\n` +
+          (dType === 'delivery' ? `<b>Yetkazish manzili:</b> ${location || "Ko'rsatilmagan"}\n\n` : `<b>Do'kon manzili:</b> Toshkent sh., Sergeli mashina bozori\n\n`) +
           `<b>Xarid qilingan detallar:</b>\n${itemsList}\n\n` +
           `💰 <b>Jami summa:</b> ${total_price.toLocaleString()} so'm\n\n` +
           `<i>kuzavnoy.uzz ni tanlaganingiz uchun rahmat!</i>`;
@@ -568,6 +588,8 @@ app.post('/api/orders', async (req, res) => {
           `🚨 <b>YANGI BUYURTMA KELIB TUSHDI! (#${order.id})</b> 🚨\n\n` +
           `👤 <b>Mijoz:</b> ${customer_name}\n` +
           `📞 <b>Telefon:</b> ${phone}\n` +
+          `🚚 <b>Yetkazish turi:</b> <b>${dTypeText}</b>\n` +
+          `💳 <b>To'lov usuli:</b> <b>${pMethodText}</b>\n` +
           `📍 <b>Manzil:</b> ${location || "Ko'rsatilmagan"}\n\n` +
           `📦 <b>Buyurtma tarkibi:</b>\n${itemsList}\n\n` +
           `💰 <b>Jami tushum:</b> <b>${total_price.toLocaleString()} so'm</b>\n` +
@@ -704,6 +726,21 @@ function getMiniAppHtml() {
         phoneLabel: "Telefon raqamingiz",
         addressLabel: "Yetkazib berish manzili",
         addressPlaceholder: "Toshkent shahri, Yunusobod 4-mavze...",
+        deliveryTypeLabel: "Yetkazib berish usuli",
+        deliveryCourier: "🚚 Kuryer orqali",
+        deliveryPickup: "🏬 O'zi olib ketish",
+        pickupStoreAddress: "Toshkent sh., Sergeli mashina bozori (Samovivoz)",
+        pickupStoreBadge: "Samovivoz manzili: Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon. Ish vaqti: 09:00 - 19:00",
+        paymentMethodLabel: "To'lov usuli",
+        payCard: "💳 Karta / Visa / Click",
+        payCash: "💵 Qabul qilganda naqd",
+        cardDetailsTitle: "Oldindan to'lov uchun karta:",
+        cardNumber: "8600 5304 1234 5678",
+        cardHolder: "AZIMXON (KUZAVNOY.UZZ)",
+        cardCopyBtn: "Nusxa olish",
+        cardCopiedText: "Nusxalandi! ✅",
+        cardPaymentHint: "To'lovni Click / Payme / Visa orqali ushbu kartaga o'tkazishingiz mumkin",
+        cashPaymentHint: "Kuryer mahsulotni yetkazganda yoki do'konda qabul qilayotganingizda to'laysiz",
         totalPayment: "JAMI TO'LOV:",
         confirmOrder: "Buyurtmani Tasdiqlash 🚀",
         submitting: "Buyurtma yuborilmoqda...",
@@ -763,6 +800,21 @@ function getMiniAppHtml() {
         phoneLabel: "Номер телефона",
         addressLabel: "Адрес доставки",
         addressPlaceholder: "г. Ташкент, Юнусабад 4-квартал...",
+        deliveryTypeLabel: "Способ доставки",
+        deliveryCourier: "🚚 Доставка курьером",
+        deliveryPickup: "🏬 Самовывоз",
+        pickupStoreAddress: "г. Ташкент, авторынок Сергели (Самовывоз)",
+        pickupStoreBadge: "Адрес самовывоза: г. Ташкент, авторынок Сергели, 4-й ряд, магазин 12. Время: 09:00 - 19:00",
+        paymentMethodLabel: "Способ оплаты",
+        payCard: "💳 Карта / Visa / Click",
+        payCash: "💵 Наличными курьеру",
+        cardDetailsTitle: "Карта для предоплаты:",
+        cardNumber: "8600 5304 1234 5678",
+        cardHolder: "AZIMXON (KUZAVNOY.UZZ)",
+        cardCopyBtn: "Скопировать",
+        cardCopiedText: "Скопировано! ✅",
+        cardPaymentHint: "Вы можете перевести через Click / Payme / Visa на эту карту",
+        cashPaymentHint: "Оплата при получении товара у курьера или в магазине",
         totalPayment: "ИТОГО К ОПЛАТЕ:",
         confirmOrder: "Подтвердить Заказ 🚀",
         submitting: "Отправка заказа...",
@@ -822,6 +874,21 @@ function getMiniAppHtml() {
         phoneLabel: "Phone number",
         addressLabel: "Delivery address",
         addressPlaceholder: "Tashkent city, Yunusabad 4th block...",
+        deliveryTypeLabel: "Delivery Method",
+        deliveryCourier: "🚚 Courier Delivery",
+        deliveryPickup: "🏬 Store Pickup",
+        pickupStoreAddress: "Tashkent city, Sergeli car market (Pickup)",
+        pickupStoreBadge: "Pickup address: Tashkent, Sergeli car market, row 4, shop 12. Working hours: 09:00 - 19:00",
+        paymentMethodLabel: "Payment Method",
+        payCard: "💳 Card / Visa / Click",
+        payCash: "💵 Cash on Delivery",
+        cardDetailsTitle: "Card for prepayment:",
+        cardNumber: "8600 5304 1234 5678",
+        cardHolder: "AZIMXON (KUZAVNOY.UZZ)",
+        cardCopyBtn: "Copy",
+        cardCopiedText: "Copied! ✅",
+        cardPaymentHint: "You can transfer via Click / Payme / Visa to this card",
+        cashPaymentHint: "Pay in cash upon receiving items from courier or at store",
         totalPayment: "TOTAL PAYMENT:",
         confirmOrder: "Confirm Order 🚀",
         submitting: "Submitting order...",
@@ -875,8 +942,20 @@ function getMiniAppHtml() {
       const [custName, setCustName] = useState('');
       const [custPhone, setCustPhone] = useState('+998 ');
       const [custAddress, setCustAddress] = useState('');
+      const [deliveryType, setDeliveryType] = useState('delivery'); // 'delivery' | 'pickup'
+      const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'cash'
+      const [cardCopied, setCardCopied] = useState(false);
       const [isSubmitting, setIsSubmitting] = useState(false);
       const [orderSuccess, setOrderSuccess] = useState(false);
+
+      const copyCardNumber = (num) => {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(num.replace(/\s+/g, ''));
+        }
+        setCardCopied(true);
+        setTimeout(() => setCardCopied(false), 2000);
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      };
 
       const t = (key) => (I18N[lang] && I18N[lang][key]) || (I18N['uz'] && I18N['uz'][key]) || key;
 
@@ -971,6 +1050,10 @@ function getMiniAppHtml() {
           alert(lang === 'ru' ? "Пожалуйста, введите имя и номер телефона!" : (lang === 'en' ? "Please enter your name and phone number!" : "Iltimos, ismingiz va to'liq telefon raqamingizni kiriting!"));
           return;
         }
+        if (deliveryType === 'delivery' && (!custAddress.trim() || custAddress.trim().length < 3)) {
+          alert(lang === 'ru' ? "Пожалуйста, укажите адрес доставки!" : (lang === 'en' ? "Please enter delivery address!" : "Iltimos, yetkazib berish manzilini kiriting!"));
+          return;
+        }
         if (cart.length === 0) {
           alert(t('cartEmpty'));
           return;
@@ -988,13 +1071,19 @@ function getMiniAppHtml() {
             });
           }
 
+          const finalLocation = deliveryType === 'pickup' 
+            ? t('pickupStoreAddress')
+            : (custAddress || (lang === 'ru' ? "г. Ташкент (Доставка)" : (lang === 'en' ? "Tashkent city (Delivery)" : "Toshkent shahri (Yetkazib berish)")));
+
           const payload = {
             telegram_id: tgUser.id,
             customer_name: custName,
             phone: custPhone,
             items: finalItems,
             total_price: cartTotal,
-            location: custAddress || (lang === 'ru' ? "г. Ташкент (Доставка)" : (lang === 'en' ? "Tashkent city (Delivery)" : "Toshkent shahri (Yetkazib berish)"))
+            location: finalLocation,
+            delivery_type: deliveryType,
+            payment_method: paymentMethod
           };
 
           const res = await fetch('/api/orders', {
@@ -1407,7 +1496,7 @@ function getMiniAppHtml() {
                     </div>
 
                     {/* Buyurtma formasi */}
-                    <div className={'p-4 rounded-3xl border space-y-3 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200')}>
+                    <div className={'p-4 rounded-3xl border space-y-3.5 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200')}>
                       <h3 className="text-xs font-black uppercase tracking-wider">{t('checkoutInfo')}</h3>
                       
                       <div>
@@ -1434,17 +1523,113 @@ function getMiniAppHtml() {
                         />
                       </div>
 
+                      {/* 1. Yetkazib berish usuli selektori */}
                       <div>
-                        <label className={'text-[10px] font-bold block mb-1 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('addressLabel')}</label>
-                        <input 
-                          type="text" 
-                          value={custAddress}
-                          onChange={e => setCustAddress(e.target.value)}
-                          placeholder={t('addressPlaceholder')}
-                          className={'w-full p-2.5 rounded-xl text-xs border focus:outline-none focus:border-red-500 ' + 
-                            (isDark ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400')}
-                        />
+                        <label className={'text-[10px] font-bold block mb-1.5 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('deliveryTypeLabel')}</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => setDeliveryType('delivery')}
+                            className={'py-2 px-2.5 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ' + 
+                              (deliveryType === 'delivery' 
+                                ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-950/30' 
+                                : (isDark ? 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'))}
+                          >
+                            {t('deliveryCourier')}
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setDeliveryType('pickup')}
+                            className={'py-2 px-2.5 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ' + 
+                              (deliveryType === 'pickup' 
+                                ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-950/30' 
+                                : (isDark ? 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'))}
+                          >
+                            {t('deliveryPickup')}
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Manzil yoki Samovivoz tafsiloti */}
+                      {deliveryType === 'delivery' ? (
+                        <div>
+                          <label className={'text-[10px] font-bold block mb-1 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('addressLabel')}</label>
+                          <input 
+                            type="text" 
+                            value={custAddress}
+                            onChange={e => setCustAddress(e.target.value)}
+                            placeholder={t('addressPlaceholder')}
+                            className={'w-full p-2.5 rounded-xl text-xs border focus:outline-none focus:border-red-500 ' + 
+                              (isDark ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400')}
+                          />
+                        </div>
+                      ) : (
+                        <div className={'p-3 rounded-2xl border flex items-start gap-2.5 ' + (isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-red-50/60 border-red-100 text-slate-800')}>
+                          <span className="text-base">📍</span>
+                          <div className="text-[11px] leading-relaxed">
+                            <span className="font-bold block text-xs">{t('pickupStoreAddress')}</span>
+                            <span className={'text-[10px] block mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('pickupStoreBadge')}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 2. To'lov usuli selektori */}
+                      <div>
+                        <label className={'text-[10px] font-bold block mb-1.5 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('paymentMethodLabel')}</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => setPaymentMethod('card')}
+                            className={'py-2 px-2.5 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ' + 
+                              (paymentMethod === 'card' 
+                                ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-950/30' 
+                                : (isDark ? 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'))}
+                          >
+                            {t('payCard')}
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setPaymentMethod('cash')}
+                            className={'py-2 px-2.5 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ' + 
+                              (paymentMethod === 'cash' 
+                                ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-950/30' 
+                                : (isDark ? 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'))}
+                          >
+                            {t('payCash')}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Karta vidjeti yoki Naqd to'lov izohi */}
+                      {paymentMethod === 'card' ? (
+                        <div className={'p-3.5 rounded-2xl border space-y-2 ' + (isDark ? 'bg-slate-950 border-slate-800' : 'bg-gradient-to-br from-slate-900 to-slate-800 text-white')}>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-extrabold text-[10px] tracking-wider uppercase text-amber-400">💳 UZCARD • HUMO • VISA</span>
+                            <span className="text-[10px] bg-red-600 px-1.5 py-0.5 rounded text-white font-black">Click / Payme</span>
+                          </div>
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="font-mono font-black text-sm tracking-wider">{t('cardNumber')}</span>
+                            <button 
+                              type="button"
+                              onClick={() => copyCardNumber(t('cardNumber'))}
+                              className={'px-2 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 ' + 
+                                (cardCopied ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white')}
+                            >
+                              {cardCopied ? t('cardCopiedText') : t('cardCopyBtn')}
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-slate-300 border-t border-white/10 pt-1.5">
+                            <span>{t('cardHolder')}</span>
+                            <span className="text-emerald-400 font-bold">0% komissiya</span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-tight pt-0.5">{t('cardPaymentHint')}</p>
+                        </div>
+                      ) : (
+                        <div className={'p-3 rounded-2xl border flex items-center gap-2.5 ' + (isDark ? 'bg-slate-950/70 border-slate-800 text-slate-300' : 'bg-amber-50/80 border-amber-200 text-slate-800')}>
+                          <span className="text-xl">💵</span>
+                          <p className="text-[11px] leading-tight font-medium">{t('cashPaymentHint')}</p>
+                        </div>
+                      )}
 
                       <div className={'pt-3 border-t flex items-center justify-between ' + (isDark ? 'border-slate-800' : 'border-slate-200')}>
                         <span className="text-xs font-bold">{t('totalPayment')}</span>
@@ -1651,12 +1836,19 @@ function getAdminPanelHtml() {
     @keyframes spin { to { transform: rotate(360deg); } }
     .animate-spin-custom { animation: spin 0.8s linear infinite; }
   </style>
+  <script>
+    window.onerror = function(msg, url, line) {
+      var el = document.getElementById('debug-err');
+      if (el) el.innerHTML = '<b>Xatolik:</b> ' + msg + ' (' + line + ')';
+    };
+  </script>
 </head>
 <body class="transition-colors duration-200">
   <div id="root">
     <div class="flex flex-col items-center justify-center min-h-[80vh] text-center px-4">
       <div class="w-12 h-12 border-4 border-slate-800 border-t-red-600 rounded-full animate-spin-custom mb-3"></div>
       <p class="text-sm font-bold text-slate-400">kuzavnoy.uzz Admin yuklanmoqda...</p>
+      <div id="debug-err" class="mt-4 text-xs text-red-500 max-w-sm font-mono"></div>
     </div>
   </div>
 
@@ -2132,7 +2324,7 @@ function getAdminPanelHtml() {
             old_price: formData.old_price ? parseInt(formData.old_price) : 0,
             image_url: formData.image_url,
             description: formData.description,
-            details: formData.detailsText.split("\n").filter(Boolean)
+            details: formData.detailsText.split("\\n").filter(Boolean)
           };
 
           const url = editingProduct ? "/api/products/" + editingProduct.id : "/api/products";
@@ -2444,7 +2636,21 @@ function getAdminPanelHtml() {
                             <td className="p-4">
                               <div className="font-bold">{order.customer_name}</div>
                               <div className="text-[11px] font-mono text-slate-500">{order.phone}</div>
-                              <div className={'text-[10px] line-clamp-1 ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{order.location}</div>
+                              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                <span className={'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold ' + 
+                                  (order.delivery_type === 'pickup' 
+                                    ? (isDark ? 'bg-purple-950/70 text-purple-300 border border-purple-800/40' : 'bg-purple-100 text-purple-800') 
+                                    : (isDark ? 'bg-blue-950/70 text-blue-300 border border-blue-800/40' : 'bg-blue-100 text-blue-800'))}>
+                                  {order.delivery_type === 'pickup' ? "🏬 Samovivoz" : "🚚 Dastavka"}
+                                </span>
+                                <span className={'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold ' + 
+                                  (order.payment_method === 'card' 
+                                    ? (isDark ? 'bg-amber-950/70 text-amber-300 border border-amber-800/40' : 'bg-amber-100 text-amber-800') 
+                                    : (isDark ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/40' : 'bg-emerald-100 text-emerald-800'))}>
+                                  {order.payment_method === 'card' ? "💳 Karta/Visa" : "💵 Naqd"}
+                                </span>
+                              </div>
+                              <div className={'text-[10px] line-clamp-1 mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{order.location}</div>
                             </td>
                             <td className="p-4 max-w-xs">
                               {(order.items || []).map((it, idx) => (
@@ -2512,7 +2718,7 @@ function getAdminPanelHtml() {
                         setProductImagePreview("");
                         setFormData({
                           name: "", category: "Cobalt", new_price: "", old_price: "",
-                          image_url: "", description: "", detailsText: "Original sifat\nKafolat beriladi"
+                          image_url: "", description: "", detailsText: "Original sifat\\nKafolat beriladi"
                         });
                         setShowProductModal(true);
                       }}
@@ -2600,7 +2806,7 @@ function getAdminPanelHtml() {
                                     old_price: prod.old_price || "",
                                     image_url: prod.image_url,
                                     description: prod.description || "",
-                                    detailsText: (Array.isArray(prod.details) ? prod.details : []).join("\n")
+                                    detailsText: (Array.isArray(prod.details) ? prod.details : []).join("\\n")
                                   });
                                   setShowProductModal(true);
                                 }}
@@ -2807,6 +3013,8 @@ function getAdminPanelHtml() {
                 <div className="py-3 text-xs border-b border-dashed border-slate-200 space-y-1">
                   <div><b>Mijoz:</b> {selectedReceiptOrder.customer_name}</div>
                   <div><b>Telefon:</b> {selectedReceiptOrder.phone}</div>
+                  <div><b>Yetkazish turi:</b> {selectedReceiptOrder.delivery_type === 'pickup' ? "🏬 Do'kondan olib ketish (Samovivoz)" : "🚚 Kuryer orqali yetkazish"}</div>
+                  <div><b>To'lov usuli:</b> {selectedReceiptOrder.payment_method === 'card' ? "💳 Karta / Visa / Click (Oldindan to'lov)" : "💵 Naqd to'lov (Yetkazilganda)"}</div>
                   <div><b>Manzil:</b> {selectedReceiptOrder.location || "Ko'rsatilmagan"}</div>
                   <div><b>Holat:</b> {selectedReceiptOrder.status}</div>
                 </div>

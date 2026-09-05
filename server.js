@@ -42,6 +42,8 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS condition VARCHAR(50) DEFAULT 'Yangi';
+
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -118,12 +120,16 @@ async function initDatabase() {
       const initialParts = [
         {
           name: "M-Sport Anatomiya Rul (Carbon)",
-          description: "Malibu, Tracker va Lacetti uchun qulay sport uslubidagi anatomik rul.",
+          description: "Malibu, Tracker va Lacetti uchun sport uslubidagi qulay uglerod tolali rul.",
+          condition: "Yangi",
           details: JSON.stringify([
             "Haqiqiy Nappa charm va uglerod tolali (carbon) qoplama",
             "Ko'p funksiyali audio va kruiz-kontrol boshqaruv tugmalari",
             "Zavodskoy xavfsizlik yostiqchasi (Airbag) bilan to'liq mos",
-            "Ergonomik ushlagich va qizdirish funksiyasini qo'llab-quvvatlaydi"
+            "Ergonomik ushlagich va qizdirish funksiyasini qo'llab-quvvatlaydi",
+            "Malibu 1/2, Gentra va Tracker modellariga to'g'ri tushadi",
+            "Holati: Yangi (Zavodskoy original qutida, muhrlangan)",
+            "Kafolat: 12 oy rasmiy servis kafolati"
           ]),
           old_price: 1850000,
           new_price: 1450000,
@@ -132,12 +138,16 @@ async function initDatabase() {
         },
         {
           name: "Malibu 2 O'rta Konsol Bar (Original)",
-          description: "Yumshoq tirsaklagichli, simsiz zaryadka o'rni va stakan ushlagichli original bar.",
+          description: "Simsiz zaryadka o'rni va stakan ushlagichli original bar konsoli.",
+          condition: "B/U (Ideal)",
           details: JSON.stringify([
-            "Tezkor simsiz (Wireless) quvvatlash uyasi",
-            "LED fonli xrom podstakanniklar",
-            "Eko-charm tirsaklagich va keng saqlash bo'linmasi",
-            "Zavodskoy fiksatorlarga 100% tushadi, qirqish talab qilinmaydi"
+            "Tezkor simsiz (Wireless) quvvatlash uyasi bilan jihozlangan",
+            "LED fonli xrom podstakanniklar va keng saqlash bo'linmasi",
+            "Eko-charm tirsaklagich (yirtilmagan, qirilmagan toza)",
+            "Zavodskoy fiksatorlarga 100% tushadi, qirqish talab qilinmaydi",
+            "Holati: B/U (Koreyadan keltirilgan, holati ideal 10/10)",
+            "Kafolat: 6 oy tekshiruv va sinov kafolati",
+            "Toshkent bo'ylab 2 soat ichida yetkazib beriladi"
           ]),
           old_price: 1250000,
           new_price: 980000,
@@ -147,11 +157,15 @@ async function initDatabase() {
         {
           name: "Akustik / Tonirovka Labavoy Oyna (Benson)",
           description: "Ultra-binafsha nurlardan 99% himoyalovchi sifatli original old oyna.",
+          condition: "Yangi",
           details: JSON.stringify([
             "Akustik polimer qatlam (tashqi shovqinni 40% pasaytiradi)",
-            "UV va quyosh issiqligini qaytaruvchi Athermal himoya",
+            "UV va quyosh issiqligini qaytaruvchi Athermal himoya qatlami",
             "Yomg'ir va yorug'lik datchigi uchun maxsus tayyor o'rin",
-            "Xalqaro DOT va ECE sifat sertifikatlariga ega"
+            "Xalqaro DOT va ECE sifat sertifikatlariga ega",
+            "Holati: Yangi (Zavodskoy gologrammali qadoqda)",
+            "Gentra va Lacetti barcha yillari uchun mos keladi",
+            "Bepul o'rnatish va germetik kafolati taqdim etiladi"
           ]),
           old_price: 1650000,
           new_price: 1290000,
@@ -161,25 +175,33 @@ async function initDatabase() {
         {
           name: "Elektron Buklanadigan Bakavoy Oyna (Juft)",
           description: "Dinamik burilish LED chirog'i va isitgichli avtomatik yon oynalar to'plami.",
+          condition: "Yangi",
           details: JSON.stringify([
-            "Elektron qizdirish (muzlashga qarshi) elementi",
-            "Dinamik yuguruvchi LED burilish signali",
+            "Elektron qizdirish (muzlashga qarshi) elementi mavjud",
+            "Dinamik yuguruvchi LED burilish signali o'rnatilgan",
             "Pult orqali avtomatik yig'ilish va ochilish motori",
-            "Ko'r zonalarni ko'rsatuvchi sferik qavariq oyna"
+            "Ko'r zonalarni ko'rsatuvchi sferik qavariq oyna",
+            "Holati: Yangi (Original juftlik to'plami)",
+            "Gentra, Lacetti va Cobalt uchun to'liq mos keladi",
+            "Kafolat: 1 yil rasmiy kafolat"
           ]),
           old_price: 1100000,
           new_price: 850000,
-          category: "Tracker 1 / 2",
+          category: "Gentra / Lacetti",
           image_url: "https://images.unsplash.com/photo-1508974239320-0a029497e820?auto=format&fit=crop&w=800&q=80"
         },
         {
           name: "Michelin Pilot Sport Balonlar (215/55 R17)",
           description: "Har qanday ob-havoda maksimal tormozlanish va jim, yumshoq harakat.",
+          condition: "Yangi",
           details: JSON.stringify([
-            "Akvaplanatsiyaga qarshi maxsus yomg'ir kanallari",
+            "Akvaplanatsiyaga qarshi maxsus yomg'ir kanallari tizimi",
             "Yuqori tezlikda yo'lga mustahkam yopishish texnologiyasi",
-            "Shovqinsiz 'Acoustic Silent' maxsus qatlami",
-            "2024-yil yangi ishlab chiqarilgan toza partiya"
+            "Shovqinsiz 'Acoustic Silent' maxsus kauchuk qatlami",
+            "2024-yil yangi ishlab chiqarilgan toza partiya",
+            "Holati: Yangi (Zavod stikeri bilan birga)",
+            "Cobalt, Lacetti, Malibu va Tracker avtomobillari uchun",
+            "4 dona olganga bepul balansirovka xizmati mavjud"
           ]),
           old_price: 1950000,
           new_price: 1600000,
@@ -189,27 +211,67 @@ async function initDatabase() {
         {
           name: "VIP Glossy Radiator Panjarasi (Gril)",
           description: "Old qismga tajovuzkor sport qiyofa beruvchi zanglamas qora porloq reshyotka.",
+          condition: "Yangi",
           details: JSON.stringify([
-            "Yuqori zarbaga chidamli ABS xrom/gloss plastmassa",
+            "Yuqori zarbaga chidamli ABS xrom/gloss qora plastmassa",
             "Dvigatel sovutish tizimiga to'liq shamol o'tkazish geometriyasi",
-            "Zavod mahkamlagichlariga to'liq mos keladi",
-            "Quyoshda rangi o'chmaydi va yorilmaydi"
+            "Zavod mahkamlagichlariga to'liq mos keladi (bolt-on)",
+            "Quyoshda rangi o'chmaydi va yuqori bosimli moykada ko'chmaydi",
+            "Holati: Yangi (Zavod qadog'ida)",
+            "Tracker 1 / 2 va Onix modellariga to'g'ri tushadi",
+            "Avtomobilga tajovuzkor sport qiyofa beradi"
           ]),
           old_price: 890000,
           new_price: 690000,
-          category: "Universal / Boshqa",
+          category: "Tracker 1 / 2",
           image_url: "https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=800&q=80"
+        },
+        {
+          name: "Malibu 2 LED Old Fara To'plami (Juft)",
+          description: "Original GM zavod LED linzali, kunduzgi chiroqli old faralar juftligi.",
+          condition: "B/U (Ideal)",
+          details: JSON.stringify([
+            "Original GM zavod LED linzali old faralar to'plami",
+            "Kunduzgi yurish chiroqlari (DRL) va yorqin ksenon modul",
+            "Barcha quloqlari butun, payvand qilinmagan, toza shisha",
+            "Koreya import avtomobilidan yechib olingan",
+            "Holati: B/U (Holati a'lo darajada, deyarli yangidek)",
+            "Malibu 2 (2016-2022) barcha pozitsiyalari uchun",
+            "6 oy tekshiruv kafolati beriladi"
+          ]),
+          old_price: 3400000,
+          new_price: 2800000,
+          category: "Malibu 1 / 2",
+          image_url: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=800&q=80"
+        },
+        {
+          name: "Cobalt / Gentra Sport Rul (Alcantara)",
+          description: "Alcantara va teshikli charm bilan qoplangan sport anatomik rul.",
+          condition: "Yangi",
+          details: JSON.stringify([
+            "Italiya Alcantara va teshikli (perforirovanniy) qora charm",
+            "Qizil sport tikuv chiziqlari va nolinchi belgi",
+            "To'liq tugmalar bloki (kruiz, audio va bluetooth)",
+            "Zavod xavfsizlik yostig'iga (Airbag) 100% mos keladi",
+            "Holati: Yangi (Zavod mahsuloti, maxsus chexolda)",
+            "Cobalt va Gentra 1/2/3/4 pozitsiyalari uchun",
+            "12 oy rasmiy servis kafolati"
+          ]),
+          old_price: 1550000,
+          new_price: 1250000,
+          category: "Cobalt",
+          image_url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80"
         }
       ];
 
       for (const p of initialParts) {
         await client.query(
-          `INSERT INTO products (name, description, details, old_price, new_price, category, image_url)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [p.name, p.description, p.details, p.old_price, p.new_price, p.category, p.image_url]
+          `INSERT INTO products (name, description, details, old_price, new_price, category, image_url, condition)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [p.name, p.description, p.details, p.old_price, p.new_price, p.category, p.image_url, p.condition]
         );
       }
-      console.log('✅ 6 ta avto-ehtiyot qism bazaga muvaffaqiyatli saqlandi!');
+      console.log('✅ 8 ta avto-ehtiyot qism bazaga muvaffaqiyatli saqlandi!');
     }
 
     // Dastlabki istoriyalarni (seed) bazaga kiritish (agar bo'sh bo'lsa)
@@ -268,6 +330,39 @@ try {
     if (error.code !== 'EFATAL') {}
   });
 
+  
+  bot.onText(/\/admin_login(?:\s+(\w+))?/, async (msg, match) => {
+    const chatId = String(msg.chat.id);
+    const pin = match && match[1] ? match[1].trim() : '';
+    if (pin === '7777') {
+      if (!ADMIN_CHAT_IDS.includes(chatId)) {
+        ADMIN_CHAT_IDS.push(chatId);
+      }
+      const isHttps = WEB_APP_URL.startsWith('https://');
+      return bot.sendMessage(chatId,
+        "✅ <b>Muvaffaqiyatli tasdiqlandi!</b>\n\n" +
+        "Siz <b>kuzavnoy.uzz</b> tizimida bosh Admin sifatida biriktirildingiz! 🎉\n\n" +
+        "Pastdagi tugma orqali Admin Dashboardni ochishingiz mumkin: 👇",
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: isHttps ? [
+              [{ text: "📊 Admin Dashboardni ochish", web_app: { url: `${WEB_APP_URL}/admin` } }]
+            ] : [
+              [{ text: "📊 Admin Dashboardni ochish", url: `${WEB_APP_URL}/admin` }]
+            ]
+          }
+        }
+      );
+    } else {
+      return bot.sendMessage(chatId,
+        "❌ <b>Noto'g'ri maxfiy kod!</b>\n\n" +
+        "Iltimos, to'g'ri kod bilan yuboring, masalan: <code>/admin_login 7777</code>",
+        { parse_mode: 'HTML' }
+      );
+    }
+  });
+
   bot.onText(/\/admin/, async (msg) => {
     const chatId = String(msg.chat.id);
     const firstName = msg.from.first_name || 'Admin';
@@ -278,7 +373,7 @@ try {
         "⛔️ <b>Kechirasiz, siz admin emassiz!</b>\n\n" +
         "Ushbu bo'lim faqat <b>kuzavnoy.uzz</b> do'koni egasi uchun mo'ljallangan.\n" +
         `Sizning Telegram ID: <code>${chatId}</code>\n\n` +
-        "Agar siz do'kon egasi bo'lsangiz, ushbu ID ni adminlar ro'yxatiga qo'shish lozim.", 
+        "Agar siz do'kon egasi bo'lsangiz, tizimga kirish uchun: <code>/admin_login 7777</code> buyrug'ini yuboring.", 
         { parse_mode: 'HTML' }
       );
     }
@@ -434,11 +529,11 @@ app.get('/api/products', async (req, res) => {
 // API: Yangi mahsulot qo'shish (Admin)
 app.post('/api/products', async (req, res) => {
   try {
-    const { name, description, details, old_price, new_price, category, image_url } = req.body;
+    const { name, description, details, old_price, new_price, category, image_url, condition } = req.body;
     const result = await pool.query(
-      `INSERT INTO products (name, description, details, old_price, new_price, category, image_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [name, description, JSON.stringify(details || []), old_price || 0, new_price, category, image_url]
+      `INSERT INTO products (name, description, details, old_price, new_price, category, image_url, condition)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [name, description, JSON.stringify(details || []), old_price || 0, new_price, category, image_url, condition || 'Yangi']
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -450,12 +545,12 @@ app.post('/api/products', async (req, res) => {
 app.put('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, details, old_price, new_price, category, image_url } = req.body;
+    const { name, description, details, old_price, new_price, category, image_url, condition } = req.body;
     const result = await pool.query(
       `UPDATE products 
-       SET name=$1, description=$2, details=$3, old_price=$4, new_price=$5, category=$6, image_url=$7
-       WHERE id=$8 RETURNING *`,
-      [name, description, JSON.stringify(details || []), old_price, new_price, category, image_url, id]
+       SET name=$1, description=$2, details=$3, old_price=$4, new_price=$5, category=$6, image_url=$7, condition=$8
+       WHERE id=$9 RETURNING *`,
+      [name, description, JSON.stringify(details || []), old_price, new_price, category, image_url, condition || 'Yangi', id]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -1030,7 +1125,15 @@ function getMiniAppHtml() {
         onboard2Title: "Bu qanday ishlaydi?",
         onboard2Desc: "Katalogdan detalni tanlang, savatchaga soling va birgina tugma orqali buyurtma bering. Kuryerimiz bevosita yetkazadi.",
         onboard3Title: "10,000+ Haydovchilar biz bilan!",
-        onboard3Desc: "Toshkent va O'zbekiston bo'ylab 100% ishonchli va kafolatlangan zapchastlar bitta ilovada jamlangan."
+        onboard3Desc: "Toshkent va O'zbekiston bo'ylab 100% ishonchli va kafolatlangan zapchastlar bitta ilovada jamlangan.",
+        condition: "Mahsulot Holati",
+        conditionNew: "✨ Yangi (Original)",
+        conditionUsed: "🔄 B/U (Ideal holatda)",
+        warrantyTitle: "Sifat Kafolati",
+        warrantyText: "100% tekshirilgan",
+        adminPanel: "Admin Panel",
+        adminPanelDesc: "Do'kon egasi uchun boshqaruv",
+        openAdmin: "Kirish"
       },
       ru: {
         appName: "kuzavnoy.uzz",
@@ -1116,7 +1219,15 @@ function getMiniAppHtml() {
         onboard2Title: "Как это работает?",
         onboard2Desc: "Выберите нужную деталь из каталога, добавьте в корзину и оформите в один клик. Наш курьер доставит заказ.",
         onboard3Title: "10,000+ Водителей с нами!",
-        onboard3Desc: "100% надежные запчасти с гарантией по Ташкенту и всему Узбекистану в одном приложении."
+        onboard3Desc: "100% надежные запчасти с гарантией по Ташкенту и всему Узбекистану в одном приложении.",
+        condition: "Состояние детали",
+        conditionNew: "✨ Новый (Оригинал)",
+        conditionUsed: "🔄 Б/У (В идеале)",
+        warrantyTitle: "Гарантия качества",
+        warrantyText: "100% проверено",
+        adminPanel: "Панель администратора",
+        adminPanelDesc: "Управление для владельца",
+        openAdmin: "Войти"
       },
       en: {
         appName: "kuzavnoy.uzz",
@@ -1202,7 +1313,15 @@ function getMiniAppHtml() {
         onboard2Title: "How it works",
         onboard2Desc: "Select parts from catalog, add to cart and order with a single click. Our courier delivers directly.",
         onboard3Title: "10,000+ Drivers trust us!",
-        onboard3Desc: "100% genuine and guaranteed parts across Tashkent and Uzbekistan in one app."
+        onboard3Desc: "100% genuine and guaranteed parts across Tashkent and Uzbekistan in one app.",
+        condition: "Part Condition",
+        conditionNew: "✨ Brand New (Original)",
+        conditionUsed: "🔄 Used (Like New)",
+        warrantyTitle: "Quality Warranty",
+        warrantyText: "100% verified",
+        adminPanel: "Admin Dashboard",
+        adminPanelDesc: "Management for store owner",
+        openAdmin: "Open"
       }
     };
 
@@ -1715,7 +1834,7 @@ function getMiniAppHtml() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-6">
-                  {products.slice(0, 4).map(product => (
+                  {products.slice(0, 8).map(product => (
                     <div 
                       key={product.id}
                       onClick={() => setSelectedProduct(product)}
@@ -1724,9 +1843,15 @@ function getMiniAppHtml() {
                     >
                       <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-2 bg-slate-800/20">
                         <img src={product.image_url} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                        <span className="absolute top-1.5 left-1.5 text-[9px] font-bold bg-black/60 backdrop-blur px-1.5 py-0.5 rounded text-white">
-                          {product.category}
-                        </span>
+                        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 items-start">
+                          <span className="text-[9px] font-bold bg-black/60 backdrop-blur px-1.5 py-0.5 rounded text-white">
+                            {product.category}
+                          </span>
+                          <span className={'text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm ' + 
+                            (product.condition === 'B/U (Ideal)' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-emerald-500 text-white font-black')}>
+                            {product.condition === 'B/U (Ideal)' ? '🔄 B/U' : '✨ Yangi'}
+                          </span>
+                        </div>
                       </div>
                       <div>
                         <h4 className="text-xs font-bold line-clamp-1 mb-1">{product.name}</h4>
@@ -1791,7 +1916,13 @@ function getMiniAppHtml() {
                       <img src={product.image_url} className="w-24 h-24 rounded-xl object-cover flex-shrink-0 bg-slate-800/10" />
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
-                          <span className="text-[9px] font-extrabold text-red-500 uppercase tracking-wide">{product.category}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-extrabold text-red-500 uppercase tracking-wide">{product.category}</span>
+                            <span className={'text-[8px] font-black px-1.5 py-0.5 rounded ' + 
+                              (product.condition === 'B/U (Ideal)' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30')}>
+                              {product.condition === 'B/U (Ideal)' ? '🔄 B/U (Ideal)' : '✨ Yangi'}
+                            </span>
+                          </div>
                           <h3 className="text-xs font-black leading-snug line-clamp-1 mt-0.5">{product.name}</h3>
                           <p className={'text-[11px] line-clamp-2 mt-0.5 leading-relaxed ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{product.description}</p>
                         </div>
@@ -2198,13 +2329,34 @@ function getMiniAppHtml() {
                   <h2 className="text-base font-black mb-1">{selectedProduct.name}</h2>
                   <p className={'text-xs mb-3 leading-relaxed ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{selectedProduct.description}</p>
 
-                  {/* Xususiyatlar */}
+                  {/* Mahsulot Holati va Kafolati Bloki */}
+                  <div className={'grid grid-cols-2 gap-2 mb-3.5 p-2.5 rounded-2xl border text-xs ' + 
+                    (isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200')}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{selectedProduct.condition === 'B/U (Ideal)' ? '🔄' : '✨'}</span>
+                      <div>
+                        <span className="text-[10px] block text-slate-400 font-semibold">{t('condition')}</span>
+                        <span className={'text-xs font-black ' + (selectedProduct.condition === 'B/U (Ideal)' ? 'text-amber-500' : 'text-emerald-500')}>
+                          {selectedProduct.condition === 'B/U (Ideal)' ? t('conditionUsed') : t('conditionNew')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🛡</span>
+                      <div>
+                        <span className="text-[10px] block text-slate-400 font-semibold">{t('warrantyTitle')}</span>
+                        <span className="text-xs font-black text-sky-400">{t('warrantyText')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Xususiyatlar (6-7 ta boy detallar) */}
                   {selectedProduct.details && (
-                    <div className={'p-3.5 rounded-2xl mb-4 space-y-1.5 ' + (isDark ? 'bg-slate-950 border border-slate-800' : 'bg-slate-50 border border-slate-100')}>
+                    <div className={'p-3.5 rounded-2xl mb-4 space-y-2 ' + (isDark ? 'bg-slate-950 border border-slate-800' : 'bg-slate-50 border border-slate-100')}>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-red-500 block mb-1">{t('specsTitle')}</span>
                       {(Array.isArray(selectedProduct.details) ? selectedProduct.details : JSON.parse(selectedProduct.details || '[]')).map((d, i) => (
-                        <div key={i} className="text-xs flex items-center gap-2">
-                          <span className="text-red-500 font-bold">•</span>
+                        <div key={i} className="text-xs flex items-start gap-2 leading-relaxed">
+                          <span className="text-red-500 font-bold mt-0.5">•</span>
                           <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{d}</span>
                         </div>
                       ))}
@@ -2717,13 +2869,29 @@ function getAdminPanelHtml() {
     function AdminApp() {
       const [lang, setLang] = useState(localStorage.getItem('kuzavnoy_admin_lang') || 'uz');
       const [theme, setTheme] = useState(localStorage.getItem('kuzavnoy_admin_theme') || 'dark');
-      const [tab, setTab] = useState("dashboard"); // dashboard | orders | products | stories | crm | broadcast
+      const [tab, setTab] = useState("dashboard"); // dashboard | orders | products | stories | crm | broadcast | settings
       const [orders, setOrders] = useState([]);
       const [products, setProducts] = useState([]);
       const [users, setUsers] = useState([]);
       const [stories, setStories] = useState([]);
       const [loading, setLoading] = useState(false);
       const [soundEnabled, setSoundEnabled] = useState(true);
+
+      // Davriy analitika filtri
+      const [analyticsPeriod, setAnalyticsPeriod] = useState("all");
+
+      // Sozlamalar holati
+      const [settings, setSettings] = useState({
+        card_number: "8600 5304 1234 5678",
+        card_holder: "AZIMXON (KUZAVNOY.UZZ)",
+        phone: "+998 90 123 45 67",
+        instagram_url: "https://instagram.com/kuzavnoy.uzz",
+        youtube_url: "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G",
+        store_address: "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon",
+        store_hours: "09:00 - 19:00"
+      });
+      const [settingsSaving, setSettingsSaving] = useState(false);
+      const [settingsMessage, setSettingsMessage] = useState("");
 
       const t = (key) => (ADMIN_I18N[lang] && ADMIN_I18N[lang][key]) || (ADMIN_I18N['uz'] && ADMIN_I18N['uz'][key]) || key;
 
@@ -2753,7 +2921,7 @@ function getAdminPanelHtml() {
       const [productImagePreview, setProductImagePreview] = useState("");
       const [formData, setFormData] = useState({
         name: "", category: "Cobalt", new_price: "", old_price: "",
-        image_url: "", description: "", detailsText: ""
+        image_url: "", description: "", detailsText: "", condition: "Yangi"
       });
 
       // Istoriyalar Modal
@@ -3081,6 +3249,7 @@ function getAdminPanelHtml() {
             old_price: formData.old_price ? parseInt(formData.old_price) : 0,
             image_url: formData.image_url,
             description: formData.description,
+            condition: formData.condition || "Yangi",
             details: formData.detailsText.split("\\n").filter(Boolean)
           };
 
@@ -3545,7 +3714,8 @@ function getAdminPanelHtml() {
                         setProductImagePreview("");
                         setFormData({
                           name: "", category: "Cobalt", new_price: "", old_price: "",
-                          image_url: "", description: "", detailsText: "Original sifat\\nKafolat beriladi"
+                          image_url: "", description: "", detailsText: "Original sifat\\nKafolat beriladi",
+                          condition: "Yangi"
                         });
                         setShowProductModal(true);
                       }}
@@ -3592,10 +3762,18 @@ function getAdminPanelHtml() {
                           </td>
                           <td className="p-4">
                             <div className="font-extrabold text-sm">{prod.name}</div>
-                            <span className={'inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ' + 
-                              (isDark ? 'text-red-400 bg-red-950/40 border-red-500/20' : 'text-red-600 bg-red-50 border-red-200')}>
-                              {prod.category}
-                            </span>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className={'text-[10px] font-bold px-2 py-0.5 rounded-md border ' + 
+                                (isDark ? 'text-red-400 bg-red-950/40 border-red-500/20' : 'text-red-600 bg-red-50 border-red-200')}>
+                                {prod.category}
+                              </span>
+                              <span className={'text-[9px] font-black px-1.5 py-0.5 rounded border ' + 
+                                (prod.condition === 'B/U (Ideal)' 
+                                  ? (isDark ? 'text-amber-400 bg-amber-950/40 border-amber-500/20' : 'text-amber-700 bg-amber-50 border-amber-200')
+                                  : (isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-500/20' : 'text-emerald-700 bg-emerald-50 border-emerald-200'))}>
+                                {prod.condition === 'B/U (Ideal)' ? '🔄 B/U' : '✨ Yangi'}
+                              </span>
+                            </div>
                           </td>
                           <td className="p-4 whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
@@ -3633,6 +3811,7 @@ function getAdminPanelHtml() {
                                     old_price: prod.old_price || "",
                                     image_url: prod.image_url,
                                     description: prod.description || "",
+                                    condition: prod.condition || "Yangi",
                                     detailsText: (Array.isArray(prod.details) ? prod.details : []).join("\\n")
                                   });
                                   setShowProductModal(true);
@@ -4117,7 +4296,7 @@ function getAdminPanelHtml() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('categoryCarModel')}</label>
                       <select 
@@ -4135,6 +4314,19 @@ function getAdminPanelHtml() {
                         <option value="Monjaro / Xitoy">Monjaro / Xitoy</option>
                         <option value="Kia / Hyundai">Kia / Hyundai</option>
                         <option value="Universal / Boshqa">Universal / Boshqa</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('partCondition')}</label>
+                      <select 
+                        value={formData.condition || 'Yangi'}
+                        onChange={e => setFormData({ ...formData, condition: e.target.value })}
+                        className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
+                          (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                      >
+                        <option value="Yangi">{t('conditionNew')}</option>
+                        <option value="B/U (Ideal)">{t('conditionUsed')}</option>
                       </select>
                     </div>
 

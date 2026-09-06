@@ -1986,18 +1986,21 @@ app.post('/api/orders', async (req, res) => {
           `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           `👇 <i>Buyurtmani boshqarish uchun pastdagi tugmani bosing:</i>`;
 
+        const mapMatch = location && location.match(/https?:\/\/[^\s]+/);
+        const mapUrl = mapMatch ? mapMatch[0] : null;
+
+        const inlineButtons = [
+          [{ text: "📊 Admin Panelda ko'rish", web_app: { url: `${WEB_APP_URL}/admin` } }]
+        ];
+        if (mapUrl) {
+          inlineButtons.unshift([{ text: "📍 Mijoz GPS Lokatsiyasi (Xaritada ochish)", url: mapUrl }]);
+        }
+
         for (const adminId of ADMIN_CHAT_IDS) {
           bot.sendMessage(adminId, adminText, { 
             parse_mode: 'HTML',
             reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: "📊 Admin Panelda ko'rish",
-                    web_app: { url: `${WEB_APP_URL}/admin` }
-                  }
-                ]
-              ]
+              inline_keyboard: inlineButtons
             }
           }).catch(e => console.error('Admin notify err:', e.message));
         }
@@ -2396,6 +2399,36 @@ function getMiniAppHtml() {
       const [custPhone, setCustPhone] = useState('+998 ');
       const [custAddress, setCustAddress] = useState('');
       const [deliveryType, setDeliveryType] = useState('delivery'); // 'delivery' | 'pickup'
+      const [isLocating, setIsLocating] = useState(false);
+      const [geoCoord, setGeoCoord] = useState(null);
+
+      const handleGetLocation = () => {
+        if (!navigator.geolocation) {
+          alert("Qurilmangizda geolokatsiya qo'llab-quvvatlanmaydi.");
+          return;
+        }
+        setIsLocating(true);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setIsLocating(false);
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            setGeoCoord({ lat, lng });
+            const gpsLabel = "📍 GPS: " + lat.toFixed(5) + ", " + lng.toFixed(5);
+            if (!custAddress.trim()) {
+              setCustAddress(gpsLabel);
+            } else if (!custAddress.includes('GPS:')) {
+              setCustAddress(custAddress.trim() + " (" + gpsLabel + ")");
+            }
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+          },
+          (err) => {
+            setIsLocating(false);
+            alert("Geolokatsiyani aniqlashga ruxsat berilmadi yoki xatolik yuz berdi. Iltimos, manzilni matn ko'rinishida yozing.");
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      };
       const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'cash'
       const [cardCopied, setCardCopied] = useState(false);
       const [isSubmitting, setIsSubmitting] = useState(false);
@@ -2697,9 +2730,14 @@ function getMiniAppHtml() {
             });
           }
 
-          const finalLocation = deliveryType === 'pickup' 
+          let finalLocation = deliveryType === 'pickup' 
             ? t('pickupStoreAddress')
             : (custAddress || (lang === 'ru' ? "г. Ташкент (Доставка)" : (lang === 'en' ? "Tashkent city (Delivery)" : "Toshkent shahri (Yetkazib berish)")));
+
+          if (deliveryType === 'delivery' && geoCoord) {
+            const gMapUrl = "https://maps.google.com/?q=" + geoCoord.lat + "," + geoCoord.lng;
+            finalLocation = finalLocation + " | 🗺 Xarita: " + gMapUrl;
+          }
 
           const payload = {
             telegram_id: tgUser.id,
@@ -3308,18 +3346,71 @@ function getMiniAppHtml() {
                         </div>
                       </div>
 
-                      {/* Manzil yoki Samovivoz tafsiloti */}
+                      {/* Manzil yoki Samovivoz tafsiloti (GPS Lokatsiya bilan) */}
                       {deliveryType === 'delivery' ? (
-                        <div>
-                          <label className={'text-[10px] font-bold block mb-1 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('addressLabel')}</label>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('addressLabel')}</label>
+                            <span className="text-[9px] text-slate-400">Qo'lda yozing yoki GPS tugmasini bosing</span>
+                          </div>
+                          
                           <input 
                             type="text" 
                             value={custAddress}
                             onChange={e => setCustAddress(e.target.value)}
-                            placeholder={t('addressPlaceholder')}
+                            placeholder="Tuman, ko'cha, uy / xonadon raqami"
                             className={'w-full p-2.5 rounded-xl text-xs border focus:outline-none focus:border-red-500 ' + 
                               (isDark ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400')}
                           />
+
+                          {/* 📍 GPS Hozirgi Lokatsiyani olish tugmasi */}
+                          <button
+                            type="button"
+                            onClick={handleGetLocation}
+                            disabled={isLocating}
+                            className={'w-full py-2 px-3 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer ' + 
+                              (geoCoord 
+                                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400' 
+                                : (isDark ? 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'))}
+                          >
+                            {isLocating ? (
+                              <>
+                                <span className="animate-spin">⏳</span>
+                                <span>🛰 Lokatsiyangiz aniqlanmoqda...</span>
+                              </>
+                            ) : geoCoord ? (
+                              <>
+                                <span>✅</span>
+                                <span>📍 GPS aniqlandi ({geoCoord.lat.toFixed(4)}, {geoCoord.lng.toFixed(4)})</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>📍</span>
+                                <span>Hozirgi turgan joyimni aniqlash (GPS)</span>
+                              </>
+                            )}
+                          </button>
+
+                          {geoCoord && (
+                            <div className="flex items-center gap-2 pt-0.5">
+                              <a 
+                                href={"https://maps.google.com/?q=" + geoCoord.lat + "," + geoCoord.lng} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="flex-1 py-1 px-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] text-blue-500 text-center font-bold hover:underline"
+                              >
+                                Google Xaritada ko'rish ↗
+                              </a>
+                              <a 
+                                href={"https://yandex.uz/maps/?pt=" + geoCoord.lng + "," + geoCoord.lat + "&z=17"} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="flex-1 py-1 px-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] text-amber-500 text-center font-bold hover:underline"
+                              >
+                                Yandex Kartada ko'rish ↗
+                              </a>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className={'p-3.5 rounded-2xl border space-y-2 ' + (isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-red-50/60 border-red-100 text-slate-800')}>
@@ -4506,6 +4597,7 @@ function getAdminPanelHtml() {
       };
 
       const updateOrderStatus = async (id, status) => {
+        setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
         try {
           await fetch("/api/orders/" + id + "/status", {
             method: "PUT",
@@ -4514,6 +4606,7 @@ function getAdminPanelHtml() {
           });
           fetchOrders();
         } catch(e) {
+          fetchOrders();
           alert("Holatni yangilashda xatolik!");
         }
       };
@@ -5069,20 +5162,39 @@ function getAdminPanelHtml() {
                   />
                 </div>
 
-                {/* Status Filtrlar */}
+                {/* Status Filtrlar (Bo'limlar) */}
                 <div className={'px-6 py-2.5 border-b flex gap-2 overflow-x-auto no-scrollbar ' + (isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                  {["Barchasi", "Kutilmoqda", "Jarayonda", "Yetkazildi", "Bekor qilindi"].map(st => (
-                    <button
-                      key={st}
-                      onClick={() => setOrderStatusFilter(st)}
-                      className={'px-3 py-1 rounded-lg text-xs font-bold transition ' + 
-                        (orderStatusFilter === st 
-                          ? (isDark ? 'bg-slate-800 text-white border border-slate-700' : 'bg-white text-slate-900 border border-slate-300 shadow-sm') 
-                          : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'))}
-                    >
-                      {st === 'Barchasi' ? t('all') : (st === 'Kutilmoqda' ? t('pending') : (st === 'Jarayonda' ? t('processing') : (st === 'Yetkazildi' ? t('delivered') : t('cancelled'))))}
-                    </button>
-                  ))}
+                  {["Barchasi", "Kutilmoqda", "Jarayonda", "Tayyorlandi", "Yetkazildi", "Bekor qilindi"].map(st => {
+                    const count = st === "Barchasi" ? orders.length : orders.filter(o => o.status === st).length;
+                    let emoji = "📋";
+                    let label = st;
+                    if (st === "Barchasi") { emoji = "📋"; label = t('all'); }
+                    else if (st === "Kutilmoqda") { emoji = "🟡"; label = t('pending'); }
+                    else if (st === "Jarayonda") { emoji = "🔵"; label = t('processing'); }
+                    else if (st === "Tayyorlandi") { emoji = "📦"; label = "Tayyorlandi"; }
+                    else if (st === "Yetkazildi") { emoji = "🟢"; label = t('delivered'); }
+                    else if (st === "Bekor qilindi") { emoji = "🔴"; label = t('cancelled'); }
+
+                    return (
+                      <button
+                        key={st}
+                        onClick={() => setOrderStatusFilter(st)}
+                        className={'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ' + 
+                          (orderStatusFilter === st 
+                            ? (isDark ? 'bg-slate-800 text-white border border-slate-700 shadow-sm' : 'bg-white text-slate-900 border border-slate-300 shadow-sm') 
+                            : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'))}
+                      >
+                        <span>{emoji}</span>
+                        <span>{label}</span>
+                        <span className={'px-1.5 py-0.2 rounded-full text-[10px] font-black ' + 
+                          (orderStatusFilter === st 
+                            ? (isDark ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-900') 
+                            : (isDark ? 'bg-slate-800/80 text-slate-400' : 'bg-slate-100 text-slate-500'))}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Jadval */}
@@ -5125,7 +5237,27 @@ function getAdminPanelHtml() {
                                   {order.payment_method === 'card' ? "💳 Karta/Visa" : "💵 Naqd"}
                                 </span>
                               </div>
-                              <div className={'text-[10px] line-clamp-1 mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{order.location}</div>
+                              <div className={'text-[10px] mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>
+                                {(() => {
+                                  if (!order.location) return "—";
+                                  if (order.location.indexOf('http') === -1) {
+                                    return <span className="line-clamp-1">{order.location}</span>;
+                                  }
+                                  var parts = order.location.split(' | 🗺 Xarita: ');
+                                  var cleanLoc = parts[0] || 'Manzil';
+                                  var mapUrl = parts.length > 1 ? parts[1] : (order.location.indexOf('http') === 0 ? order.location : order.location.slice(order.location.indexOf('http')));
+                                  return (
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="line-clamp-1">{cleanLoc}</span>
+                                      {mapUrl && (
+                                        <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-400 font-bold hover:underline">
+                                          <span>📍 Xaritada ochish (GPS) ↗</span>
+                                        </a>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </td>
                             <td className="p-4 max-w-xs">
                               {(Array.isArray(order.items) ? order.items : (typeof order.items === 'string' ? JSON.parse(order.items || '[]') : [])).map((it, idx) => (
@@ -5153,24 +5285,28 @@ function getAdminPanelHtml() {
                             </td>
                             <td className="p-4 text-right whitespace-nowrap">
                               <div className="flex items-center justify-end gap-1.5">
-                                <button 
-                                  onClick={() => setSelectedReceiptOrder(order)}
-                                  title="Chekni ochish va ko'rish"
-                                  className={'px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition flex items-center gap-1 ' + 
-                                    (isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300')}
-                                >
-                                  <span>🧾</span>
-                                  <span>{t('receipt')}</span>
-                                </button>
-                                {order.status === "Bekor qilindi" && (
+                                {(order.status === "Yetkazildi" || order.status === "Tayyorlandi") ? (
+                                  <button 
+                                    onClick={() => setSelectedReceiptOrder(order)}
+                                    title="Fiskal chekni ochish (Soliq 1% keshbek)"
+                                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm border-emerald-600 cursor-pointer animate-pulse"
+                                  >
+                                    <span>🧾</span>
+                                    <span>{t('receipt')}</span>
+                                  </button>
+                                ) : order.status === "Bekor qilindi" ? (
                                   <button 
                                     onClick={() => handleDeleteOrder(order.id)}
-                                    title="Bekor qilingan buyurtmani bazadan tozalash (Task 2)"
-                                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold bg-rose-600/15 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-500/30 transition flex items-center gap-1"
+                                    title="Bekor qilingan buyurtmani tozalash"
+                                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold bg-rose-600/15 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-500/30 transition flex items-center gap-1 cursor-pointer"
                                   >
                                     <span>🗑</span>
                                     <span className="hidden sm:inline">O'chirish</span>
                                   </button>
+                                ) : (
+                                  <span className={'px-2 py-1 rounded-lg text-[10px] font-semibold ' + (isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500')}>
+                                    {order.status === "Jarayonda" ? "🔵 Tayyorlanmoqda" : "🟡 Kutilmoqda"}
+                                  </span>
                                 )}
                               </div>
                             </td>

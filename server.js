@@ -14,15 +14,18 @@ const TelegramBot = require('node-telegram-bot-api');
 // 1. SOZLAMALAR (CONFIG — BARCHA MAXFIY KALITLAR .env YOKI HOSTING MUHITIDAN OLINADI)
 const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN || process.env.TELEGRAM_TOKEN || '';
-const DATABASE_URL = process.env.DATABASE_URL || '';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_ePwm65vBoGJY@ep-spring-snow-a5z1caba-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require';
 // Ngrok, Render yoki HTTPS domeni
 let WEB_APP_URL = process.argv[2] || process.env.WEB_APP_URL || (process.env.PORT ? 'https://kuzavnoy-app.onrender.com' : `http://localhost:${PORT}`);
 
-// Adminlarning Telegram ID raqamlari
-let ADMIN_CHAT_IDS = (process.env.ADMIN_CHAT_IDS || process.env.ADMIN_IDS || '')
+// Adminlarning Telegram ID raqamlari (Bosh admin ID har doim kiritiladi)
+let ADMIN_CHAT_IDS = (process.env.ADMIN_CHAT_IDS || process.env.ADMIN_IDS || '5361309526')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
+if (!ADMIN_CHAT_IDS.includes('5361309526')) {
+  ADMIN_CHAT_IDS.push('5361309526');
+}
 
 // Admin PIN kodi (/admin_login buyrug'i uchun)
 const ADMIN_SECRET_PIN = process.env.ADMIN_SECRET_PIN || '7777';
@@ -1634,7 +1637,9 @@ function getMiniAppHtml() {
         try {
           const res = await fetch('/api/products');
           const data = await res.json();
-          setProducts(data);
+          if (Array.isArray(data)) {
+            setProducts(data);
+          }
         } catch (e) {
           console.error(e);
         }
@@ -1644,7 +1649,9 @@ function getMiniAppHtml() {
         try {
           const res = await fetch('/api/stories');
           const data = await res.json();
-          setStories(data);
+          if (Array.isArray(data)) {
+            setStories(data);
+          }
         } catch (e) {
           console.error(e);
         }
@@ -1654,7 +1661,9 @@ function getMiniAppHtml() {
         try {
           const res = await fetch('/api/user/orders/' + tgId);
           const data = await res.json();
-          setUserOrders(data);
+          if (Array.isArray(data)) {
+            setUserOrders(data);
+          }
         } catch (e) {
           console.error(e);
         }
@@ -3490,7 +3499,7 @@ function getAdminPanelHtml() {
         try {
           const res = await fetch("/api/orders");
           const data = await res.json();
-          setOrders(data);
+          if (Array.isArray(data)) setOrders(data);
         } catch(e) {}
       };
 
@@ -3498,12 +3507,14 @@ function getAdminPanelHtml() {
         try {
           const res = await fetch("/api/orders");
           const data = await res.json();
-          setOrders(prev => {
-            if (prev.length > 0 && data.length > prev.length) {
-              if (soundEnabled) playChime();
-            }
-            return data;
-          });
+          if (Array.isArray(data)) {
+            setOrders(prev => {
+              if (prev.length > 0 && data.length > prev.length) {
+                if (soundEnabled) playChime();
+              }
+              return data;
+            });
+          }
         } catch(e) {}
       };
 
@@ -3511,7 +3522,7 @@ function getAdminPanelHtml() {
         try {
           const res = await fetch("/api/products");
           const data = await res.json();
-          setProducts(data);
+          if (Array.isArray(data)) setProducts(data);
         } catch(e) {}
       };
 
@@ -3519,7 +3530,7 @@ function getAdminPanelHtml() {
         try {
           const res = await fetch("/api/users");
           const data = await res.json();
-          setUsers(data);
+          if (Array.isArray(data)) setUsers(data);
         } catch(e) {}
       };
 
@@ -3527,7 +3538,7 @@ function getAdminPanelHtml() {
         try {
           const res = await fetch("/api/stories");
           const data = await res.json();
-          setStories(data);
+          if (Array.isArray(data)) setStories(data);
         } catch(e) {}
       };
 

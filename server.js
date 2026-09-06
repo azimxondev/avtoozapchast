@@ -3,28 +3,41 @@
 // Telegram Bot + REST API + PostgreSQL (Neon) + React Mini App + React Admin Panel
 // ==============================================================================
 
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 process.env.NTBA_FIX_350 = 1;
 const TelegramBot = require('node-telegram-bot-api');
 
-// 1. SOZLAMALAR (CONFIG)
+// 1. SOZLAMALAR (CONFIG — BARCHA MAXFIY KALITLAR .env YOKI HOSTING MUHITIDAN OLINADI)
 const PORT = process.env.PORT || 3000;
-const BOT_TOKEN = process.env.BOT_TOKEN || '8847186451:AAHk4YYqvkuo1pjQjdGsFRnhKbY9VABlBQs';
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_ePwm65vBoGJY@ep-spring-snow-a5z1caba-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require';
+const BOT_TOKEN = process.env.BOT_TOKEN || process.env.TELEGRAM_TOKEN || '';
+const DATABASE_URL = process.env.DATABASE_URL || '';
 // Ngrok, Render yoki HTTPS domeni
 let WEB_APP_URL = process.argv[2] || process.env.WEB_APP_URL || (process.env.PORT ? 'https://kuzavnoy-app.onrender.com' : `http://localhost:${PORT}`);
 
-// Adminlarning Telegram ID raqamlari (yangi zakaz tushganda bularga to'g'ridan-to'g'ri xabar boradi)
-let ADMIN_CHAT_IDS = process.env.ADMIN_CHAT_IDS 
-  ? process.env.ADMIN_CHAT_IDS.split(',').map(s => s.trim()) 
-  : ['5361309526'];
+// Adminlarning Telegram ID raqamlari
+let ADMIN_CHAT_IDS = (process.env.ADMIN_CHAT_IDS || process.env.ADMIN_IDS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+// Admin PIN kodi (/admin_login buyrug'i uchun)
+const ADMIN_SECRET_PIN = process.env.ADMIN_SECRET_PIN || '7777';
+
+if (!DATABASE_URL) {
+  console.error('⚠️ DIQQAT: DATABASE_URL topilmadi! Iltimos, .env faylida yoki Render Environment Variables da DATABASE_URL ni belgilang.');
+}
+if (!BOT_TOKEN) {
+  console.warn('⚠️ DIQQAT: BOT_TOKEN (yoki TELEGRAM_TOKEN) topilmadi! Iltimos, .env faylida yoki Render Environment Variables da BOT_TOKEN ni belgilang.');
+}
 
 // 2. MA'LUMOTLAR BAZASI (POSTGRESQL - NEON)
 const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  connectionString: DATABASE_URL || 'postgresql://localhost:5432/postgres',
+  ssl: DATABASE_URL && DATABASE_URL.includes('sslmode=require') ? { rejectUnauthorized: false } : false
 });
 
 async function initDatabase() {
@@ -319,9 +332,9 @@ async function initDatabase() {
     if (parseInt(reviewsCount.rows[0].count) === 0) {
       await client.query(`
         INSERT INTO reviews (product_id, telegram_id, customer_name, rating, comment) VALUES
-        (1, 5361309526, 'Azizbek', 5, 'M-Sport rul juda sifatli ekan, mashinaga 100% tushdi. Tavsiya qilaman!'),
-        (2, 5361309527, 'Jasur', 5, 'Malibu 2 bar olingan, simsiz zaryadkasi tez va qulay ishlayapti.'),
-        (3, 5361309528, 'Sherzod', 5, 'Benson labavoy oyna zo''r, quyosh issig''i umuman sezilmayapti.')
+        (1, 10001, 'Azizbek', 5, 'M-Sport rul juda sifatli ekan, mashinaga 100% tushdi. Tavsiya qilaman!'),
+        (2, 10002, 'Jasur', 5, 'Malibu 2 bar olingan, simsiz zaryadkasi tez va qulay ishlayapti.'),
+        (3, 10003, 'Sherzod', 5, 'Benson labavoy oyna zo''r, quyosh issig''i umuman sezilmayapti.')
       `);
       console.log('✅ Dastlabki mijoz sharhlari (Reviews) bazaga kiritildi!');
     }
@@ -344,9 +357,10 @@ initDatabase();
 
 // 3. TELEGRAM BOT
 let bot;
-try {
-  bot = new TelegramBot(BOT_TOKEN, { polling: true });
-  console.log('🤖 Telegram Bot ishga tushdi (@kuzavnoy.uzz bot)!');
+if (BOT_TOKEN) {
+  try {
+    bot = new TelegramBot(BOT_TOKEN, { polling: true });
+    console.log('🤖 Telegram Bot ishga tushdi (@kuzavnoy.uzz bot)!');
 
   bot.on('polling_error', (error) => {
     if (error.code !== 'EFATAL') {}
@@ -446,7 +460,7 @@ try {
   bot.onText(/\/admin_login(?:\s+(\w+))?/, async (msg, match) => {
     const chatId = String(msg.chat.id);
     const pin = match && match[1] ? match[1].trim() : '';
-    if (pin === '7777') {
+    if (pin === ADMIN_SECRET_PIN) {
       if (!ADMIN_CHAT_IDS.includes(chatId)) {
         ADMIN_CHAT_IDS.push(chatId);
       }
@@ -485,7 +499,7 @@ try {
         "⛔️ <b>Kechirasiz, siz admin emassiz!</b>\n\n" +
         "Ushbu bo'lim faqat <b>kuzavnoy.uzz</b> do'koni egasi uchun mo'ljallangan.\n" +
         `Sizning Telegram ID: <code>${chatId}</code>\n\n` +
-        "Agar siz do'kon egasi bo'lsangiz, tizimga kirish uchun: <code>/admin_login 7777</code> buyrug'ini yuboring.", 
+        `Agar siz do'kon egasi bo'lsangiz, tizimga kirish uchun: <code>/admin_login ${ADMIN_SECRET_PIN}</code> buyrug'ini yuboring.`, 
         { parse_mode: 'HTML' }
       );
     }
@@ -588,8 +602,11 @@ try {
       }
     });
   });
-} catch (e) {
-  console.error('Telegram bot ishga tushmadi:', e.message);
+  } catch (e) {
+    console.error('Telegram bot ishga tushmadi:', e.message);
+  }
+} else {
+  console.warn('⚠️ BOT_TOKEN kiritilmagani sababli Telegram Bot ishga tushmadi. Mini App va Admin Panel veb-rejimda ishlayveradi.');
 }
 
 // 4. EXPRESS SERVER VA REST API

@@ -96,7 +96,15 @@ async function initDatabase() {
         id INT PRIMARY KEY DEFAULT 1,
         card_number VARCHAR(100) DEFAULT '8600 5304 1234 5678',
         card_holder VARCHAR(255) DEFAULT 'AZIMXON (KUZAVNOY.UZZ)',
+        uzcard_number VARCHAR(100) DEFAULT '8600 5304 1234 5678',
+        uzcard_holder VARCHAR(255) DEFAULT 'AZIMXON (KUZAVNOY.UZZ)',
+        humo_number VARCHAR(100) DEFAULT '9860 1201 5678 4321',
+        humo_holder VARCHAR(255) DEFAULT 'AZIMXON (KUZAVNOY.UZZ)',
+        visa_number VARCHAR(100) DEFAULT '',
+        visa_holder VARCHAR(255) DEFAULT 'AZIMXON (KUZAVNOY.UZZ)',
         phone VARCHAR(50) DEFAULT '+998 90 123 45 67',
+        phone2 VARCHAR(50) DEFAULT '+998 97 765 43 21',
+        phone3 VARCHAR(50) DEFAULT '+998 99 888 77 66',
         instagram_url VARCHAR(255) DEFAULT 'https://instagram.com/kuzavnoy.uzz',
         youtube_url VARCHAR(255) DEFAULT 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
         store_address TEXT DEFAULT 'Toshkent sh., Sergeli mashina bozori, 4-qator 12-do''kon',
@@ -423,14 +431,22 @@ try {
 
     const welcomeText = 
       `Assalomu alaykum, <b>${firstName}</b>!\n\n` +
-      `🚗 <b>kuzavnoy.uzz</b> — Avtomobil ehtiyot qismlari rasmiy do'konimizga xush kelibsiz!\n\n` +
-      `Bizda: Original Rullar, Barlar, Labavoy va Bakavoy oynalar, Balonlar hamda kuzov qismlari kafolat bilan sotiladi.\n\n` +
-      `🌐 <b>Bizning rasmiy sahifalarimiz:</b>\n` +
-      `📸 <b>Instagram:</b> <a href="https://instagram.com/kuzavnoy.uzz">@kuzavnoy.uzz</a>\n` +
-      `▶️ <b>YouTube:</b> <a href="https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G">kuzavnoy.uzz kanali</a>\n` +
-      `🤖 <b>Rasmiy Bot:</b> @kuzavnoyuz_bot\n\n` +
-      (isAdmin ? `⭐️ <i>Siz tizimda Admin sifatida aniqlandingiz!</i>\n\n` : '') +
-      `Pastdagi tugmani bosing va qulay <b>Telegram Mini App</b> orqali xarid qiling! 👇`;
+      `🚗 <b>kuzavnoy.uzz — Professional Avto Ehtiyot Qismlari va Tyuning Markazi</b>\n\n` +
+      `Biz avtomobilingiz uchun 100% original, kafolatlangan va yuqori sifatli ehtiyot qismlar, salon aksessuarlari va kuzov jihozlarini yetkazib beramiz.\n\n` +
+      `🔹 <b>Bizning asosiy yo'nalishlarimiz:</b>\n` +
+      `• Original va Sport Rullar (M-Sport, Anatomiya, Carbon, Alcantara)\n` +
+      `• O'rta konsol barlar (simsiz zaryadkali, podstakannikli)\n` +
+      `• Benson va Fuyao akustik/quyoshdan himoya labavoy oynalari\n` +
+      `• Elektron buklanadigan qizdirgichli bakavoy oynalar\n` +
+      `• Michelin va yetakchi brendlarning sifatli shinalari\n` +
+      `• Kuzov detallari, radiator panjaralari va sport optika\n\n` +
+      `⚡️ <b>Nima uchun aynan kuzavnoy.uzz?</b>\n` +
+      `✅ 100% Zavodskoy sifat va rasmiy servis kafolati\n` +
+      `🚀 Toshkent shahri bo'ylab 2 soatda tezkor kuryerlik yetkazishi\n` +
+      `📦 O'zbekistonning barcha viloyatlariga ishonchli jo'natish\n` +
+      `💳 Qulay to'lov: Uzcard, Humo, Visa yoki qabul qilinganda naqd\n\n` +
+      (isAdmin ? `⭐️ <b>Hurmatli Admin</b>, siz tizimda do'kon boshqaruvchisi sifatida aniqlandingiz.\n\n` : '') +
+      `Pastdagi <b>«🛒 Katalog & Xarid qilish»</b> tugmasini bosing va ilovamizdan kerakli detalni qulay tanlang! 👇`;
 
     const buttons = [];
     if (isHttps) {
@@ -604,8 +620,8 @@ app.put('/api/orders/:id/status', async (req, res) => {
       let statusIcon = 'ℹ️';
       let statusMsg = `Buyurtmangiz holati: <b>${status}</b> ga o'zgardi.`;
       if (status === 'Jarayonda') {
-        statusIcon = '🔵';
-        statusMsg = "Buyurtmangiz <b>tayyorlanmoqda</b> va tez orada kuryerga topshiriladi 🚗💨";
+        statusIcon = '✅';
+        statusMsg = "Sizning buyurtmangiz <b>qabul qilindi va tayyorlanmoqda</b>! Tez orada kuryerimiz siz bilan bog'lanadi 🚗💨";
       } else if (status === 'Yetkazildi') {
         statusIcon = '🟢';
         statusMsg = "Buyurtmangiz <b>muvaffaqiyatli yetkazib berildi</b>! Xaridingiz uchun rahmat! 🎉";
@@ -647,14 +663,29 @@ app.get('/api/settings', async (req, res) => {
 // API: Do'kon sozlamalarini saqlash (Admin)
 app.put('/api/settings', async (req, res) => {
   try {
-    const { card_number, card_holder, phone, instagram_url, youtube_url, store_address, store_hours } = req.body;
+    const { 
+      card_number, card_holder,
+      uzcard_number, uzcard_holder,
+      humo_number, humo_holder,
+      visa_number, visa_holder,
+      phone, phone2, phone3,
+      instagram_url, youtube_url, store_address, store_hours 
+    } = req.body;
     const result = await pool.query(
-      `INSERT INTO store_settings (id, card_number, card_holder, phone, instagram_url, youtube_url, store_address, store_hours, updated_at)
-       VALUES (1, $1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+      `INSERT INTO store_settings (id, card_number, card_holder, uzcard_number, uzcard_holder, humo_number, humo_holder, visa_number, visa_holder, phone, phone2, phone3, instagram_url, youtube_url, store_address, store_hours, updated_at)
+       VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
        ON CONFLICT (id) DO UPDATE SET
          card_number = EXCLUDED.card_number,
          card_holder = EXCLUDED.card_holder,
+         uzcard_number = EXCLUDED.uzcard_number,
+         uzcard_holder = EXCLUDED.uzcard_holder,
+         humo_number = EXCLUDED.humo_number,
+         humo_holder = EXCLUDED.humo_holder,
+         visa_number = EXCLUDED.visa_number,
+         visa_holder = EXCLUDED.visa_holder,
          phone = EXCLUDED.phone,
+         phone2 = EXCLUDED.phone2,
+         phone3 = EXCLUDED.phone3,
          instagram_url = EXCLUDED.instagram_url,
          youtube_url = EXCLUDED.youtube_url,
          store_address = EXCLUDED.store_address,
@@ -662,9 +693,17 @@ app.put('/api/settings', async (req, res) => {
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
       [
-        card_number || '8600 5304 1234 5678',
-        card_holder || 'AZIMXON (KUZAVNOY.UZZ)',
+        card_number || uzcard_number || '8600 5304 1234 5678',
+        card_holder || uzcard_holder || 'AZIMXON (KUZAVNOY.UZZ)',
+        uzcard_number || '8600 5304 1234 5678',
+        uzcard_holder || 'AZIMXON (KUZAVNOY.UZZ)',
+        humo_number || '9860 1201 5678 4321',
+        humo_holder || 'AZIMXON (KUZAVNOY.UZZ)',
+        visa_number || '',
+        visa_holder || 'AZIMXON (KUZAVNOY.UZZ)',
         phone || '+998 90 123 45 67',
+        phone2 || '',
+        phone3 || '',
         instagram_url || 'https://instagram.com/kuzavnoy.uzz',
         youtube_url || 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
         store_address || 'Toshkent sh., Sergeli mashina bozori, 4-qator 12-do\'kon',
@@ -1353,12 +1392,21 @@ function getMiniAppHtml() {
       const [settings, setSettings] = useState({
         card_number: '8600 5304 1234 5678',
         card_holder: 'AZIMXON (KUZAVNOY.UZZ)',
+        uzcard_number: '8600 5304 1234 5678',
+        uzcard_holder: 'AZIMXON (KUZAVNOY.UZZ)',
+        humo_number: '9860 1201 5678 4321',
+        humo_holder: 'AZIMXON (KUZAVNOY.UZZ)',
+        visa_number: '',
+        visa_holder: 'AZIMXON (KUZAVNOY.UZZ)',
         phone: '+998 90 123 45 67',
+        phone2: '+998 97 765 43 21',
+        phone3: '+998 99 888 77 66',
         instagram_url: 'https://instagram.com/kuzavnoy.uzz',
         youtube_url: 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
         store_address: "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon",
         store_hours: '09:00 - 19:00'
       });
+      const [selectedCardIdx, setSelectedCardIdx] = useState(0);
       const [newRating, setNewRating] = useState(5);
       const [newComment, setNewComment] = useState('');
       const [isSendingReview, setIsSendingReview] = useState(false);
@@ -1452,13 +1500,30 @@ function getMiniAppHtml() {
         try {
           const res = await fetch('/api/settings');
           const data = await res.json();
-          if (data && data.card_number) {
+          if (data && (data.card_number || data.uzcard_number)) {
             setSettings(data);
           }
         } catch (e) {
           console.error('Settings fetch error:', e);
         }
       };
+
+      const availableCards = useMemo(() => {
+        const list = [];
+        if (settings.uzcard_number && settings.uzcard_number.trim()) {
+          list.push({ type: 'uzcard', name: 'Uzcard', number: settings.uzcard_number, holder: settings.uzcard_holder || settings.card_holder, badge: '🔵 UZCARD' });
+        }
+        if (settings.humo_number && settings.humo_number.trim()) {
+          list.push({ type: 'humo', name: 'Humo', number: settings.humo_number, holder: settings.humo_holder || settings.card_holder, badge: '🟠 HUMO' });
+        }
+        if (settings.visa_number && settings.visa_number.trim()) {
+          list.push({ type: 'visa', name: 'Visa / MC', number: settings.visa_number, holder: settings.visa_holder || settings.card_holder, badge: '🟡 VISA' });
+        }
+        if (list.length === 0) {
+          list.push({ type: 'card', name: 'Uzcard', number: settings.card_number || '8600 5304 1234 5678', holder: settings.card_holder || 'AZIMXON (KUZAVNOY.UZZ)', badge: '💳 KARTA' });
+        }
+        return list;
+      }, [settings]);
 
       const handleCancelOrder = async (orderId) => {
         if (!confirm(t('cancelOrderConfirm'))) return;
@@ -2134,24 +2199,45 @@ function getMiniAppHtml() {
 
                       {/* Karta vidjeti yoki Naqd to'lov izohi */}
                       {paymentMethod === 'card' ? (
-                        <div className={'p-3.5 rounded-2xl border space-y-2 ' + (isDark ? 'bg-slate-950 border-slate-800' : 'bg-gradient-to-br from-slate-900 to-slate-800 text-white')}>
+                        <div className={'p-3.5 rounded-2xl border space-y-2.5 ' + (isDark ? 'bg-slate-950 border-slate-800' : 'bg-gradient-to-br from-slate-900 to-slate-800 text-white')}>
+                          {availableCards.length > 1 && (
+                            <div className="flex gap-1.5 pb-1 border-b border-white/10">
+                              {availableCards.map((c, idx) => (
+                                <button
+                                  key={c.type}
+                                  type="button"
+                                  onClick={() => setSelectedCardIdx(idx)}
+                                  className={'px-2.5 py-1 rounded-xl text-[10px] font-black border transition ' + 
+                                    (selectedCardIdx === idx 
+                                      ? 'bg-red-600 border-red-500 text-white shadow-sm' 
+                                      : 'bg-white/10 border-white/10 text-slate-300 hover:bg-white/20')}
+                                >
+                                  {c.badge}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           <div className="flex items-center justify-between text-xs">
-                            <span className="font-extrabold text-[10px] tracking-wider uppercase text-amber-400">💳 UZCARD • HUMO • VISA</span>
+                            <span className="font-extrabold text-[10px] tracking-wider uppercase text-amber-400">
+                              {(availableCards[selectedCardIdx] || availableCards[0]).badge} TO'LOV
+                            </span>
                             <span className="text-[10px] bg-red-600 px-1.5 py-0.5 rounded text-white font-black">Click / Payme</span>
                           </div>
-                          <div className="flex items-center justify-between pt-1">
-                            <span className="font-mono font-black text-sm tracking-wider">{settings.card_number || t('cardNumber')}</span>
+                          <div className="flex items-center justify-between pt-0.5">
+                            <span className="font-mono font-black text-sm tracking-wider">
+                              {(availableCards[selectedCardIdx] || availableCards[0]).number}
+                            </span>
                             <button 
-                              type="button"
-                              onClick={() => copyCardNumber(settings.card_number || t('cardNumber'))}
-                              className={'px-2 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 ' + 
+                              type="button" 
+                              onClick={() => copyCardNumber((availableCards[selectedCardIdx] || availableCards[0]).number)}
+                              className={'px-2.5 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 ' + 
                                 (cardCopied ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white')}
                             >
                               {cardCopied ? t('cardCopiedText') : t('cardCopyBtn')}
                             </button>
                           </div>
                           <div className="flex items-center justify-between text-[10px] text-slate-300 border-t border-white/10 pt-1.5">
-                            <span>{settings.card_holder || t('cardHolder')}</span>
+                            <span>{(availableCards[selectedCardIdx] || availableCards[0]).holder}</span>
                             <span className="text-emerald-400 font-bold">0% komissiya</span>
                           </div>
                           <p className="text-[10px] text-slate-400 leading-tight pt-0.5">{t('cardPaymentHint')}</p>
@@ -2231,25 +2317,63 @@ function getMiniAppHtml() {
                   </div>
                 </div>
 
-                {/* Do'kon bilan aloqa (Telefon va Manzil) */}
+                {/* Do'kon bilan aloqa (3 ta telefon raqami va Manzil) */}
                 <div className={'p-4 rounded-3xl border mb-5 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm')}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">📞</span>
+                  <h4 className="text-xs font-black uppercase tracking-wider mb-2.5 text-emerald-500 flex items-center gap-1.5">
+                    <span>📞</span>
+                    <span>Aloqa & Qo'ng'iroq Markazi</span>
+                  </h4>
+                  <div className="space-y-2.5">
+                    {/* Asosiy telefon */}
+                    <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-xs font-black block leading-tight">{t('storePhoneTitle')}</span>
-                        <span className={'text-[11px] font-mono font-bold ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{settings.phone || "+998 90 123 45 67"}</span>
+                        <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Asosiy raqam</span>
+                        <span className={'text-xs font-mono font-black ' + (isDark ? 'text-slate-200' : 'text-slate-800')}>{settings.phone || "+998 90 123 45 67"}</span>
                       </div>
+                      <a 
+                        href={'tel:' + (settings.phone || '+998901234567').replace(/\s+/g, '')}
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-black shadow transition active:scale-95 flex items-center gap-1"
+                      >
+                        <span>📞</span>
+                        <span>{t('callStore')}</span>
+                      </a>
                     </div>
-                    <a 
-                      href={'tel:' + (settings.phone || '+998901234567').replace(/\s+/g, '')}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow transition active:scale-95 flex items-center gap-1"
-                    >
-                      <span>📞</span>
-                      <span>{t('callStore')}</span>
-                    </a>
+
+                    {/* Qo'shimcha telefon 1 */}
+                    {settings.phone2 && (
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div>
+                          <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Call-markaz / Savdo</span>
+                          <span className={'text-xs font-mono font-black ' + (isDark ? 'text-slate-200' : 'text-slate-800')}>{settings.phone2}</span>
+                        </div>
+                        <a 
+                          href={'tel:' + settings.phone2.replace(/\s+/g, '')}
+                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-black shadow transition active:scale-95 flex items-center gap-1"
+                        >
+                          <span>📞</span>
+                          <span>{t('callStore')}</span>
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Qo'shimcha telefon 2 */}
+                    {settings.phone3 && (
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div>
+                          <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Texnik yordam & Konsultatsiya</span>
+                          <span className={'text-xs font-mono font-black ' + (isDark ? 'text-slate-200' : 'text-slate-800')}>{settings.phone3}</span>
+                        </div>
+                        <a 
+                          href={'tel:' + settings.phone3.replace(/\s+/g, '')}
+                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-black shadow transition active:scale-95 flex items-center gap-1"
+                        >
+                          <span>📞</span>
+                          <span>{t('callStore')}</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
-                  <div className={'text-[10px] mt-1 pt-2 border-t flex items-center gap-1.5 ' + (isDark ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500')}>
+                  <div className={'text-[10px] mt-2.5 pt-2.5 border-t flex items-center gap-1.5 ' + (isDark ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500')}>
                     <span>📍</span>
                     <span>{settings.store_address || "Toshkent sh., Sergeli mashina bozori"}</span>
                   </div>
@@ -2269,8 +2393,25 @@ function getMiniAppHtml() {
                           <span className="text-xs font-black">#{o.id}</span>
                           <span className={'text-[10px] font-extrabold px-2 py-0.5 rounded-md ' + 
                             (o.status === 'Yetkazildi' ? 'bg-emerald-500/20 text-emerald-400' : 
-                            (o.status === 'Bekor qilindi' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'))}>
+                            (o.status === 'Bekor qilindi' ? 'bg-rose-500/20 text-rose-400' : 
+                            (o.status === 'Jarayonda' ? 'bg-sky-500/20 text-sky-400' : 'bg-amber-500/20 text-amber-400')))}>
                             {o.status}
+                          </span>
+                        </div>
+
+                        {/* Buyurtma Holat Bannerni Ko'rsatish */}
+                        <div className={'p-2 rounded-xl mb-2.5 text-[11px] font-bold flex items-center gap-2 border ' + 
+                          (o.status === 'Jarayonda' ? (isDark ? 'bg-sky-950/60 border-sky-800/50 text-sky-300' : 'bg-sky-50 border-sky-200 text-sky-800') : 
+                          (o.status === 'Yetkazildi' ? (isDark ? 'bg-emerald-950/60 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800') : 
+                          (o.status === 'Bekor qilindi' ? (isDark ? 'bg-rose-950/60 border-rose-800/50 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-800') : 
+                          (isDark ? 'bg-amber-950/60 border-amber-800/50 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'))))}>
+                          <span className="text-sm">
+                            {o.status === 'Jarayonda' ? '✅' : (o.status === 'Yetkazildi' ? '🎉' : (o.status === 'Bekor qilindi' ? '🔴' : '⏳'))}
+                          </span>
+                          <span>
+                            {o.status === 'Jarayonda' ? 'Buyurtmangiz qabul qilindi va tayyorlanmoqda! 🚗💨' : 
+                            (o.status === 'Yetkazildi' ? 'Buyurtma yetkazildi! Xaridingiz uchun rahmat!' : 
+                            (o.status === 'Bekor qilindi' ? 'Buyurtma bekor qilingan.' : "Buyurtma ko'rib chiqilmoqda (Kutilmoqda)..."))}
                           </span>
                         </div>
                         <div className={'text-[11px] mb-2 leading-relaxed ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>
@@ -2884,7 +3025,15 @@ function getAdminPanelHtml() {
       const [settings, setSettings] = useState({
         card_number: "8600 5304 1234 5678",
         card_holder: "AZIMXON (KUZAVNOY.UZZ)",
+        uzcard_number: "8600 5304 1234 5678",
+        uzcard_holder: "AZIMXON (KUZAVNOY.UZZ)",
+        humo_number: "9860 1201 5678 4321",
+        humo_holder: "AZIMXON (KUZAVNOY.UZZ)",
+        visa_number: "",
+        visa_holder: "AZIMXON (KUZAVNOY.UZZ)",
         phone: "+998 90 123 45 67",
+        phone2: "+998 97 765 43 21",
+        phone3: "+998 99 888 77 66",
         instagram_url: "https://instagram.com/kuzavnoy.uzz",
         youtube_url: "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G",
         store_address: "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon",
@@ -3147,7 +3296,7 @@ function getAdminPanelHtml() {
                   "<div style='font-size: 18px; font-weight: 900;'>🚗 kuzavnoy.uzz</div>" +
                   "<div style='font-size: 11px; color: #475569; margin-top: 2px;'>Avto Ehtiyot Qismlar Do'koni</div>" +
                   "<div style='font-size: 10px; color: #64748b; margin-top: 2px;'>" + (settings.store_address || "Toshkent sh., Sergeli mashina bozori") + "</div>" +
-                  "<div style='font-size: 10px; color: #64748b;'>Tel: " + (settings.phone || "+998 90 123 45 67") + " | @kuzavnoyuz_bot</div>" +
+                  "<div style='font-size: 10px; color: #64748b;'>Tel: " + (settings.phone || "+998 90 123 45 67") + (settings.phone2 ? " • " + settings.phone2 : "") + (settings.phone3 ? " • " + settings.phone3 : "") + " | @kuzavnoyuz_bot</div>" +
                 "</div>" +
                 "<div class='divider'></div>" +
                 "<div style='display: flex; justify-content: space-between; font-size: 11px;'>" +
@@ -3177,7 +3326,13 @@ function getAdminPanelHtml() {
                   "<span style='font-size: 12px; font-weight: 800;'>JAMI TO'LOV:</span>" +
                   "<span style='font-size: 15px; font-weight: 900; color: #dc2626;'>" + (o.total_price || 0).toLocaleString() + " so'm</span>" +
                 "</div>" +
-                "<div class='center' style='margin-top: 15px; font-size: 10px; color: #64748b;'>Xaridingiz uchun rahmat! Salomat bo'ling! 🚗💨</div>" +
+                "<div style='margin-top: 12px; padding: 10px; border: 1px dashed #94a3b8; border-radius: 8px; text-align: center; background: #f8fafc;'>" +
+                  "<div style='font-size: 11px; font-weight: 800; color: #047857; margin-bottom: 4px;'>🟢 1% KESHBEK (SOLIQ.UZ)</div>" +
+                  "<img src='https://api.qrserver.com/v1/create-qr-code/?size=130x130&margin=2&data=" + encodeURIComponent("https://soliq.uz/cashback?order=" + o.id + "&sum=" + (o.total_price || 0) + "&fiscal=KZV" + o.id) + "' style='width: 110px; height: 110px; margin: 4px auto; display: block; border-radius: 4px;' />" +
+                  "<div style='font-size: 9px; color: #64748b; font-family: monospace; margin-top: 3px;'>Fiskal belgi: KZV-" + o.id + "-" + new Date().getFullYear() + "</div>" +
+                  "<div style='font-size: 8.5px; color: #475569; margin-top: 2px;'>Soliq ilovasida skanerlab 1% keshbek oling</div>" +
+                "</div>" +
+                "<div class='center' style='margin-top: 12px; font-size: 10px; color: #64748b;'>Xaridingiz uchun rahmat! Salomat bo'ling! 🚗💨</div>" +
                 "<div class='no-print' style='margin-top: 15px; display: flex; gap: 8px;'>" +
                   "<button onclick='window.print()' style='flex: 1; padding: 10px; background: #dc2626; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;'>Chop etish 🖨</button>" +
                   "<button onclick='window.close()' style='padding: 10px 15px; background: #e2e8f0; color: #334155; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;'>Yopish</button>" +
@@ -3320,24 +3475,22 @@ function getAdminPanelHtml() {
         }
       };
 
-      // Davriy analitika hisobi (Task 5)
+      // Davriy analitika hisobi (Aniq sanalar kesimida)
       const periodOrders = useMemo(() => {
         const now = new Date();
+        const nowTime = now.getTime();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const startOfWeek = nowTime - (7 * 24 * 60 * 60 * 1000);
+        const startOfMonth = nowTime - (30 * 24 * 60 * 60 * 1000);
+        const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+
         return orders.filter(o => {
           if (analyticsPeriod === 'all') return true;
-          const d = new Date(o.created_at);
-          if (analyticsPeriod === 'today') {
-            return d.toDateString() === now.toDateString();
-          }
-          if (analyticsPeriod === 'week') {
-            return d >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          }
-          if (analyticsPeriod === 'month') {
-            return d >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          }
-          if (analyticsPeriod === 'year') {
-            return d.getFullYear() === now.getFullYear();
-          }
+          const orderTime = new Date(o.created_at).getTime();
+          if (analyticsPeriod === 'today') return orderTime >= startOfToday;
+          if (analyticsPeriod === 'week') return orderTime >= startOfWeek;
+          if (analyticsPeriod === 'month') return orderTime >= startOfMonth;
+          if (analyticsPeriod === 'year') return orderTime >= startOfYear;
           return true;
         });
       }, [orders, analyticsPeriod]);
@@ -3553,6 +3706,73 @@ function getAdminPanelHtml() {
                       {Math.round(totalRevenue * 0.3).toLocaleString()} <span className={'text-xs font-bold ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>so'm</span>
                     </h3>
                     <span className={'text-xs mt-2 block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>O'rtacha chek: {periodAvgTicket.toLocaleString()} so'm</span>
+                  </div>
+                </div>
+
+                {/* Tanlangan davr holat ko'rsatkichlari */}
+                <div className={'p-4 rounded-3xl border flex flex-wrap items-center justify-between gap-3 ' + (isDark ? 'bg-slate-900/70 border-slate-800' : 'bg-white border-slate-200 shadow-sm')}>
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-400">Holatlar taqsimoti ({periodOrders.length} ta):</span>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">
+                      Yetkazildi: {periodOrders.filter(o => o.status === 'Yetkazildi').length} ta
+                    </span>
+                    <span className="px-3 py-1 rounded-xl text-xs font-bold bg-sky-500/10 border border-sky-500/30 text-sky-500">
+                      Jarayonda: {periodOrders.filter(o => o.status === 'Jarayonda').length} ta
+                    </span>
+                    <span className="px-3 py-1 rounded-xl text-xs font-bold bg-amber-500/10 border border-amber-500/30 text-amber-500">
+                      Kutilmoqda: {periodOrders.filter(o => o.status === 'Kutilmoqda').length} ta
+                    </span>
+                    <span className="px-3 py-1 rounded-xl text-xs font-bold bg-rose-500/10 border border-rose-500/30 text-rose-500">
+                      Bekor qilindi: {periodOrders.filter(o => o.status === 'Bekor qilindi').length} ta
+                    </span>
+                  </div>
+                </div>
+
+                {/* Tanlangan davr buyurtmalari jadvali */}
+                <div className={'border rounded-3xl overflow-hidden shadow-sm ' + (isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200')}>
+                  <div className="p-4 border-b flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-sm">📋 Tanlangan davr buyurtmalari jurnali</span>
+                      <span className="text-[10px] bg-red-600/20 text-red-500 font-bold px-2 py-0.5 rounded-full">{periodOrders.length} ta</span>
+                    </div>
+                    <button onClick={() => setTab("orders")} className="text-xs font-bold text-red-500 hover:underline">Barcha buyurtmalar jurnali →</button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className={'border-b uppercase text-[10px] ' + (isDark ? 'bg-slate-950 text-slate-400 border-slate-800' : 'bg-slate-100 text-slate-500 border-slate-200')}>
+                        <tr>
+                          <th className="p-3">ID</th>
+                          <th className="p-3">Mijoz</th>
+                          <th className="p-3">Telefon</th>
+                          <th className="p-3">Summa</th>
+                          <th className="p-3">Holat</th>
+                          <th className="p-3">Sana & Vaqt</th>
+                        </tr>
+                      </thead>
+                      <tbody className={'divide-y ' + (isDark ? 'divide-slate-800' : 'divide-slate-200')}>
+                        {periodOrders.length === 0 ? (
+                          <tr><td colSpan="6" className="p-8 text-center text-slate-400">Ushbu davrda buyurtmalar mavjud emas</td></tr>
+                        ) : (
+                          periodOrders.map(o => (
+                            <tr key={o.id} className={isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}>
+                              <td className="p-3 font-mono font-bold">#{o.id}</td>
+                              <td className="p-3 font-bold">{o.customer_name}</td>
+                              <td className="p-3 font-mono">{o.phone}</td>
+                              <td className="p-3 font-black text-emerald-500">{o.total_price?.toLocaleString()} so'm</td>
+                              <td className="p-3">
+                                <span className={'text-[10px] font-black px-2 py-0.5 rounded-md ' + 
+                                  (o.status === 'Yetkazildi' ? 'bg-emerald-500/20 text-emerald-400' : 
+                                  (o.status === 'Jarayonda' ? 'bg-sky-500/20 text-sky-400' : 
+                                  (o.status === 'Bekor qilindi' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400')))}>
+                                  {o.status}
+                                </span>
+                              </td>
+                              <td className="p-3 text-slate-400 whitespace-nowrap">{new Date(o.created_at).toLocaleString('uz-UZ')}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -4060,63 +4280,151 @@ function getAdminPanelHtml() {
                 )}
 
                 <form onSubmit={handleSaveSettings} className="space-y-6 text-xs">
-                  {/* 1. TO'LOV REKVIZITLARI */}
+                  {/* 1. TO'LOV KARTALARI (Uzcard, Humo, Visa alohida) */}
                   <div className={'p-5 rounded-2xl border space-y-4 ' + (isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200')}>
                     <h3 className="text-xs font-black uppercase tracking-wider text-red-500 flex items-center gap-2">
                       <span>💳</span>
-                      <span>{t('paymentDetailsHeader')}</span>
+                      <span>To'lov Kartalari Boshqaruvi (Uzcard, Humo, Visa)</span>
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{t('cardNumberLabel')}</label>
-                        <input 
-                          type="text"
-                          required
-                          value={settings.card_number || ''}
-                          onChange={e => setSettings({ ...settings, card_number: e.target.value })}
-                          placeholder="8600 5304 1234 5678"
-                          className={'w-full px-3.5 py-2.5 border rounded-xl font-mono text-sm focus:outline-none focus:border-red-500 ' + 
-                            (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
-                        />
-                        <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Mini App savatchasida ko'rsatiladi</span>
+                    {/* 1.1 Uzcard */}
+                    <div className="p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/5 space-y-2">
+                      <span className="text-xs font-black text-blue-500 flex items-center gap-1.5">🔵 UZCARD</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Uzcard Karta Raqami</label>
+                          <input 
+                            type="text"
+                            value={settings.uzcard_number || ''}
+                            onChange={e => setSettings({ ...settings, uzcard_number: e.target.value, card_number: e.target.value })}
+                            placeholder="8600 5304 1234 5678"
+                            className={'w-full px-3 py-2 border rounded-xl font-mono text-xs focus:outline-none focus:border-red-500 ' + 
+                              (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                          />
+                        </div>
+                        <div>
+                          <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Karta Egasi</label>
+                          <input 
+                            type="text"
+                            value={settings.uzcard_holder || ''}
+                            onChange={e => setSettings({ ...settings, uzcard_holder: e.target.value, card_holder: e.target.value })}
+                            placeholder="AZIMXON (KUZAVNOY.UZZ)"
+                            className={'w-full px-3 py-2 border rounded-xl text-xs focus:outline-none focus:border-red-500 ' + 
+                              (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                          />
+                        </div>
                       </div>
+                    </div>
 
-                      <div>
-                        <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{t('cardHolderLabel')}</label>
-                        <input 
-                          type="text"
-                          required
-                          value={settings.card_holder || ''}
-                          onChange={e => setSettings({ ...settings, card_holder: e.target.value })}
-                          placeholder="AZIMXON (KUZAVNOY.UZZ)"
-                          className={'w-full px-3.5 py-2.5 border rounded-xl font-semibold focus:outline-none focus:border-red-500 ' + 
-                            (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
-                        />
-                        <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Karta egasining to'liq ismi</span>
+                    {/* 1.2 Humo */}
+                    <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-2">
+                      <span className="text-xs font-black text-amber-500 flex items-center gap-1.5">🟠 HUMO</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Humo Karta Raqami</label>
+                          <input 
+                            type="text"
+                            value={settings.humo_number || ''}
+                            onChange={e => setSettings({ ...settings, humo_number: e.target.value })}
+                            placeholder="9860 1201 5678 4321"
+                            className={'w-full px-3 py-2 border rounded-xl font-mono text-xs focus:outline-none focus:border-red-500 ' + 
+                              (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                          />
+                        </div>
+                        <div>
+                          <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Karta Egasi</label>
+                          <input 
+                            type="text"
+                            value={settings.humo_holder || ''}
+                            onChange={e => setSettings({ ...settings, humo_holder: e.target.value })}
+                            placeholder="AZIMXON (KUZAVNOY.UZZ)"
+                            className={'w-full px-3 py-2 border rounded-xl text-xs focus:outline-none focus:border-red-500 ' + 
+                              (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 1.3 Visa / Mastercard */}
+                    <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-emerald-500 flex items-center gap-1.5">🟡 VISA / MASTERCARD (Ixtiyoriy)</span>
+                        <span className="text-[10px] text-slate-400">Agar bo'sh qoldirilsa, Mini Appda Visa chiqmaydi</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Visa Karta Raqami</label>
+                          <input 
+                            type="text"
+                            value={settings.visa_number || ''}
+                            onChange={e => setSettings({ ...settings, visa_number: e.target.value })}
+                            placeholder="4000 1234 5678 9010 (Bo'sh bo'lsa ko'rinmaydi)"
+                            className={'w-full px-3 py-2 border rounded-xl font-mono text-xs focus:outline-none focus:border-red-500 ' + 
+                              (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                          />
+                        </div>
+                        <div>
+                          <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Karta Egasi</label>
+                          <input 
+                            type="text"
+                            value={settings.visa_holder || ''}
+                            onChange={e => setSettings({ ...settings, visa_holder: e.target.value })}
+                            placeholder="AZIMXON (USD/UZS)"
+                            className={'w-full px-3 py-2 border rounded-xl text-xs focus:outline-none focus:border-red-500 ' + 
+                              (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* 2. ALOQA & TELEFON */}
+                  {/* 2. ALOQA UCHUN 3 TA TELEFON RAQAMLARI */}
                   <div className={'p-5 rounded-2xl border space-y-4 ' + (isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200')}>
                     <h3 className="text-xs font-black uppercase tracking-wider text-emerald-500 flex items-center gap-2">
                       <span>📞</span>
-                      <span>{t('contactHeader')}</span>
+                      <span>Aloqa Telefonlari (3 ta raqam)</span>
                     </h3>
 
-                    <div>
-                      <label className={'font-bold block mb-1.5 ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{t('storePhoneLabel')}</label>
-                      <input 
-                        type="text"
-                        required
-                        value={settings.phone || ''}
-                        onChange={e => setSettings({ ...settings, phone: e.target.value })}
-                        placeholder="+998 90 123 45 67"
-                        className={'w-full px-3.5 py-2.5 border rounded-xl font-mono text-sm focus:outline-none focus:border-red-500 ' + 
-                          (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
-                      />
-                      <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Cheklarda, Mini App profilida va qo'ng'iroq tugmasida aks etadi</span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Asosiy Telefon *</label>
+                        <input 
+                          type="text"
+                          required
+                          value={settings.phone || ''}
+                          onChange={e => setSettings({ ...settings, phone: e.target.value })}
+                          placeholder="+998 90 123 45 67"
+                          className={'w-full px-3 py-2 border rounded-xl font-mono text-xs focus:outline-none focus:border-red-500 ' + 
+                            (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                        />
+                        <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Cheklarda va do'konda</span>
+                      </div>
+
+                      <div>
+                        <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Qo'shimcha 1 (Call-markaz)</label>
+                        <input 
+                          type="text"
+                          value={settings.phone2 || ''}
+                          onChange={e => setSettings({ ...settings, phone2: e.target.value })}
+                          placeholder="+998 97 765 43 21"
+                          className={'w-full px-3 py-2 border rounded-xl font-mono text-xs focus:outline-none focus:border-red-500 ' + 
+                            (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                        />
+                        <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Mijoz profilida chiqadi</span>
+                      </div>
+
+                      <div>
+                        <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Qo'shimcha 2 (Texnik yordam)</label>
+                        <input 
+                          type="text"
+                          value={settings.phone3 || ''}
+                          onChange={e => setSettings({ ...settings, phone3: e.target.value })}
+                          placeholder="+998 99 888 77 66"
+                          className={'w-full px-3 py-2 border rounded-xl font-mono text-xs focus:outline-none focus:border-red-500 ' + 
+                            (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                        />
+                        <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Konsultatsiya uchun</span>
+                      </div>
                     </div>
                   </div>
 

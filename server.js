@@ -4764,8 +4764,8 @@ function getAdminPanelHtml() {
                             <td className="p-4 text-right whitespace-nowrap">
                               <div className="flex items-center justify-end gap-1.5">
                                 <button 
-                                  onClick={() => printThermalReceipt(order)}
-                                  title="Chekni chop etish"
+                                  onClick={() => setSelectedReceiptOrder(order)}
+                                  title="Chekni ochish va ko'rish"
                                   className={'px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition flex items-center gap-1 ' + 
                                     (isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300')}
                                 >
@@ -5509,50 +5509,164 @@ function getAdminPanelHtml() {
 
           </main>
 
-          {/* CHEK / RECEIPT MODAL */}
+          {/* CHEK / RECEIPT MODAL (SOLIQ 1% KESHBEK & QR KOD BILAN) */}
           {selectedReceiptOrder && (
-            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-              <div className="bg-white text-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
-                <button onClick={() => setSelectedReceiptOrder(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 font-bold">✕</button>
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+              <div className="bg-white text-slate-900 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative my-auto max-h-[92vh] flex flex-col font-sans border border-slate-200">
                 
-                <div className="text-center pb-4 border-b border-dashed border-slate-200">
-                  <h3 className="text-lg font-black tracking-tight">kuzavnoy.uzz</h3>
-                  <p className="text-xs text-slate-500">{t('controlHub')}</p>
-                  <div className="text-[10px] text-slate-400 mt-1 font-mono">
-                    Buyurtma #{selectedReceiptOrder.id} • {new Date(selectedReceiptOrder.created_at).toLocaleString()}
+                {/* Yopish tugmasi */}
+                <button 
+                  onClick={() => setSelectedReceiptOrder(null)} 
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center font-bold text-sm transition shadow-sm z-10"
+                >
+                  ✕
+                </button>
+                
+                {/* Scrollable Receipt Content */}
+                <div className="overflow-y-auto pr-1 space-y-3.5 custom-scrollbar">
+                  
+                  {/* Chek Bosh qismi (Header) */}
+                  <div className="text-center pb-3 border-b-2 border-dashed border-slate-300">
+                    <div className="inline-flex items-center gap-1.5 justify-center">
+                      <span className="text-2xl">🚗</span>
+                      <span className="text-xl font-black tracking-tight text-slate-900">kuzavnoy.uzz</span>
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-600 mt-0.5">Avto Ehtiyot Qismlar Do'koni</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{settings.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon"}</p>
+                    <p className="text-[10px] text-slate-500">Tel: {settings.phone || "+998 90 123 45 67"} {settings.phone2 ? " • " + settings.phone2 : ""} | @kuzavnoyuz_bot</p>
+                    
+                    <div className="flex items-center justify-between text-[11px] font-mono mt-2.5 pt-2 border-t border-dashed border-slate-200 text-slate-600">
+                      <span><b>Chek:</b> #KZV-{selectedReceiptOrder.id}</span>
+                      <span>{new Date(selectedReceiptOrder.created_at).toLocaleString('uz-UZ')}</span>
+                    </div>
+                  </div>
+
+                  {/* Mijoz va yetkazish tafsilotlari */}
+                  <div className="p-3 bg-slate-50 rounded-2xl text-[11px] space-y-1.5 border border-slate-200/80">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">👤 Mijoz:</span>
+                      <span className="font-bold text-slate-900">{selectedReceiptOrder.customer_name}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">📞 Telefon:</span>
+                      <span className="font-bold text-slate-900 font-mono">{selectedReceiptOrder.phone}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">🚚 Yetkazish:</span>
+                      <span className="font-bold text-slate-800">
+                        {selectedReceiptOrder.delivery_type === 'pickup' ? "🏬 Do'kondan olib ketish" : "🚚 Kuryer orqali"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">💳 To'lov:</span>
+                      <span className="font-bold text-slate-800">
+                        {selectedReceiptOrder.payment_method === 'card' ? "💳 Karta (Uzcard/Humo/Visa)" : "💵 Naqd to'lov"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-start">
+                      <span className="text-slate-500 whitespace-nowrap">📍 Manzil:</span>
+                      <span className="font-medium text-slate-700 text-right max-w-[200px] truncate">
+                        {selectedReceiptOrder.location || "Do'kondan olib ketish"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-200/60">
+                      <span className="text-slate-500">📊 Holati:</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
+                        {selectedReceiptOrder.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Nima olganligi ro'yxati (Tovarlar) */}
+                  <div className="py-2 border-b-2 border-dashed border-slate-300 space-y-2">
+                    <div className="text-[11px] font-black text-slate-500 uppercase tracking-wider flex justify-between">
+                      <span>📦 Xarid qilingan detallar:</span>
+                      <span>Summa</span>
+                    </div>
+                    <div className="space-y-2">
+                      {(Array.isArray(selectedReceiptOrder.items) ? selectedReceiptOrder.items : (typeof selectedReceiptOrder.items === 'string' ? JSON.parse(selectedReceiptOrder.items || '[]') : [])).map((it, idx) => {
+                        const qty = it.quantity || 1;
+                        const price = it.new_price || 0;
+                        const itemTotal = qty * price;
+                        return (
+                          <div key={idx} className="flex items-start justify-between text-xs py-1 border-b border-slate-100 last:border-0">
+                            <div className="pr-2">
+                              <div className="font-bold text-slate-900">{idx + 1}. {it.name}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">{qty} dona × {price.toLocaleString()} so'm</div>
+                            </div>
+                            <div className="font-black text-slate-900 text-right whitespace-nowrap">
+                              {itemTotal.toLocaleString()} so'm
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Moliyaviy Jami hisob */}
+                  <div className="p-3 bg-slate-100/80 rounded-2xl space-y-1 border border-slate-200">
+                    <div className="flex justify-between text-xs text-slate-600">
+                      <span>Oraliq summa:</span>
+                      <span className="font-bold">{selectedReceiptOrder.total_price?.toLocaleString()} so'm</span>
+                    </div>
+                    <div className="flex justify-between text-[11px] text-slate-500">
+                      <span>QQS (12% hisoblangan):</span>
+                      <span>{Math.round((selectedReceiptOrder.total_price || 0) * 0.12 / 1.12).toLocaleString()} so'm</span>
+                    </div>
+                    <div className="pt-2 border-t border-slate-300 flex justify-between items-center">
+                      <span className="text-sm font-black text-slate-900 uppercase">JAMI TO'LOV:</span>
+                      <span className="text-lg font-black text-red-600">
+                        {selectedReceiptOrder.total_price?.toLocaleString()} so'm
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 🟢 SOLIQ.UZ 1% KESHBEK VA QR KOD BO'LIMI */}
+                  <div className="p-4 bg-emerald-50/90 border-2 border-emerald-500/40 rounded-2xl text-center shadow-inner">
+                    <div className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-800 uppercase tracking-wide">
+                      <span className="text-base">🟢</span>
+                      <span>SOLIQ.UZ — 1% FISKAL KESHBEK</span>
+                    </div>
+                    
+                    <div className="text-xs text-emerald-800 font-bold mt-1">
+                      Keshbek summasi: <span className="text-sm font-black text-emerald-900 bg-emerald-200/60 px-2 py-0.5 rounded-lg">+{Math.round((selectedReceiptOrder.total_price || 0) * 0.01).toLocaleString()} so'm</span>
+                    </div>
+
+                    {/* Skaner qilinadigan haqiqiy QR-KOD */}
+                    <div className="my-3 flex justify-center">
+                      <div className="p-2.5 bg-white rounded-2xl shadow-md border border-emerald-300 inline-block">
+                        <img 
+                          src={"https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=2&data=" + encodeURIComponent("https://soliq.uz/cashback?order=" + selectedReceiptOrder.id + "&sum=" + (selectedReceiptOrder.total_price || 0) + "&fiscal=KZV" + selectedReceiptOrder.id)}
+                          alt="Soliq QR Code"
+                          className="w-36 h-36 block mx-auto rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] font-mono font-bold text-emerald-900 bg-emerald-100/80 py-1 px-2 rounded-lg inline-block">
+                      {"FPU: 890123 • FD: KZV-" + selectedReceiptOrder.id + "-" + new Date().getFullYear()}
+                    </div>
+                    
+                    <p className="text-[9.5px] text-emerald-700 font-medium mt-1.5">
+                      📱 <b>Soliq</b> ilovasida QR-kodni skanerlang va 1% keshbek oling
+                    </p>
+                  </div>
+
+                  <div className="text-center text-[10px] text-slate-400 py-1">
+                    Xaridingiz uchun rahmat! Oq yo'l! 🚗💨
                   </div>
                 </div>
 
-                <div className="py-3 text-xs border-b border-dashed border-slate-200 space-y-1">
-                  <div><b>Mijoz:</b> {selectedReceiptOrder.customer_name}</div>
-                  <div><b>Telefon:</b> {selectedReceiptOrder.phone}</div>
-                  <div><b>Yetkazish turi:</b> {selectedReceiptOrder.delivery_type === 'pickup' ? "🏬 Do'kondan olib ketish (Samovivoz)" : "🚚 Kuryer orqali yetkazish"}</div>
-                  <div><b>To'lov usuli:</b> {selectedReceiptOrder.payment_method === 'card' ? "💳 Karta / Visa / Click (Oldindan to'lov)" : "💵 Naqd to'lov (Yetkazilganda)"}</div>
-                  <div><b>Manzil:</b> {selectedReceiptOrder.location || "Ko'rsatilmagan"}</div>
-                  <div><b>Holat:</b> {selectedReceiptOrder.status}</div>
-                </div>
-
-                <div className="py-3 space-y-2 border-b border-slate-200">
-                  <div className="text-[11px] font-bold text-slate-400 uppercase">{t('itemsList')}</div>
-                  {(Array.isArray(selectedReceiptOrder.items) ? selectedReceiptOrder.items : (typeof selectedReceiptOrder.items === 'string' ? JSON.parse(selectedReceiptOrder.items || '[]') : [])).map((it, idx) => (
-                    <div key={idx} className="flex justify-between text-xs">
-                      <span>{it.name} x {it.quantity || 1}</span>
-                      <span className="font-bold">{((it.new_price || 0) * (it.quantity || 1)).toLocaleString()} so'm</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-3 flex justify-between items-center">
-                  <span className="text-sm font-bold">{t('totalSum')}</span>
-                  <span className="text-base font-black text-red-600">
-                    {selectedReceiptOrder.total_price?.toLocaleString()} so'm
-                  </span>
-                </div>
-
-                <div className="mt-5 flex gap-2">
-                  <button onClick={() => printThermalReceipt(selectedReceiptOrder)} className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl shadow-md transition">
-                    {t('printReceipt')}
+                {/* Pastki Harakat Tugmalari */}
+                <div className="mt-4 pt-3 border-t border-slate-200 flex gap-2">
+                  <button 
+                    onClick={() => printThermalReceipt(selectedReceiptOrder)} 
+                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>🖨</span>
+                    <span>{t('printReceipt')}</span>
                   </button>
+
                   {selectedReceiptOrder.status === "Bekor qilindi" && (
                     <button 
                       onClick={() => {
@@ -5560,16 +5674,21 @@ function getAdminPanelHtml() {
                         setSelectedReceiptOrder(null);
                         handleDeleteOrder(id);
                       }} 
-                      className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 text-xs font-bold rounded-xl transition flex items-center gap-1"
+                      className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 text-xs font-bold rounded-xl transition flex items-center gap-1 cursor-pointer"
                     >
                       <span>🗑</span>
                       <span>O'chirish</span>
                     </button>
                   )}
-                  <button onClick={() => setSelectedReceiptOrder(null)} className="px-4 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl">
+
+                  <button 
+                    onClick={() => setSelectedReceiptOrder(null)} 
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
                     {t('close')}
                   </button>
                 </div>
+
               </div>
             </div>
           )}

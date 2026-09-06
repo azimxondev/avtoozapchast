@@ -109,8 +109,22 @@ async function initDatabase() {
         youtube_url VARCHAR(255) DEFAULT 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
         store_address TEXT DEFAULT 'Toshkent sh., Sergeli mashina bozori, 4-qator 12-do''kon',
         store_hours VARCHAR(100) DEFAULT '09:00 - 19:00',
+        uzcard_active BOOLEAN DEFAULT true,
+        humo_active BOOLEAN DEFAULT true,
+        visa_active BOOLEAN DEFAULT false,
+        phone1_active BOOLEAN DEFAULT true,
+        phone2_active BOOLEAN DEFAULT true,
+        phone3_active BOOLEAN DEFAULT true,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE store_settings 
+      ADD COLUMN IF NOT EXISTS uzcard_active BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS humo_active BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS visa_active BOOLEAN DEFAULT false,
+      ADD COLUMN IF NOT EXISTS phone1_active BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS phone2_active BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS phone3_active BOOLEAN DEFAULT true;
     `);
 
     // Eski umumiy kategoriyalarni yangi mashina modellariga yangilash
@@ -336,6 +350,96 @@ try {
 
   bot.on('polling_error', (error) => {
     if (error.code !== 'EFATAL') {}
+  });
+
+  // Bot menyu buyruqlarini ro'yxatdan o'tkazish
+  bot.setMyCommands([
+    { command: 'start', description: '🚀 Botni ishga tushirish va katalog' },
+    { command: 'katalog', description: '🛒 Avto ehtiyot qismlari katalogi' },
+    { command: 'aloqa', description: '📞 Do\'kon telefonlari va manzili' },
+    { command: 'admin', description: '👨‍💼 Boshqaruv paneli (Admin)' }
+  ]).catch(() => {});
+
+  // /katalog buyrug'i
+  bot.onText(/\/katalog/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    const isHttps = WEB_APP_URL.startsWith('https://');
+    bot.sendMessage(chatId,
+      "🛒 <b>kuzavnoy.uzz — Avto Ehtiyot Qismlari Katalogi</b>\n\n" +
+      "Bizning katalogimiz orqali avtomobilingiz uchun eng sifatli va original ehtiyot qismlarni tanlashingiz mumkin!\n\n" +
+      "Ilovani ochish uchun pastdagi tugmani bosing: 👇",
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: isHttps ? [
+            [{ text: "🛒 Katalogni ochish (Mini App)", web_app: { url: WEB_APP_URL } }],
+            [
+              { text: "📸 Instagram", url: "https://instagram.com/kuzavnoy.uzz" },
+              { text: "▶️ YouTube", url: "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G" }
+            ]
+          ] : [
+            [{ text: "🌐 Katalogni ochish", url: WEB_APP_URL }]
+          ]
+        }
+      }
+    );
+  });
+
+  // /aloqa buyrug'i
+  bot.onText(/\/aloqa/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    try {
+      const sRes = await pool.query('SELECT * FROM store_settings WHERE id=1');
+      const st = sRes.rows[0] || {};
+      const phones = [];
+      if (st.phone1_active !== false && st.phone) phones.push(`• Asosiy: <b>${st.phone}</b>`);
+      if (st.phone2_active !== false && st.phone2) phones.push(`• Call-markaz: <b>${st.phone2}</b>`);
+      if (st.phone3_active !== false && st.phone3) phones.push(`• Texnik yordam: <b>${st.phone3}</b>`);
+      if (phones.length === 0) phones.push('• Telefon: +998 90 123 45 67');
+
+      bot.sendMessage(chatId,
+        "📞 <b>kuzavnoy.uzz — Aloqa & Qo'ng'iroq Markazi</b>\n\n" +
+        "Har qanday avto ehtiyot qismlari, buyurtmalar va yetkazib berish bo'yicha savollaringiz bo'lsa biz bilan bog'laning:\n\n" +
+        phones.join('\n') + "\n\n" +
+        `📍 <b>Manzil:</b> ${st.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon"}\n` +
+        `⏰ <b>Ish vaqti:</b> ${st.store_hours || "09:00 - 19:00"}\n\n` +
+        `Pastdagi tugmalar orqali do'konimizni ochishingiz mumkin: 👇`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🛒 Katalog & Xarid qilish", web_app: { url: WEB_APP_URL } }],
+              [
+                { text: "📸 Instagram", url: st.instagram_url || "https://instagram.com/kuzavnoy.uzz" },
+                { text: "▶️ YouTube", url: st.youtube_url || "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G" }
+              ]
+            ]
+          }
+        }
+      );
+    } catch(e) {
+      bot.sendMessage(chatId, "📞 Aloqa: +998 90 123 45 67\nManzil: Toshkent sh., Sergeli mashina bozori");
+    }
+  });
+
+  // /help buyrug'i
+  bot.onText(/\/help/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    bot.sendMessage(chatId,
+      "ℹ️ <b>kuzavnoy.uzz — Yordam & Qo'llanma</b>\n\n" +
+      "🔹 <b>Buyruqlar:</b>\n" +
+      "• /start — Botni ishga tushirish va katalog\n" +
+      "• /katalog — Avto-ehtiyot qismlar katalogini ochish\n" +
+      "• /aloqa — Do'kon telefon raqamlari va manzili\n" +
+      "• /admin — Boshqaruv paneli (do'kon ma'murlari uchun)\n\n" +
+      "🛒 Buyurtma berish uchun quyidagi tugmani bosing: 👇",
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[{ text: "🛒 Mini Appni ochish", web_app: { url: WEB_APP_URL } }]]
+        }
+      }
+    );
   });
 
   
@@ -621,20 +725,40 @@ app.put('/api/orders/:id/status', async (req, res) => {
       let statusMsg = `Buyurtmangiz holati: <b>${status}</b> ga o'zgardi.`;
       if (status === 'Jarayonda') {
         statusIcon = '✅';
-        statusMsg = "Sizning buyurtmangiz <b>qabul qilindi va tayyorlanmoqda</b>! Tez orada kuryerimiz siz bilan bog'lanadi 🚗💨";
+        statusMsg = "Sizning buyurtmangiz <b>qabul qilindi va mutaxassislarimiz tomonidan tayyorlanmoqda</b>! 🚗💨\nTez orada kuryerimiz siz bilan bog'lanadi.";
+      } else if (status === 'Tayyorlandi') {
+        statusIcon = '📦';
+        statusMsg = "Sizning buyurtmangiz <b>muvaffaqiyatli tayyorlandi</b> va topshirishga shay! 🚗💨\nKuryer orqali yetkaziladi yoki do'kondan olib ketishingiz mumkin.";
       } else if (status === 'Yetkazildi') {
         statusIcon = '🟢';
-        statusMsg = "Buyurtmangiz <b>muvaffaqiyatli yetkazib berildi</b>! Xaridingiz uchun rahmat! 🎉";
+        statusMsg = "Buyurtmangiz <b>muvaffaqiyatli yetkazib berildi</b>! Xaridingiz uchun katta rahmat! Doimo xizmatingizdamiz ⭐️";
       } else if (status === 'Bekor qilindi') {
         statusIcon = '🔴';
         statusMsg = "Buyurtmangiz <b>bekor qilindi</b>. Qo'shimcha savollaringiz bo'lsa biz bilan bog'lanishingiz mumkin.";
+      } else if (status === 'Kutilmoqda') {
+        statusIcon = '🟡';
+        statusMsg = "Buyurtmangiz tizimda <b>ko'rib chiqilmoqda (Kutilmoqda)</b>. Tez orada qabul qilinadi.";
       }
+
+      // Buyurtmadagi tovarlar ro'yxati
+      let itemsListText = '';
+      try {
+        const orderItems = Array.isArray(order.items) ? order.items : JSON.parse(order.items || '[]');
+        if (orderItems.length > 0) {
+          itemsListText = '\n\n🛒 <b>Buyurtma tarkibi:</b>\n' + 
+            orderItems.map(it => `• ${it.name} (${it.quantity || 1} dona) - ${((it.price || it.new_price || 0) * (it.quantity || 1)).toLocaleString()} so'm`).join('\n');
+        }
+      } catch(e) {}
+
       bot.sendMessage(order.telegram_id,
         `${statusIcon} <b>kuzavnoy.uzz — Buyurtma holati yangilandi!</b>\n\n` +
         `🆔 <b>Buyurtma raqami:</b> #${order.id}\n` +
-        `📌 <b>Yangi holat:</b> <b>${status}</b>\n\n` +
+        `📌 <b>Yangi holat:</b> <b>${status}</b>\n` +
+        `💵 <b>Umumiy summa:</b> <b>${(order.total_price || 0).toLocaleString()} so'm</b>` +
+        itemsListText + `\n\n` +
         `${statusMsg}\n\n` +
-        `<i>kuzavnoy.uzz rasmiy do'koni</i>`,
+        `📞 <i>Savollar uchun aloqa: +998 90 123 45 67</i>\n` +
+        `<i>kuzavnoy.uzz rasmiy avto do'koni</i>`,
         { parse_mode: 'HTML' }
       ).catch(() => {});
     }
@@ -669,11 +793,23 @@ app.put('/api/settings', async (req, res) => {
       humo_number, humo_holder,
       visa_number, visa_holder,
       phone, phone2, phone3,
-      instagram_url, youtube_url, store_address, store_hours 
+      instagram_url, youtube_url, store_address, store_hours,
+      uzcard_active, humo_active, visa_active,
+      phone1_active, phone2_active, phone3_active
     } = req.body;
     const result = await pool.query(
-      `INSERT INTO store_settings (id, card_number, card_holder, uzcard_number, uzcard_holder, humo_number, humo_holder, visa_number, visa_holder, phone, phone2, phone3, instagram_url, youtube_url, store_address, store_hours, updated_at)
-       VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, CURRENT_TIMESTAMP)
+      `INSERT INTO store_settings (
+         id, card_number, card_holder, 
+         uzcard_number, uzcard_holder, 
+         humo_number, humo_holder, 
+         visa_number, visa_holder, 
+         phone, phone2, phone3, 
+         instagram_url, youtube_url, store_address, store_hours,
+         uzcard_active, humo_active, visa_active,
+         phone1_active, phone2_active, phone3_active,
+         updated_at
+       )
+       VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, CURRENT_TIMESTAMP)
        ON CONFLICT (id) DO UPDATE SET
          card_number = EXCLUDED.card_number,
          card_holder = EXCLUDED.card_holder,
@@ -690,6 +826,12 @@ app.put('/api/settings', async (req, res) => {
          youtube_url = EXCLUDED.youtube_url,
          store_address = EXCLUDED.store_address,
          store_hours = EXCLUDED.store_hours,
+         uzcard_active = EXCLUDED.uzcard_active,
+         humo_active = EXCLUDED.humo_active,
+         visa_active = EXCLUDED.visa_active,
+         phone1_active = EXCLUDED.phone1_active,
+         phone2_active = EXCLUDED.phone2_active,
+         phone3_active = EXCLUDED.phone3_active,
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
       [
@@ -707,7 +849,13 @@ app.put('/api/settings', async (req, res) => {
         instagram_url || 'https://instagram.com/kuzavnoy.uzz',
         youtube_url || 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
         store_address || 'Toshkent sh., Sergeli mashina bozori, 4-qator 12-do\'kon',
-        store_hours || '09:00 - 19:00'
+        store_hours || '09:00 - 19:00',
+        uzcard_active !== false,
+        humo_active !== false,
+        Boolean(visa_active),
+        phone1_active !== false,
+        phone2_active !== false,
+        phone3_active !== false
       ]
     );
     res.json(result.rows[0]);
@@ -1374,8 +1522,11 @@ function getMiniAppHtml() {
       const [selectedCategory, setSelectedCategory] = useState('Barchasi');
       const [addOnFragrance, setAddOnFragrance] = useState(false);
       const [userOrders, setUserOrders] = useState([]);
-      const [activeStory, setActiveStory] = useState(null);
+      const [activeStoryIdx, setActiveStoryIdx] = useState(null);
+      const [storyProgress, setStoryProgress] = useState(0);
+      const [isStoryPaused, setIsStoryPaused] = useState(false);
       const [stories, setStories] = useState([]);
+      const [miniRefreshing, setMiniRefreshing] = useState(false);
       const [showOnboarding, setShowOnboarding] = useState(false);
       const [onboardSlide, setOnboardSlide] = useState(0);
 
@@ -1401,6 +1552,12 @@ function getMiniAppHtml() {
         phone: '+998 90 123 45 67',
         phone2: '+998 97 765 43 21',
         phone3: '+998 99 888 77 66',
+        uzcard_active: true,
+        humo_active: true,
+        visa_active: false,
+        phone1_active: true,
+        phone2_active: true,
+        phone3_active: true,
         instagram_url: 'https://instagram.com/kuzavnoy.uzz',
         youtube_url: 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
         store_address: "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon",
@@ -1508,15 +1665,64 @@ function getMiniAppHtml() {
         }
       };
 
+      // Instagram Uslubidagi Stories Taymeri (5 soniya avto-o'tish)
+      useEffect(() => {
+        if (activeStoryIdx === null || isStoryPaused || stories.length === 0) return;
+        const timer = setInterval(() => {
+          setStoryProgress(prev => {
+            if (prev >= 100) {
+              if (activeStoryIdx < stories.length - 1) {
+                setActiveStoryIdx(i => i + 1);
+                return 0;
+              } else {
+                setActiveStoryIdx(null);
+                return 0;
+              }
+            }
+            return prev + 1; // 50ms x 100 = 5000ms (5 soniya)
+          });
+        }, 50);
+        return () => clearInterval(timer);
+      }, [activeStoryIdx, isStoryPaused, stories.length]);
+
+      const handleNextStory = (e) => {
+        if (e) e.stopPropagation();
+        if (activeStoryIdx !== null && activeStoryIdx < stories.length - 1) {
+          setActiveStoryIdx(prev => prev + 1);
+          setStoryProgress(0);
+        } else {
+          setActiveStoryIdx(null);
+          setStoryProgress(0);
+        }
+      };
+
+      const handlePrevStory = (e) => {
+        if (e) e.stopPropagation();
+        if (storyProgress > 25 || activeStoryIdx === 0) {
+          setStoryProgress(0);
+        } else if (activeStoryIdx !== null && activeStoryIdx > 0) {
+          setActiveStoryIdx(prev => prev - 1);
+          setStoryProgress(0);
+        }
+      };
+
+      const handleMiniRefresh = async () => {
+        setMiniRefreshing(true);
+        try {
+          await Promise.all([fetchProducts(), fetchStories(), fetchSettings(), fetchUserOrders()]);
+        } catch(e) {}
+        setTimeout(() => setMiniRefreshing(false), 700);
+      };
+
       const availableCards = useMemo(() => {
         const list = [];
-        if (settings.uzcard_number && settings.uzcard_number.trim()) {
+        if (settings.uzcard_active !== false && settings.uzcard_number && settings.uzcard_number.trim()) {
           list.push({ type: 'uzcard', name: 'Uzcard', number: settings.uzcard_number, holder: settings.uzcard_holder || settings.card_holder, badge: '🔵 UZCARD' });
         }
-        if (settings.humo_number && settings.humo_number.trim()) {
+        if (settings.humo_active !== false && settings.humo_number && settings.humo_number.trim()) {
           list.push({ type: 'humo', name: 'Humo', number: settings.humo_number, holder: settings.humo_holder || settings.card_holder, badge: '🟠 HUMO' });
         }
-        if (settings.visa_number && settings.visa_number.trim()) {
+        if (settings.visa_active && settings.visa_number && settings.visa_number.trim()) {
           list.push({ type: 'visa', name: 'Visa / MC', number: settings.visa_number, holder: settings.visa_holder || settings.card_holder, badge: '🟡 VISA' });
         }
         if (list.length === 0) {
@@ -1735,27 +1941,105 @@ function getMiniAppHtml() {
               </div>
             )}
 
-            {/* STORY MODAL */}
-            {activeStory && (
-              <div className="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between p-4 text-white">
-                <div className={'sticky bottom-0 z-10 flex items-center justify-between pt-3 pb-1 mt-2 border-t backdrop-blur ' + (isDark ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-100')}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center font-bold text-xs">K</div>
-                    <span className="text-xs font-semibold">{t('appName')}</span>
+            {/* INSTAGRAM-STYLE STORY VIEWER */}
+            {activeStoryIdx !== null && stories[activeStoryIdx] && (
+              <div 
+                className="fixed inset-0 z-50 bg-black flex items-center justify-center select-none"
+                onPointerDown={() => setIsStoryPaused(true)}
+                onPointerUp={() => setIsStoryPaused(false)}
+                onPointerCancel={() => setIsStoryPaused(false)}
+              >
+                {/* Asosiy Karkas (Mobile 9:16 yoki to'liq ekran) */}
+                <div className="relative w-full h-full max-w-md bg-slate-950 flex flex-col justify-between overflow-hidden shadow-2xl">
+                  
+                  {/* YUQORI SEGMENTLI PROGRESS BAR (Instagram kabi) */}
+                  <div className="absolute top-2.5 inset-x-3 z-30 flex items-center gap-1 pointer-events-none">
+                    {stories.map((s, sIdx) => (
+                      <div key={sIdx} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden backdrop-blur-sm">
+                        <div 
+                          className="h-full bg-white transition-all duration-75"
+                          style={{
+                            width: sIdx < activeStoryIdx ? '100%' : (sIdx === activeStoryIdx ? (storyProgress + '%') : '0%')
+                          }}
+                        />
+                      </div>
+                    ))}
                   </div>
-                  <button onClick={() => setActiveStory(null)} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">✕</button>
+
+                  {/* YUQORI DO'KON LOGO & YOPISH TUGMASI */}
+                  <div className="absolute top-5 inset-x-3 z-30 flex items-center justify-between text-white pointer-events-auto">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center font-black text-xs shadow-md">
+                        🚗
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-black drop-shadow-md">{t('appName')}</span>
+                          <span className="text-[10px] bg-red-600/80 px-1.5 py-0.2 rounded font-extrabold">{stories[activeStoryIdx].tag || 'Aksiya'}</span>
+                        </div>
+                        <span className="text-[9px] text-slate-300 block">{(activeStoryIdx + 1) + ' / ' + stories.length}</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setActiveStoryIdx(null); setStoryProgress(0); }} 
+                      className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 border border-white/20 flex items-center justify-center text-sm font-bold active:scale-90 transition backdrop-blur"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* HD TO'LIQ FORMATLI RASM */}
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-black">
+                    <img 
+                      src={stories[activeStoryIdx].image_url || stories[activeStoryIdx].img} 
+                      alt={stories[activeStoryIdx].title}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Yuqori va pastki qorong'i gradient */}
+                    <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/80 via-black/30 to-transparent pointer-events-none" />
+                    <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/95 via-black/60 to-transparent pointer-events-none" />
+                  </div>
+
+                  {/* CHAP VA O'NG INTERAKTIV BOSISH HUDUDLARI (Instagram tap) */}
+                  <div className="absolute inset-0 z-20 flex pointer-events-auto">
+                    {/* Chap 35%: Oldingi istoriya */}
+                    <div 
+                      onClick={handlePrevStory} 
+                      className="w-[35%] h-full cursor-pointer active:bg-white/5 transition"
+                      title="Oldingi istoriya"
+                    />
+                    {/* O'ng 65%: Keyingi istoriya */}
+                    <div 
+                      onClick={handleNextStory} 
+                      className="w-[65%] h-full cursor-pointer active:bg-white/5 transition"
+                      title="Keyingi istoriya"
+                    />
+                  </div>
+
+                  {/* PASTKI MATN VA KATALOGDA KO'RISH TUGMASI */}
+                  <div className="relative z-30 p-5 mt-auto text-white space-y-3 pointer-events-auto">
+                    <div>
+                      <h3 className="text-lg font-black leading-tight drop-shadow-md text-amber-300">
+                        {stories[activeStoryIdx].title}
+                      </h3>
+                      <p className="text-xs text-slate-200 mt-1 leading-relaxed drop-shadow-sm line-clamp-3">
+                        {stories[activeStoryIdx].description || stories[activeStoryIdx].desc}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setActiveStoryIdx(null); 
+                        setStoryProgress(0); 
+                        setActiveTab('catalog'); 
+                      }}
+                      className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black text-xs rounded-2xl shadow-xl shadow-red-950/60 active:scale-95 transition flex items-center justify-center gap-2"
+                    >
+                      <span>🛒</span>
+                      <span>{t('viewInCatalog')}</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="my-auto text-center px-4">
-                  <img src={activeStory.image_url || activeStory.img} className="w-full max-h-72 object-cover rounded-2xl mb-4 border border-white/10 shadow-2xl" />
-                  <h3 className="text-xl font-bold mb-2">{activeStory.title}</h3>
-                  <p className="text-sm text-slate-300">{activeStory.description || activeStory.desc}</p>
-                </div>
-                <button 
-                  onClick={() => { setActiveStory(null); setActiveTab('catalog'); }}
-                  className="w-full py-3.5 bg-white text-slate-900 font-bold rounded-xl active:scale-95 transition"
-                >
-                  {t('viewInCatalog')}
-                </button>
               </div>
             )}
 
@@ -1773,6 +2057,16 @@ function getMiniAppHtml() {
 
               {/* TIL VA THEME CONTROLS */}
               <div className="flex items-center gap-1.5">
+                {/* Mini App Refresh Tugmasi */}
+                <button
+                  onClick={handleMiniRefresh}
+                  disabled={miniRefreshing}
+                  title="Yangilash"
+                  className={'w-8 h-8 rounded-xl border flex items-center justify-center transition active:scale-90 ' + 
+                    (isDark ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 shadow-sm')}
+                >
+                  <span className={'text-xs ' + (miniRefreshing ? 'inline-block animate-spin text-red-500' : '')}>🔄</span>
+                </button>
                 {/* 3 Til selektori */}
                 <div className={'flex items-center p-0.5 rounded-xl border text-[10px] font-bold ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200')}>
                   {['uz', 'ru', 'en'].map(code => (
@@ -1856,7 +2150,7 @@ function getMiniAppHtml() {
                     {stories.map(s => (
                       <div 
                         key={s.id} 
-                        onClick={() => setActiveStory(s)}
+                        onClick={() => { const sIdx = stories.findIndex(item => item.id === s.id); setActiveStoryIdx(sIdx >= 0 ? sIdx : 0); setStoryProgress(0); }}
                         className="flex-shrink-0 flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition"
                       >
                         <div className="w-14 h-14 rounded-full p-[2px] bg-gradient-to-tr from-red-500 via-rose-400 to-amber-400">
@@ -2272,8 +2566,34 @@ function getMiniAppHtml() {
             {/* 4. PROFIL TAB */}
             {activeTab === 'profile' && (
               <div className="px-4 pt-3">
-                <h1 className="text-lg font-black mb-0.5">{t('profileTitle')}</h1>
-                <p className={'text-xs mb-4 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('profileDesc')}</p>
+                {/* PROFIL SARLAVHASI VA TEPADAGI O'NG BURCHAKDAGI IJTIMOIY TUGMALAR */}
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h1 className="text-lg font-black mb-0.5">{t('profileTitle')}</h1>
+                    <p className={'text-xs ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('profileDesc')}</p>
+                  </div>
+                  {/* TEPADAGI O'NG BURCHAK: Instagram & YouTube nishonlari */}
+                  <div className="flex items-center gap-2">
+                    <a 
+                      href={settings.instagram_url || "https://instagram.com/kuzavnoy.uzz"} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      title="Instagram"
+                      className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 flex items-center justify-center text-white text-base shadow-md shadow-rose-950/20 hover:scale-105 active:scale-95 transition"
+                    >
+                      📸
+                    </a>
+                    <a 
+                      href={settings.youtube_url || "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G"} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      title="YouTube"
+                      className="w-9 h-9 rounded-2xl bg-red-600 flex items-center justify-center text-white text-base shadow-md shadow-red-950/30 hover:scale-105 active:scale-95 transition"
+                    >
+                      ▶️
+                    </a>
+                  </div>
+                </div>
 
                 {/* User Info Card */}
                 <div className={'p-4 rounded-3xl border mb-5 flex items-center gap-3.5 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200')}>
@@ -2286,37 +2606,6 @@ function getMiniAppHtml() {
                   </div>
                 </div>
 
-                {/* Ijtimoiy Sahifalar (Task 8) */}
-                <div className={'p-4 rounded-3xl border mb-3 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm')}>
-                  <h4 className="text-xs font-black uppercase tracking-wider mb-2.5 text-red-500">{t('socialChannels')}</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <a 
-                      href={settings.instagram_url || "https://instagram.com/kuzavnoy.uzz"} 
-                      target="_blank" 
-                      className={'p-2.5 rounded-2xl border flex items-center gap-2 transition ' + 
-                        (isDark ? 'bg-slate-950 border-slate-800 hover:border-rose-500' : 'bg-slate-50 border-slate-200 hover:border-rose-400')}
-                    >
-                      <span className="text-lg">📸</span>
-                      <div>
-                        <span className="text-[11px] font-bold block leading-tight">Instagram</span>
-                        <span className="text-[9px] text-slate-400">@kuzavnoy.uzz</span>
-                      </div>
-                    </a>
-                    <a 
-                      href={settings.youtube_url || "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G"} 
-                      target="_blank" 
-                      className={'p-2.5 rounded-2xl border flex items-center gap-2 transition ' + 
-                        (isDark ? 'bg-slate-950 border-slate-800 hover:border-red-500' : 'bg-slate-50 border-slate-200 hover:border-red-400')}
-                    >
-                      <span className="text-lg">▶️</span>
-                      <div>
-                        <span className="text-[11px] font-bold block leading-tight">YouTube</span>
-                        <span className="text-[9px] text-slate-400">kuzavnoy.uzz</span>
-                      </div>
-                    </a>
-                  </div>
-                </div>
-
                 {/* Do'kon bilan aloqa (3 ta telefon raqami va Manzil) */}
                 <div className={'p-4 rounded-3xl border mb-5 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm')}>
                   <h4 className="text-xs font-black uppercase tracking-wider mb-2.5 text-emerald-500 flex items-center gap-1.5">
@@ -2324,23 +2613,25 @@ function getMiniAppHtml() {
                     <span>Aloqa & Qo'ng'iroq Markazi</span>
                   </h4>
                   <div className="space-y-2.5">
-                    {/* Asosiy telefon */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Asosiy raqam</span>
-                        <span className={'text-xs font-mono font-black ' + (isDark ? 'text-slate-200' : 'text-slate-800')}>{settings.phone || "+998 90 123 45 67"}</span>
+                    {/* Asosiy telefon (agar faol bo'lsa) */}
+                    {settings.phone1_active !== false && settings.phone && (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Asosiy raqam</span>
+                          <span className={'text-xs font-mono font-black ' + (isDark ? 'text-slate-200' : 'text-slate-800')}>{settings.phone}</span>
+                        </div>
+                        <a 
+                          href={'tel:' + settings.phone.replace(/\s+/g, '')}
+                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-black shadow transition active:scale-95 flex items-center gap-1"
+                        >
+                          <span>📞</span>
+                          <span>{t('callStore')}</span>
+                        </a>
                       </div>
-                      <a 
-                        href={'tel:' + (settings.phone || '+998901234567').replace(/\s+/g, '')}
-                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-black shadow transition active:scale-95 flex items-center gap-1"
-                      >
-                        <span>📞</span>
-                        <span>{t('callStore')}</span>
-                      </a>
-                    </div>
+                    )}
 
-                    {/* Qo'shimcha telefon 1 */}
-                    {settings.phone2 && (
+                    {/* Qo'shimcha telefon 1 (agar faol bo'lsa) */}
+                    {settings.phone2_active !== false && settings.phone2 && (
                       <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
                         <div>
                           <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Call-markaz / Savdo</span>
@@ -2356,8 +2647,8 @@ function getMiniAppHtml() {
                       </div>
                     )}
 
-                    {/* Qo'shimcha telefon 2 */}
-                    {settings.phone3 && (
+                    {/* Qo'shimcha telefon 2 (agar faol bo'lsa) */}
+                    {settings.phone3_active !== false && settings.phone3 && (
                       <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
                         <div>
                           <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Texnik yordam & Konsultatsiya</span>
@@ -2399,21 +2690,48 @@ function getMiniAppHtml() {
                           </span>
                         </div>
 
-                        {/* Buyurtma Holat Bannerni Ko'rsatish */}
-                        <div className={'p-2 rounded-xl mb-2.5 text-[11px] font-bold flex items-center gap-2 border ' + 
-                          (o.status === 'Jarayonda' ? (isDark ? 'bg-sky-950/60 border-sky-800/50 text-sky-300' : 'bg-sky-50 border-sky-200 text-sky-800') : 
-                          (o.status === 'Yetkazildi' ? (isDark ? 'bg-emerald-950/60 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800') : 
-                          (o.status === 'Bekor qilindi' ? (isDark ? 'bg-rose-950/60 border-rose-800/50 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-800') : 
-                          (isDark ? 'bg-amber-950/60 border-amber-800/50 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'))))}>
-                          <span className="text-sm">
-                            {o.status === 'Jarayonda' ? '✅' : (o.status === 'Yetkazildi' ? '🎉' : (o.status === 'Bekor qilindi' ? '🔴' : '⏳'))}
+                        {/* Buyurtma Holat Bannerni Ko'rsatish (Barcha 5 ta holat) */}
+                        <div className={'p-2.5 rounded-xl mb-2 text-[11px] font-bold flex items-center gap-2 border ' + 
+                          (o.status === 'Jarayonda' ? (isDark ? 'bg-sky-950/60 border-sky-800/50 text-sky-300' : 'bg-sky-50 border-sky-200 text-sky-800') :
+                           o.status === 'Tayyorlandi' ? (isDark ? 'bg-indigo-950/60 border-indigo-800/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-800') :
+                           o.status === 'Yetkazildi' ? (isDark ? 'bg-emerald-950/60 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800') :
+                           o.status === 'Bekor qilindi' ? (isDark ? 'bg-rose-950/60 border-rose-800/50 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-800') :
+                           (isDark ? 'bg-amber-950/60 border-amber-800/50 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'))}>
+                          <span className="text-base">
+                            {o.status === 'Jarayonda' ? '✅' : (o.status === 'Tayyorlandi' ? '📦' : (o.status === 'Yetkazildi' ? '🎉' : (o.status === 'Bekor qilindi' ? '🔴' : '⏳')))}
                           </span>
-                          <span>
+                          <span className="leading-tight">
                             {o.status === 'Jarayonda' ? 'Buyurtmangiz qabul qilindi va tayyorlanmoqda! 🚗💨' : 
+                            (o.status === 'Tayyorlandi' ? 'Buyurtmangiz tayyorlandi va yetkazishga shay! 📦' : 
                             (o.status === 'Yetkazildi' ? 'Buyurtma yetkazildi! Xaridingiz uchun rahmat!' : 
-                            (o.status === 'Bekor qilindi' ? 'Buyurtma bekor qilingan.' : "Buyurtma ko'rib chiqilmoqda (Kutilmoqda)..."))}
+                            (o.status === 'Bekor qilindi' ? 'Buyurtma bekor qilingan.' : "Buyurtma ko'rib chiqilmoqda (Kutilmoqda)...")))}
                           </span>
                         </div>
+
+                        {/* Bosqichma-bosqich vizual status-treker */}
+                        {o.status !== 'Bekor qilindi' && (
+                          <div className={'px-3 py-2 rounded-xl mb-2.5 border ' + (isDark ? 'bg-slate-950 border-slate-800/80' : 'bg-slate-50 border-slate-200')}>
+                            <div className="flex items-center justify-between text-[9px] font-black text-slate-400">
+                              <span className={o.status === 'Kutilmoqda' ? 'text-amber-400 font-extrabold' : 'text-emerald-500'}>1. Qabul</span>
+                              <span>→</span>
+                              <span className={o.status === 'Jarayonda' ? 'text-sky-400 font-extrabold' : (['Tayyorlandi', 'Yetkazildi'].includes(o.status) ? 'text-emerald-500' : '')}>2. Tayyorlanmoqda</span>
+                              <span>→</span>
+                              <span className={o.status === 'Tayyorlandi' ? 'text-indigo-400 font-extrabold' : (o.status === 'Yetkazildi' ? 'text-emerald-500' : '')}>3. Tayyor</span>
+                              <span>→</span>
+                              <span className={o.status === 'Yetkazildi' ? 'text-emerald-500 font-extrabold' : ''}>4. Yetkazildi</span>
+                            </div>
+                            <div className="w-full bg-slate-700/30 h-1.5 rounded-full overflow-hidden mt-1.5">
+                              <div 
+                                className="h-full bg-gradient-to-r from-red-600 via-amber-500 to-emerald-500 rounded-full transition-all duration-500"
+                                style={{
+                                  width: o.status === 'Kutilmoqda' ? '25%' : 
+                                         (o.status === 'Jarayonda' ? '50%' : 
+                                         (o.status === 'Tayyorlandi' ? '75%' : '100%'))
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
                         <div className={'text-[11px] mb-2 leading-relaxed ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>
                           {(o.items || []).map(i => i.name + ' x ' + (i.quantity || 1)).join(', ')}
                         </div>
@@ -3016,6 +3334,8 @@ function getAdminPanelHtml() {
       const [users, setUsers] = useState([]);
       const [stories, setStories] = useState([]);
       const [loading, setLoading] = useState(false);
+      const [isRefreshing, setIsRefreshing] = useState(false);
+      const [refreshToast, setRefreshToast] = useState(false);
       const [soundEnabled, setSoundEnabled] = useState(true);
 
       // Davriy analitika filtri
@@ -3034,11 +3354,30 @@ function getAdminPanelHtml() {
         phone: "+998 90 123 45 67",
         phone2: "+998 97 765 43 21",
         phone3: "+998 99 888 77 66",
+        uzcard_active: true,
+        humo_active: true,
+        visa_active: false,
+        phone1_active: true,
+        phone2_active: true,
+        phone3_active: true,
         instagram_url: "https://instagram.com/kuzavnoy.uzz",
         youtube_url: "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G",
         store_address: "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon",
         store_hours: "09:00 - 19:00"
       });
+
+      const handleAdminRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+          await Promise.all([fetchOrders(), fetchProducts(), fetchUsers(), fetchStories(), fetchSettings()]);
+          setRefreshToast(true);
+          setTimeout(() => setRefreshToast(false), 3000);
+        } catch(e) {
+          console.error('Refresh error:', e);
+        } finally {
+          setIsRefreshing(false);
+        }
+      };
       const [settingsSaving, setSettingsSaving] = useState(false);
       const [settingsMessage, setSettingsMessage] = useState("");
 
@@ -3529,6 +3868,14 @@ function getAdminPanelHtml() {
         <div className={'min-h-screen transition-colors duration-200 flex flex-col ' + 
           (isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900')}>
           
+          {/* YANGILASH XABARI (TOAST) */}
+          {refreshToast && (
+            <div className="fixed top-4 right-4 z-50 bg-emerald-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 border border-emerald-400/40 animate-bounce">
+              <span>✅</span>
+              <span>Barcha ma'lumotlar muvaffaqiyatli yangilandi!</span>
+            </div>
+          )}
+          
           {/* HEADER */}
           <header className={'sticky top-0 z-30 px-3 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 border-b backdrop-blur ' + 
             (isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200')}>
@@ -3591,11 +3938,14 @@ function getAdminPanelHtml() {
 
               {/* Refresh */}
               <button 
-                onClick={loadAllData}
-                className={'px-2.5 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1 ' + 
+                onClick={handleAdminRefresh}
+                disabled={isRefreshing}
+                title="Barcha ma'lumotlarni yangilash"
+                className={'px-2.5 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 active:scale-95 ' + 
                   (isDark ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200' : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm')}
               >
-                <span>{t('refresh')}</span> 🔄
+                <span>{t('refresh')}</span> 
+                <span className={isRefreshing ? 'inline-block animate-spin text-red-500' : ''}>🔄</span>
               </button>
             </div>
           </header>
@@ -3718,6 +4068,9 @@ function getAdminPanelHtml() {
                     </span>
                     <span className="px-3 py-1 rounded-xl text-xs font-bold bg-sky-500/10 border border-sky-500/30 text-sky-500">
                       Jarayonda: {periodOrders.filter(o => o.status === 'Jarayonda').length} ta
+                    </span>
+                    <span className="px-3 py-1 rounded-xl text-xs font-bold bg-indigo-500/10 border border-indigo-500/30 text-indigo-500">
+                      Tayyorlandi: {periodOrders.filter(o => o.status === 'Tayyorlandi').length} ta
                     </span>
                     <span className="px-3 py-1 rounded-xl text-xs font-bold bg-amber-500/10 border border-amber-500/30 text-amber-500">
                       Kutilmoqda: {periodOrders.filter(o => o.status === 'Kutilmoqda').length} ta
@@ -3873,6 +4226,7 @@ function getAdminPanelHtml() {
                               >
                                 <option value="Kutilmoqda">🟡 {t('pending')}</option>
                                 <option value="Jarayonda">🔵 {t('processing')}</option>
+                                <option value="Tayyorlandi">📦 Tayyorlandi</option>
                                 <option value="Yetkazildi">🟢 {t('delivered')}</option>
                                 <option value="Bekor qilindi">🔴 {t('cancelled')}</option>
                               </select>
@@ -4289,7 +4643,20 @@ function getAdminPanelHtml() {
 
                     {/* 1.1 Uzcard */}
                     <div className="p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/5 space-y-2">
-                      <span className="text-xs font-black text-blue-500 flex items-center gap-1.5">🔵 UZCARD</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-blue-500 flex items-center gap-1.5">🔵 UZCARD</span>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold">
+                          <input 
+                            type="checkbox" 
+                            checked={settings.uzcard_active !== false} 
+                            onChange={e => setSettings({ ...settings, uzcard_active: e.target.checked })}
+                            className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+                          />
+                          <span className={settings.uzcard_active !== false ? 'text-blue-500 font-extrabold' : 'text-slate-400'}>
+                            {settings.uzcard_active !== false ? "✅ Faol (Kassada ko'rinadi)" : "❌ Nofaol (Yashirilgan)"}
+                          </span>
+                        </label>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                           <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Uzcard Karta Raqami</label>
@@ -4318,7 +4685,20 @@ function getAdminPanelHtml() {
 
                     {/* 1.2 Humo */}
                     <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-2">
-                      <span className="text-xs font-black text-amber-500 flex items-center gap-1.5">🟠 HUMO</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-amber-500 flex items-center gap-1.5">🟠 HUMO</span>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold">
+                          <input 
+                            type="checkbox" 
+                            checked={settings.humo_active !== false} 
+                            onChange={e => setSettings({ ...settings, humo_active: e.target.checked })}
+                            className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
+                          />
+                          <span className={settings.humo_active !== false ? 'text-amber-500 font-extrabold' : 'text-slate-400'}>
+                            {settings.humo_active !== false ? "✅ Faol (Kassada ko'rinadi)" : "❌ Nofaol (Yashirilgan)"}
+                          </span>
+                        </label>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                           <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Humo Karta Raqami</label>
@@ -4348,8 +4728,18 @@ function getAdminPanelHtml() {
                     {/* 1.3 Visa / Mastercard */}
                     <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-emerald-500 flex items-center gap-1.5">🟡 VISA / MASTERCARD (Ixtiyoriy)</span>
-                        <span className="text-[10px] text-slate-400">Agar bo'sh qoldirilsa, Mini Appda Visa chiqmaydi</span>
+                        <span className="text-xs font-black text-emerald-500 flex items-center gap-1.5">🟡 VISA / MASTERCARD</span>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold">
+                          <input 
+                            type="checkbox" 
+                            checked={Boolean(settings.visa_active)} 
+                            onChange={e => setSettings({ ...settings, visa_active: e.target.checked })}
+                            className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                          />
+                          <span className={settings.visa_active ? 'text-emerald-500 font-extrabold' : 'text-slate-400'}>
+                            {settings.visa_active ? "✅ Faol (Kassada ko'rinadi)" : "❌ Nofaol (Yashirilgan)"}
+                          </span>
+                        </label>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
@@ -4358,7 +4748,7 @@ function getAdminPanelHtml() {
                             type="text"
                             value={settings.visa_number || ''}
                             onChange={e => setSettings({ ...settings, visa_number: e.target.value })}
-                            placeholder="4000 1234 5678 9010 (Bo'sh bo'lsa ko'rinmaydi)"
+                            placeholder="4000 1234 5678 9010"
                             className={'w-full px-3 py-2 border rounded-xl font-mono text-xs focus:outline-none focus:border-red-500 ' + 
                               (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
                           />
@@ -4386,8 +4776,21 @@ function getAdminPanelHtml() {
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Asosiy Telefon *</label>
+                      <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className={'font-bold text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Asosiy Telefon *</label>
+                          <label className="flex items-center gap-1 cursor-pointer text-[10px] font-bold">
+                            <input 
+                              type="checkbox" 
+                              checked={settings.phone1_active !== false} 
+                              onChange={e => setSettings({ ...settings, phone1_active: e.target.checked })}
+                              className="w-3.5 h-3.5 accent-emerald-600 rounded cursor-pointer"
+                            />
+                            <span className={settings.phone1_active !== false ? 'text-emerald-500' : 'text-slate-400'}>
+                              {settings.phone1_active !== false ? '✅ Faol' : '❌ Nofaol'}
+                            </span>
+                          </label>
+                        </div>
                         <input 
                           type="text"
                           required
@@ -4397,11 +4800,24 @@ function getAdminPanelHtml() {
                           className={'w-full px-3 py-2 border rounded-xl font-mono text-xs focus:outline-none focus:border-red-500 ' + 
                             (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
                         />
-                        <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Cheklarda va do'konda</span>
+                        <span className={'text-[10px] block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Cheklarda va do'konda chiqadi</span>
                       </div>
 
-                      <div>
-                        <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Qo'shimcha 1 (Call-markaz)</label>
+                      <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className={'font-bold text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Qo'shimcha 1 (Call-markaz)</label>
+                          <label className="flex items-center gap-1 cursor-pointer text-[10px] font-bold">
+                            <input 
+                              type="checkbox" 
+                              checked={settings.phone2_active !== false} 
+                              onChange={e => setSettings({ ...settings, phone2_active: e.target.checked })}
+                              className="w-3.5 h-3.5 accent-emerald-600 rounded cursor-pointer"
+                            />
+                            <span className={settings.phone2_active !== false ? 'text-emerald-500' : 'text-slate-400'}>
+                              {settings.phone2_active !== false ? '✅ Faol' : '❌ Nofaol'}
+                            </span>
+                          </label>
+                        </div>
                         <input 
                           type="text"
                           value={settings.phone2 || ''}
@@ -4410,11 +4826,24 @@ function getAdminPanelHtml() {
                           className={'w-full px-3 py-2 border rounded-xl font-mono text-xs focus:outline-none focus:border-red-500 ' + 
                             (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
                         />
-                        <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Mijoz profilida chiqadi</span>
+                        <span className={'text-[10px] block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Mijoz profilida ko'rinadi</span>
                       </div>
 
-                      <div>
-                        <label className={'font-bold block mb-1 text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Qo'shimcha 2 (Texnik yordam)</label>
+                      <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className={'font-bold text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>Qo'shimcha 2 (Texnik yordam)</label>
+                          <label className="flex items-center gap-1 cursor-pointer text-[10px] font-bold">
+                            <input 
+                              type="checkbox" 
+                              checked={settings.phone3_active !== false} 
+                              onChange={e => setSettings({ ...settings, phone3_active: e.target.checked })}
+                              className="w-3.5 h-3.5 accent-emerald-600 rounded cursor-pointer"
+                            />
+                            <span className={settings.phone3_active !== false ? 'text-emerald-500' : 'text-slate-400'}>
+                              {settings.phone3_active !== false ? '✅ Faol' : '❌ Nofaol'}
+                            </span>
+                          </label>
+                        </div>
                         <input 
                           type="text"
                           value={settings.phone3 || ''}
@@ -4423,7 +4852,7 @@ function getAdminPanelHtml() {
                           className={'w-full px-3 py-2 border rounded-xl font-mono text-xs focus:outline-none focus:border-red-500 ' + 
                             (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
                         />
-                        <span className={'text-[10px] mt-1 block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Konsultatsiya uchun</span>
+                        <span className={'text-[10px] block ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>Konsultatsiya uchun</span>
                       </div>
                     </div>
                   </div>

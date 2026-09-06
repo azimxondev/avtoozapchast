@@ -409,9 +409,19 @@ if (BOT_TOKEN) {
   // Bot menyu buyruqlarini ro'yxatdan o'tkazish
   bot.setMyCommands([
     { command: 'start', description: '🚀 Botni ishga tushirish va katalog' },
-    { command: 'katalog', description: '🛒 Avto ehtiyot qismlari katalogi' },
-    { command: 'aloqa', description: '📞 Do\'kon telefonlari va manzili' },
-    { command: 'admin', description: '👨‍💼 Boshqaruv paneli (Admin)' }
+    { command: 'katalog', description: '🛒 Ehtiyot qismlar do\'koni (Mini App)' },
+    { command: 'telefon', description: '📞 Telefon raqamlarimiz' },
+    { command: 'manzil', description: '📍 Do\'kon manzili va xaritalar' },
+    { command: 'instagram', description: '📸 Rasmiy Instagram sahifamiz' },
+    { command: 'youtube', description: '▶️ YouTube tyuning kanalimiz' },
+    { command: 'buyurtma', description: '📦 Buyurtma holatini tekshirish' },
+    { command: 'ishvaqti', description: '⏰ Ish vaqti va tartibi' },
+    { command: 'tolov', description: '💳 To\'lov turlari (Uzcard, Humo, Visa, Naqd)' },
+    { command: 'yetkazish', description: '🚚 Toshkent va viloyatlarga yetkazib berish' },
+    { command: 'aloqa', description: '📞 Aloqa markazi va operatorlar' },
+    { command: 'menyu', description: '🗂 Barcha bo\'limlar menyusi' },
+    { command: 'help', description: 'ℹ️ Yordam va bot qo\'llanmasi' },
+    { command: 'admin', description: '⚙️ Boshqaruv paneli (Admin)' }
   ]).catch(() => {});
 
   // /katalog buyrug'i
@@ -484,16 +494,336 @@ if (BOT_TOKEN) {
     }
   });
 
+  // 1. /telefon — Do'kon telefon raqamlari
+  bot.onText(/\/(?:telefon|raqam|nomer)/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    try {
+      const sRes = await pool.query('SELECT * FROM store_settings WHERE id=1');
+      const st = sRes.rows[0] || {};
+      const phones = [];
+      if (st.phone1_active !== false && st.phone) phones.push(`• Asosiy: <b>${st.phone}</b>`);
+      if (st.phone2_active !== false && st.phone2) phones.push(`• Savdo bo'limi: <b>${st.phone2}</b>`);
+      if (st.phone3_active !== false && st.phone3) phones.push(`• Texnik maslahat: <b>${st.phone3}</b>`);
+      if (phones.length === 0) phones.push('• Telefon: +998 90 123 45 67');
+
+      const primaryPhone = (st.phone || '+998901234567').replace(/[^0-9+]/g, '');
+
+      bot.sendMessage(chatId,
+        "📞 <b>kuzavnoy.uzz — Telefon Raqamlarimiz</b>\n\n" +
+        "Biz bilan to'g'ridan-to'g'ri bog'lanish uchun raqamlar:\n\n" +
+        phones.join('\n') + "\n\n" +
+        `⏰ <b>Qo'ng'iroqlarni qabul qilish:</b> ${st.store_hours || "09:00 - 19:00"} (Har kuni)\n` +
+        "💬 <b>Telegram admin:</b> @azimxon_kuzavnoy\n\n" +
+        "Pastdagi tugmalar orqali bir bosishda qo'ng'iroq qilishingiz mumkin: 👇",
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: `📞 Qo'ng'iroq: ${st.phone || "+998 90 123 45 67"}`, url: `tel:${primaryPhone}` }
+              ],
+              [
+                { text: "💬 Telegramda yozish", url: "https://t.me/azimxon_kuzavnoy" },
+                { text: "🛒 Katalogni ochish", web_app: { url: WEB_APP_URL } }
+              ]
+            ]
+          }
+        }
+      );
+    } catch(e) {
+      bot.sendMessage(chatId, "📞 Telefon: +998 90 123 45 67 | +998 97 765 43 21\nIsh vaqti: 09:00 - 19:00");
+    }
+  });
+
+  // 2. /instagram — Rasmiy Instagram sahifasi
+  bot.onText(/\/(?:instagram|insta)/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    let instaUrl = "https://instagram.com/kuzavnoy.uzz";
+    try {
+      const sRes = await pool.query('SELECT instagram_url FROM store_settings WHERE id=1');
+      if (sRes.rows[0]?.instagram_url) instaUrl = sRes.rows[0].instagram_url;
+    } catch(e) {}
+
+    bot.sendMessage(chatId,
+      "📸 <b>kuzavnoy.uzz — Rasmiy Instagram Sahifamiz!</b>\n\n" +
+      "Bizning Instagram sahifamizda har kuni:\n" +
+      "🔥 Yangi kelgan original zapchastlar va tyuning detallari\n" +
+      "🎬 Rullar, barlar va oynalarni o'rnatish jarayonlari (Reels / Stories)\n" +
+      "⭐️ Mijozlarimizning avtomobillari va fikrlari\n" +
+      "🎁 Doimiy chegirmalar, aksiyalar va yangiliklar!\n\n" +
+      "👉 <b>Kiring va obuna bo'ling:</b> @kuzavnoy.uzz",
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "📸 Instagram sahifani ochish", url: instaUrl }],
+            [{ text: "🛒 Do'konga kirish (Mini App)", web_app: { url: WEB_APP_URL } }]
+          ]
+        }
+      }
+    );
+  });
+
+  // 3. /youtube — Rasmiy YouTube kanal
+  bot.onText(/\/youtube/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    let ytUrl = "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G";
+    try {
+      const sRes = await pool.query('SELECT youtube_url FROM store_settings WHERE id=1');
+      if (sRes.rows[0]?.youtube_url) ytUrl = sRes.rows[0].youtube_url;
+    } catch(e) {}
+
+    bot.sendMessage(chatId,
+      "▶️ <b>kuzavnoy.uzz — Rasmiy YouTube Kanalimiz!</b>\n\n" +
+      "YouTube kanalimizda siz uchun maxsus:\n" +
+      "🎥 Avtomobillarga sport rullar va barlarni o'rnatish videolari\n" +
+      "🚗 Malibu, Cobalt, Gentra, Tracker uchun sifatli detallar obzori\n" +
+      "💡 Benson akustik labavoy oynalari va furalar haqida mutaxassis maslahatlari\n\n" +
+      "👉 <b>Kanalimizga obuna bo'ling va qiziqarli videolarni tomosha qiling!</b>",
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "▶️ YouTube kanalni ochish", url: ytUrl }],
+            [{ text: "🛒 Do'konga kirish (Mini App)", web_app: { url: WEB_APP_URL } }]
+          ]
+        }
+      }
+    );
+  });
+
+  // 4. /manzil — Do'kon lokatsiyasi va xaritalar
+  bot.onText(/\/(?:manzil|lokatsiya|location|karta)/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    try {
+      const sRes = await pool.query('SELECT store_address, store_location_url, store_hours FROM store_settings WHERE id=1');
+      const st = sRes.rows[0] || {};
+      const addr = st.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon";
+      const yandexMapUrl = st.store_location_url && st.store_location_url.trim() ? st.store_location_url : `https://yandex.uz/maps/?text=${encodeURIComponent(addr)}`;
+      const googleMapUrl = st.store_location_url && st.store_location_url.trim() ? st.store_location_url : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
+
+      bot.sendMessage(chatId,
+        "📍 <b>kuzavnoy.uzz — Do'kon Manzili & Lokatsiya</b>\n\n" +
+        `🏢 <b>Manzil:</b> ${addr}\n` +
+        "🧭 <b>Mo'ljal:</b> Sergeli mashina bozori markaziy qatori\n" +
+        "🚗 <b>Avtoturargoh:</b> Mijozlar uchun qulay bepul to'xtash joyi mavjud\n" +
+        `⏰ <b>Ish vaqti:</b> ${st.store_hours || "09:00 - 19:00"} (Dam olish kunlarisiz)\n\n` +
+        "Xaritada ko'rish va yo'nalish (navigator) chizish uchun tugmani bosing: 👇",
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🗺 Yandex Karta (Navigator)", url: yandexMapUrl },
+                { text: "📍 Google Maps", url: googleMapUrl }
+              ],
+              [
+                { text: "🛒 Do'kondan xarid qilish", web_app: { url: WEB_APP_URL } }
+              ]
+            ]
+          }
+        }
+      );
+    } catch(e) {
+      bot.sendMessage(chatId, "📍 Manzil: Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon\nIsh vaqti: 09:00 - 19:00");
+    }
+  });
+
+  // 5. /ishvaqti — Do'kon ish vaqti
+  bot.onText(/\/(?:ishvaqti|rejim|vaqt)/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    try {
+      const sRes = await pool.query('SELECT store_hours, store_address FROM store_settings WHERE id=1');
+      const st = sRes.rows[0] || {};
+      bot.sendMessage(chatId,
+        "⏰ <b>kuzavnoy.uzz — Ish Vaqti va Ish Tartibi:</b>\n\n" +
+        `🏬 <b>Do'konimiz:</b> ${st.store_address || "Toshkent sh., Sergeli mashina bozori"}\n` +
+        `• Ish kunlari: <b>Dushanba — Yakshanba (Har kuni)</b>\n` +
+        `• Ish soatlari: <b>${st.store_hours || "09:00 — 19:00"}</b>\n` +
+        "• Tushlik tanaffusisiz va dam olish kunlarisiz!\n\n" +
+        "🚚 <b>Tezkor Kuryerlik:</b> Toshkent bo'yicha 09:00 dan 21:00 gacha\n" +
+        "🤖 <b>Telegram Mini App orqali:</b> 24/7 (Kechayu-kunduz onlayn buyurtma bera olasiz)",
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🛒 Hozir buyurtma berish (Mini App)", web_app: { url: WEB_APP_URL } }],
+              [{ text: "📞 Bog'lanish", callback_data: "cmd_phone" }]
+            ]
+          }
+        }
+      );
+    } catch(e) {
+      bot.sendMessage(chatId, "⏰ Ish vaqti: Har kuni 09:00 dan 19:00 gacha (Dam olish kunlarisiz)");
+    }
+  });
+
+  // 6. /buyurtma [ID] — Buyurtma holatini tekshirish
+  bot.onText(/\/(?:buyurtma|status|order)(?:\s+(\d+))?/, async (msg, match) => {
+    const chatId = String(msg.chat.id);
+    const orderIdArg = match && match[1] ? parseInt(match[1]) : null;
+
+    try {
+      let order = null;
+      if (orderIdArg) {
+        const oRes = await pool.query('SELECT * FROM orders WHERE id = $1', [orderIdArg]);
+        if (oRes.rows.length > 0) order = oRes.rows[0];
+      } else {
+        // Oxirgi buyurtmasini olish
+        const oRes = await pool.query('SELECT * FROM orders WHERE telegram_id = $1 ORDER BY id DESC LIMIT 1', [chatId]);
+        if (oRes.rows.length > 0) order = oRes.rows[0];
+      }
+
+      if (!order) {
+        return bot.sendMessage(chatId,
+          "ℹ️ <b>Sizda hali buyurtmalar mavjud emas!</b>\n\n" +
+          "Agar ma'lum bir buyurtmangiz holatini bilmoqchi bo'lsangiz:\n" +
+          "<code>/buyurtma [raqam]</code> (Masalan: <code>/buyurtma 15</code>) yuboring.\n\n" +
+          "Yangi buyurtma berish uchun quyidagi tugmani bosing: 👇",
+          {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [[{ text: "🛒 Katalogni ochish", web_app: { url: WEB_APP_URL } }]]
+            }
+          }
+        );
+      }
+
+      let statusEmoji = "🟡";
+      if (order.status === "Jarayonda") statusEmoji = "🔵";
+      else if (order.status === "Tayyorlandi") statusEmoji = "📦";
+      else if (order.status === "Yetkazildi") statusEmoji = "🟢";
+      else if (order.status === "Bekor qilindi") statusEmoji = "🔴";
+
+      const items = Array.isArray(order.items) ? order.items : (typeof order.items === 'string' ? JSON.parse(order.items || '[]') : []);
+      const itemsList = items.map((it, i) => `  ${i + 1}. ${it.name} (${it.quantity || 1} dona)`).join('\n');
+
+      bot.sendMessage(chatId,
+        `📦 <b>Buyurtma Holati: #KZV-${order.id}</b>\n\n` +
+        `📅 <b>Sana:</b> ${new Date(order.created_at).toLocaleString('uz-UZ')}\n` +
+        `📊 <b>Holati:</b> ${statusEmoji} <b>${order.status}</b>\n` +
+        `💵 <b>Jami summa:</b> <b>${(order.total_price || 0).toLocaleString()} so'm</b>\n` +
+        `🚚 <b>Yetkazish:</b> ${order.delivery_type === 'pickup' ? "🏬 Do'kondan olib ketish (Samovivoz)" : "🚚 Kuryer orqali"}\n` +
+        `💳 <b>To'lov turi:</b> ${order.payment_method === 'card' ? "💳 Karta" : "💵 Naqd"}\n\n` +
+        `<b>Xarid qilingan detallar:</b>\n${itemsList}\n\n` +
+        "Barcha buyurtmalaringiz tarixini do'konimiz «Profil» bo'limida ko'rishingiz mumkin: 👇",
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "👤 Profil & Barcha buyurtmalar", web_app: { url: WEB_APP_URL } }],
+              [{ text: "📞 Savol bo'yicha bog'lanish", url: "https://t.me/azimxon_kuzavnoy" }]
+            ]
+          }
+        }
+      );
+    } catch(e) {
+      bot.sendMessage(chatId, "Buyurtma ma'lumotlarini yuklashda xatolik yuz berdi.");
+    }
+  });
+
+  // 7. /tolov — To'lov turlari va qoidalari
+  bot.onText(/\/(?:tolov|to'lov|payment)/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    bot.sendMessage(chatId,
+      "💳 <b>kuzavnoy.uzz — To'lov Usullari va Shartlari:</b>\n\n" +
+      "Bizda mijozlar uchun barcha qulay va xavfsiz to'lov turlari mavjud:\n\n" +
+      "1. 💵 <b>Naqd pul (Yetkazilganda yoki Do'konda):</b>\n" +
+      "   Tovarni qabul qilib olib, tekshirib ko'rganingizdan so'ng to'lashingiz mumkin.\n\n" +
+      "2. 💳 <b>Karta orqali to'lov (Uzcard / Humo / Visa):</b>\n" +
+      "   Click, Payme yoki bank kartalari orqali xavfsiz to'lov o'tkazishingiz mumkin.\n\n" +
+      "3. 🟢 <b>1% Soliq Fiskal Keshbek:</b>\n" +
+      "   Har bir xaridingiz uchun rasmiy fiskal chek taqdim etiladi. Soliq ilovasida QR-kodni skanerlab, 1% keshbek olishingiz mumkin!\n\n" +
+      "Xarid qilish uchun pastdagi tugmani bosing: 👇",
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[{ text: "🛒 Xaridni boshlash (Mini App)", web_app: { url: WEB_APP_URL } }]]
+        }
+      }
+    );
+  });
+
+  // 8. /yetkazish — Yetkazib berish shartlari
+  bot.onText(/\/(?:yetkazish|dostavka|delivery)/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    bot.sendMessage(chatId,
+      "🚚 <b>kuzavnoy.uzz — Yetkazib Berish Xizmati:</b>\n\n" +
+      "🚀 <b>Toshkent shahri bo'ylab:</b>\n" +
+      "• Tezkor kuryerlik yetkazishi — buyurtma berilganidan so'ng <b>2 soat ichida</b> yetkaziladi!\n" +
+      "• Eshigingizgacha xavfsiz yetkazib berish kafolatlanadi.\n\n" +
+      "📦 <b>O'zbekistonning barcha viloyatlariga:</b>\n" +
+      "• BTS Pochta, Fargo yoki viloyat taksilari (Damas / Pitak) orqali <b>1 kunda</b> yetkaziladi.\n" +
+      "• Barcha qismlar sinmaydigan, zarbaga chidamli maxsus qutilarga o'raladi!\n\n" +
+      "🏬 <b>Do'kondan olib ketish (Samovivoz):</b>\n" +
+      "• Sergeli mashina bozori, 4-qator 12-do'konimizdan bepul olib ketishingiz mumkin.\n\n" +
+      "Savollaringiz bo'lsa, mutaxassislarimiz bilan bog'laning: 👇",
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🛒 Do'konni ochish (Mini App)", web_app: { url: WEB_APP_URL } }],
+            [{ text: "📞 Kuryer bilan bog'lanish", url: "https://t.me/azimxon_kuzavnoy" }]
+          ]
+        }
+      }
+    );
+  });
+
+  // 9. /menyu — Barcha imkoniyatlar menyusi
+  bot.onText(/\/(?:menyu|menu)/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    const firstName = msg.from.first_name || 'Hurmatli mijoz';
+
+    bot.sendMessage(chatId,
+      `🗂 <b>kuzavnoy.uzz — Asosiy Menyu</b>\n\n` +
+      `Assalomu alaykum, <b>${firstName}</b>!\n` +
+      "Quyidagi tugmalardan birini tanlang yoki kerakli ma'lumotni oling: 👇",
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🛒 Do'kon & Katalog (Mini App)", web_app: { url: WEB_APP_URL } }],
+            [
+              { text: "📞 Telefonlar", callback_data: "cmd_phone" },
+              { text: "📍 Manzil & Xarita", callback_data: "cmd_map" }
+            ],
+            [
+              { text: "📸 Instagram", url: "https://instagram.com/kuzavnoy.uzz" },
+              { text: "▶️ YouTube", url: "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G" }
+            ],
+            [
+              { text: "📦 Buyurtmam holati", callback_data: "cmd_order" },
+              { text: "⏰ Ish vaqti", callback_data: "cmd_hours" }
+            ],
+            [
+              { text: "💳 To'lov turlari", callback_data: "cmd_payment" },
+              { text: "🚚 Yetkazib berish", callback_data: "cmd_delivery" }
+            ]
+          ]
+        }
+      }
+    );
+  });
+
   // /help buyrug'i
   bot.onText(/\/help/, async (msg) => {
     const chatId = String(msg.chat.id);
     bot.sendMessage(chatId,
       "ℹ️ <b>kuzavnoy.uzz — Yordam & Qo'llanma</b>\n\n" +
-      "🔹 <b>Buyruqlar:</b>\n" +
-      "• /start — Botni ishga tushirish va katalog\n" +
-      "• /katalog — Avto-ehtiyot qismlar katalogini ochish\n" +
-      "• /aloqa — Do'kon telefon raqamlari va manzili\n" +
-      "• /admin — Boshqaruv paneli (do'kon ma'murlari uchun)\n\n" +
+      "🔹 <b>Mavjud Buyruqlar:</b>\n" +
+      "• /katalog — Ehtiyot qismlar do'koni (Mini App)\n" +
+      "• /telefon — Do'kon telefon raqamlari\n" +
+      "• /manzil — Do'kon manzili va xaritalar\n" +
+      "• /instagram — Rasmiy Instagram sahifamiz\n" +
+      "• /youtube — YouTube tyuning kanalimiz\n" +
+      "• /buyurtma — Buyurtma holatini tekshirish\n" +
+      "• /ishvaqti — Ish vaqti va tartibi\n" +
+      "• /tolov — To'lov turlari va qoidalari\n" +
+      "• /yetkazish — Yetkazib berish shartlari\n" +
+      "• /aloqa — Aloqa markazi va operatorlar\n" +
+      "• /menyu — Asosiy bo'limlar menyusi\n" +
+      "• /admin — Boshqaruv paneli (xodimlar uchun)\n\n" +
       "🛒 Buyurtma berish uchun quyidagi tugmani bosing: 👇",
       {
         parse_mode: 'HTML',
@@ -732,6 +1062,66 @@ if (BOT_TOKEN) {
     const fromId = String(query.from.id);
 
     try {
+      // Menyu tezkor javoblari
+      if (data === 'cmd_phone') {
+        await bot.answerCallbackQuery(query.id);
+        const sRes = await pool.query('SELECT phone, phone2, phone3 FROM store_settings WHERE id=1');
+        const st = sRes.rows[0] || {};
+        return bot.sendMessage(fromId,
+          "📞 <b>Do'konimiz Telefon Raqamlari:</b>\n\n" +
+          `• Asosiy: <b>${st.phone || "+998 90 123 45 67"}</b>\n` +
+          (st.phone2 ? `• Savdo: <b>${st.phone2}</b>\n` : "") +
+          (st.phone3 ? `• Texnik yordam: <b>${st.phone3}</b>\n` : "") +
+          "\nTelegram: @azimxon_kuzavnoy",
+          { parse_mode: 'HTML' }
+        );
+      }
+      if (data === 'cmd_map') {
+        await bot.answerCallbackQuery(query.id);
+        const sRes = await pool.query('SELECT store_address, store_location_url FROM store_settings WHERE id=1');
+        const st = sRes.rows[0] || {};
+        const addr = st.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon";
+        const yMap = st.store_location_url || `https://yandex.uz/maps/?text=${encodeURIComponent(addr)}`;
+        const gMap = st.store_location_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
+        return bot.sendMessage(fromId,
+          `📍 <b>Do'kon Manzili:</b> ${addr}\n\nSergeli mashina bozori markaziy qatori.`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "🗺 Yandex Karta", url: yMap }, { text: "📍 Google Maps", url: gMap }]
+              ]
+            }
+          }
+        );
+      }
+      if (data === 'cmd_hours') {
+        await bot.answerCallbackQuery(query.id);
+        const sRes = await pool.query('SELECT store_hours FROM store_settings WHERE id=1');
+        const st = sRes.rows[0] || {};
+        return bot.sendMessage(fromId,
+          `⏰ <b>Ish Vaqti:</b> Har kuni <b>${st.store_hours || "09:00 - 19:00"}</b>\nTushliksiz va dam olish kunlarisiz!`,
+          { parse_mode: 'HTML' }
+        );
+      }
+      if (data === 'cmd_order') {
+        await bot.answerCallbackQuery(query.id);
+        const oRes = await pool.query('SELECT id, status, total_price FROM orders WHERE telegram_id=$1 ORDER BY id DESC LIMIT 1', [fromId]);
+        if (oRes.rows.length === 0) {
+          return bot.sendMessage(fromId, "📦 Sizda hali faol buyurtmalar yo'q. Katalogimizdan buyurtma berishingiz mumkin: /katalog");
+        }
+        const o = oRes.rows[0];
+        return bot.sendMessage(fromId, `📦 <b>Oxirgi buyurtmangiz: #KZV-${o.id}</b>\nHolati: <b>${o.status}</b>\nJami summa: <b>${o.total_price.toLocaleString()} so'm</b>`, { parse_mode: 'HTML' });
+      }
+      if (data === 'cmd_payment') {
+        await bot.answerCallbackQuery(query.id);
+        return bot.sendMessage(fromId, "💳 <b>To'lov usullari:</b> Naqd pul, Uzcard, Humo, Visa va Click/Payme. Soliq 1% keshbek taqdim etiladi!", { parse_mode: 'HTML' });
+      }
+      if (data === 'cmd_delivery') {
+        await bot.answerCallbackQuery(query.id);
+        return bot.sendMessage(fromId, "🚚 <b>Yetkazib berish:</b> Toshkent bo'yicha 2 soatda, viloyatlarga BTS pochta yoki taksi bilan 1 kunda yetkaziladi.", { parse_mode: 'HTML' });
+      }
+
       // 7.1 Xodimdan Bosh Adminga so'rov yuborish
       if (data && data.startsWith('req_admin_')) {
         const targetId = data.replace('req_admin_', '');

@@ -14,21 +14,55 @@ const TelegramBot = require('node-telegram-bot-api');
 // 1. SOZLAMALAR (CONFIG — BARCHA MAXFIY KALITLAR .env YOKI HOSTING MUHITIDAN OLINADI)
 const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN || process.env.TELEGRAM_TOKEN || '';
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_ePwm65vBoGJY@ep-spring-snow-a5z1caba-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require';
+const DATABASE_URL = process.env.DATABASE_URL || '';
 // Ngrok, Render yoki HTTPS domeni
 let WEB_APP_URL = process.argv[2] || process.env.WEB_APP_URL || (process.env.PORT ? 'https://kuzavnoy-app.onrender.com' : `http://localhost:${PORT}`);
 
-// Adminlarning Telegram ID raqamlari (Bosh admin ID har doim kiritiladi)
-let ADMIN_CHAT_IDS = (process.env.ADMIN_CHAT_IDS || process.env.ADMIN_IDS || '5361309526')
+// 1.1 Bosh Admin (Founder / Do'kon egasi) Telegram ID raqami
+const HEAD_ADMIN_ID = String(process.env.HEAD_ADMIN_ID || process.env.ADMIN_CHAT_IDS || process.env.ADMIN_IDS || '').split(',')[0].trim();
+
+// 1.2 Barcha faol adminlar ro'yxati (Head Admin + Co-admins)
+let ADMIN_CHAT_IDS = (process.env.ADMIN_CHAT_IDS || process.env.ADMIN_IDS || '')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
-if (!ADMIN_CHAT_IDS.includes('5361309526')) {
-  ADMIN_CHAT_IDS.push('5361309526');
+
+if (HEAD_ADMIN_ID && !ADMIN_CHAT_IDS.includes(HEAD_ADMIN_ID)) {
+  ADMIN_CHAT_IDS.unshift(HEAD_ADMIN_ID);
 }
 
-// Admin PIN kodi (/admin_login buyrug'i uchun)
-const ADMIN_SECRET_PIN = process.env.ADMIN_SECRET_PIN || '7777';
+// 1.3 Bir martalik xavfsiz taklif tokenlari (Muddati 15 daqiqa)
+const activeAdminInvites = new Map();
+
+// 1.4 Adminlarni bazadan o'qish va doimiy saqlash
+async function loadAdminsFromDb() {
+  try {
+    const res = await pool.query('SELECT admin_ids FROM store_settings WHERE id = 1');
+    if (res.rows.length > 0 && res.rows[0].admin_ids) {
+      const dbAdmins = res.rows[0].admin_ids.split(',').map(s => s.trim()).filter(Boolean);
+      dbAdmins.forEach(id => {
+        if (!ADMIN_CHAT_IDS.includes(id)) {
+          ADMIN_CHAT_IDS.push(id);
+        }
+      });
+      if (HEAD_ADMIN_ID && !ADMIN_CHAT_IDS.includes(HEAD_ADMIN_ID)) {
+        ADMIN_CHAT_IDS.unshift(HEAD_ADMIN_ID);
+      }
+      console.log(`✅ Bazadagi adminlar yuklandi (${ADMIN_CHAT_IDS.length} ta faol admin, Bosh Admin: ${HEAD_ADMIN_ID})`);
+    }
+  } catch (err) {
+    console.error('Adminlarni bazadan yuklashda xato:', err.message);
+  }
+}
+
+async function saveAdminsToDb() {
+  try {
+    await pool.query('UPDATE store_settings SET admin_ids = $1 WHERE id = 1', [ADMIN_CHAT_IDS.join(',')]);
+    console.log('✅ Yangilangan adminlar ro\'yxati bazaga saqlandi:', ADMIN_CHAT_IDS.join(','));
+  } catch (err) {
+    console.error('Adminlarni bazaga saqlashda xato:', err.message);
+  }
+}
 
 if (!DATABASE_URL) {
   console.error('⚠️ DIQQAT: DATABASE_URL topilmadi! Iltimos, .env faylida yoki Render Environment Variables da DATABASE_URL ni belgilang.');
@@ -47,6 +81,7 @@ async function initDatabase() {
   try {
     const client = await pool.connect();
     console.log('✅ PostgreSQL (Neon) bazasiga muvaffaqiyatli ulandi!');
+    await loadAdminsFromDb();
 
     // Jadvallarni yaratish
     await client.query(`
@@ -140,7 +175,9 @@ async function initDatabase() {
       ADD COLUMN IF NOT EXISTS visa_active BOOLEAN DEFAULT false,
       ADD COLUMN IF NOT EXISTS phone1_active BOOLEAN DEFAULT true,
       ADD COLUMN IF NOT EXISTS phone2_active BOOLEAN DEFAULT true,
-      ADD COLUMN IF NOT EXISTS phone3_active BOOLEAN DEFAULT true;
+      ADD COLUMN IF NOT EXISTS phone3_active BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS store_location_url TEXT DEFAULT '',
+      ADD COLUMN IF NOT EXISTS admin_ids TEXT DEFAULT '';
     `);
 
     // Eski umumiy kategoriyalarni yangi mashina modellariga yangilash
@@ -414,18 +451,26 @@ if (BOT_TOKEN) {
       if (st.phone3_active !== false && st.phone3) phones.push(`• Texnik yordam: <b>${st.phone3}</b>`);
       if (phones.length === 0) phones.push('• Telefon: +998 90 123 45 67');
 
+      const addr = st.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon";
+      const yandexMapUrl = st.store_location_url && st.store_location_url.trim() ? st.store_location_url : `https://yandex.uz/maps/?text=${encodeURIComponent(addr)}`;
+      const googleMapUrl = st.store_location_url && st.store_location_url.trim() ? st.store_location_url : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
+
       bot.sendMessage(chatId,
         "📞 <b>kuzavnoy.uzz — Aloqa & Qo'ng'iroq Markazi</b>\n\n" +
         "Har qanday avto ehtiyot qismlari, buyurtmalar va yetkazib berish bo'yicha savollaringiz bo'lsa biz bilan bog'laning:\n\n" +
         phones.join('\n') + "\n\n" +
-        `📍 <b>Manzil:</b> ${st.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon"}\n` +
+        `📍 <b>Manzil:</b> ${addr}\n` +
         `⏰ <b>Ish vaqti:</b> ${st.store_hours || "09:00 - 19:00"}\n\n` +
-        `Pastdagi tugmalar orqali do'konimizni ochishingiz mumkin: 👇`,
+        `Pastdagi tugmalar orqali lokatsiyani xaritada ko'rishingiz yoki do'konimizni ochishingiz mumkin: 👇`,
         {
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
               [{ text: "🛒 Katalog & Xarid qilish", web_app: { url: WEB_APP_URL } }],
+              [
+                { text: "🗺 Yandex Karta", url: yandexMapUrl },
+                { text: "📍 Google Maps", url: googleMapUrl }
+              ],
               [
                 { text: "📸 Instagram", url: st.instagram_url || "https://instagram.com/kuzavnoy.uzz" },
                 { text: "▶️ YouTube", url: st.youtube_url || "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G" }
@@ -460,82 +505,485 @@ if (BOT_TOKEN) {
   });
 
   
-  bot.onText(/\/admin_login(?:\s+(\w+))?/, async (msg, match) => {
+  // 1. /invite_admin (yoki /taklif) — FAQAT BOSH ADMIN (FOUNDER) UCHUN
+  bot.onText(/\/(?:invite_admin|taklif)/, async (msg) => {
     const chatId = String(msg.chat.id);
-    const pin = match && match[1] ? match[1].trim() : '';
-    if (pin === ADMIN_SECRET_PIN) {
-      if (!ADMIN_CHAT_IDS.includes(chatId)) {
-        ADMIN_CHAT_IDS.push(chatId);
-      }
-      const isHttps = WEB_APP_URL.startsWith('https://');
-      return bot.sendMessage(chatId,
-        "✅ <b>Muvaffaqiyatli tasdiqlandi!</b>\n\n" +
-        "Siz <b>kuzavnoy.uzz</b> tizimida bosh Admin sifatida biriktirildingiz! 🎉\n\n" +
-        "Pastdagi tugma orqali Admin Dashboardni ochishingiz mumkin: 👇",
-        {
-          parse_mode: 'HTML',
-          reply_markup: {
-            inline_keyboard: isHttps ? [
-              [{ text: "📊 Admin Dashboardni ochish", web_app: { url: `${WEB_APP_URL}/admin` } }]
-            ] : [
-              [{ text: "📊 Admin Dashboardni ochish", url: `${WEB_APP_URL}/admin` }]
-            ]
-          }
-        }
-      );
-    } else {
-      return bot.sendMessage(chatId,
-        "❌ <b>Noto'g'ri maxfiy kod!</b>\n\n" +
-        "Iltimos, to'g'ri kod bilan yuboring, masalan: <code>/admin_login 7777</code>",
-        { parse_mode: 'HTML' }
-      );
-    }
-  });
-
-  bot.onText(/\/admin/, async (msg) => {
-    const chatId = String(msg.chat.id);
-    const firstName = msg.from.first_name || 'Admin';
-
-    // Faqat haqiqiy adminga ruxsat berish, begona odamlarni qaytarish
-    if (!ADMIN_CHAT_IDS.includes(chatId)) {
+    if (chatId !== HEAD_ADMIN_ID) {
       return bot.sendMessage(chatId, 
-        "⛔️ <b>Kechirasiz, siz admin emassiz!</b>\n\n" +
-        "Ushbu bo'lim faqat <b>kuzavnoy.uzz</b> do'koni egasi uchun mo'ljallangan.\n" +
-        `Sizning Telegram ID: <code>${chatId}</code>\n\n` +
-        `Agar siz do'kon egasi bo'lsangiz, tizimga kirish uchun: <code>/admin_login ${ADMIN_SECRET_PIN}</code> buyrug'ini yuboring.`, 
+        "⛔️ <b>Ruxsat berilmadi!</b>\n\n" +
+        "Yangi admin taklif qilish faqat do'kon <b>Bosh Admini (Founder)</b> vakolatida! Oddiy adminlar boshqalarni taklif qila olmaydi.", 
         { parse_mode: 'HTML' }
       );
     }
 
-    const isHttps = WEB_APP_URL.startsWith('https://');
+    const crypto = require('crypto');
+    const token = 'adm_' + crypto.randomBytes(4).toString('hex');
+    activeAdminInvites.set(token, {
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 15 * 60 * 1000 // 15 daqiqa
+    });
 
-    bot.sendMessage(chatId, 
-      `👨‍💼 <b>kuzavnoy.uzz — Boshqaruv Paneli (Admin)</b>\n\n` +
-      `Xush kelibsiz, <b>${firstName}</b>!\n` +
-      `Pastdagi tugmani bosib, Telegram ichida barcha buyurtmalar va omborni boshqarishingiz mumkin! 👇`, 
+    let botUsername = 'kuzavnoyuz_bot';
+    try {
+      const me = await bot.getMe();
+      if (me && me.username) botUsername = me.username;
+    } catch(e) {}
+
+    const inviteLink = `https://t.me/${botUsername}?start=${token}`;
+
+    bot.sendMessage(chatId,
+      "👑 <b>Bosh Admin (Founder) — Bir Martalik Taklif Havolasi</b>\n\n" +
+      "Yangi sotuvchi yoki menejeringizga ushbu xavfsiz havolani yuboring:\n" +
+      `👉 <code>${inviteLink}</code>\n\n` +
+      "🔒 <b>Xavfsizlik kafolati:</b>\n" +
+      "• Ushbu havola <b>faqat 1 marta</b> ishlaydi (xodim bosishi bilanoq kuyadi).\n" +
+      "• Amal qilish muddati: <b>15 daqiqa</b>.\n" +
+      "• Hech qanday parol yoki PIN kod talab etilmaydi.\n" +
+      "• Xodim havolani bosganda avtomatik oddiy admin bo'ladi va sizga xabar keladi.",
       {
         parse_mode: 'HTML',
         reply_markup: {
-          inline_keyboard: isHttps ? [
-            [
-              { text: "📊 Admin Dashboardni ochish", web_app: { url: `${WEB_APP_URL}/admin` } }
-            ],
-            [
-              { text: "🛒 Mijoz do'koni (Mini App)", web_app: { url: WEB_APP_URL } }
-            ]
-          ] : [
-            [
-              { text: "📊 Admin Dashboardni ochish", url: `${WEB_APP_URL}/admin` }
-            ]
+          inline_keyboard: [
+            [{ text: "📤 Havolani yuborish (Share)", url: `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent("kuzavnoy.uzz do'koniga adminlik taklifi")}` }]
           ]
         }
       }
     );
   });
 
-  bot.onText(/\/start/, async (msg) => {
+  // 2. /add_admin <telegram_id> — FAQAT BOSH ADMIN (FOUNDER) UCHUN
+  bot.onText(/\/add_admin(?:\s+(\d+))?/, async (msg, match) => {
+    const chatId = String(msg.chat.id);
+    if (chatId !== HEAD_ADMIN_ID) {
+      return bot.sendMessage(chatId, 
+        "⛔️ <b>Ruxsat berilmadi!</b>\n\n" +
+        "Yangi admin tayinlash faqat do'kon <b>Bosh Admini (Founder)</b> vakolatida! Oddiy adminlar boshqalarni admin qila olmaydi.", 
+        { parse_mode: 'HTML' }
+      );
+    }
+    const targetId = match && match[1] ? match[1].trim() : '';
+    if (!targetId) {
+      return bot.sendMessage(chatId, "ℹ️ <b>Foydalanish:</b> <code>/add_admin &lt;telegram_id&gt;</code>\n\nMasalan: <code>/add_admin 987654321</code>", { parse_mode: 'HTML' });
+    }
+    if (ADMIN_CHAT_IDS.includes(targetId)) {
+      return bot.sendMessage(chatId, `ℹ️ Bu foydalanuvchi (ID: <code>${targetId}</code>) allaqachon adminlar ro'yxatida mavjud.`, { parse_mode: 'HTML' });
+    }
+
+    ADMIN_CHAT_IDS.push(targetId);
+    await saveAdminsToDb();
+
+    bot.sendMessage(chatId, `✅ <b>Muvaffaqiyatli!</b>\n\nFoydalanuvchi (ID: <code>${targetId}</code>) oddiy admin sifatida saqlab qo'yildi! 🎉`, { parse_mode: 'HTML' });
+
+    try {
+      const isHttps = WEB_APP_URL.startsWith('https://');
+      bot.sendMessage(targetId, 
+        "🎉 <b>Tabriklaymiz!</b>\n\n" +
+        "Bosh Admin (Founder) sizni <b>kuzavnoy.uzz</b> do'konining administratori etib tayinladi! 🚀\n\n" +
+        "Boshqaruv paneliga kirish uchun pastdagi tugmani bosing: 👇",
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: isHttps ? [
+              [{ text: "📊 Admin Dashboardni ochish", web_app: { url: `${WEB_APP_URL}/admin` } }],
+              [{ text: "🛒 Do'konni ochish (Mini App)", web_app: { url: WEB_APP_URL } }]
+            ] : [
+              [{ text: "📊 Admin Dashboardni ochish", url: `${WEB_APP_URL}/admin` }]
+            ]
+          }
+        }
+      );
+    } catch(e) {}
+  });
+
+  // 3. /remove_admin <telegram_id> — FAQAT BOSH ADMIN (FOUNDER) UCHUN
+  bot.onText(/\/remove_admin(?:\s+(\d+))?/, async (msg, match) => {
+    const chatId = String(msg.chat.id);
+    if (chatId !== HEAD_ADMIN_ID) {
+      return bot.sendMessage(chatId, 
+        "⛔️ <b>Ruxsat berilmadi!</b>\n\n" +
+        "Adminni o'chirish faqat do'kon <b>Bosh Admini (Founder)</b> vakolatida!", 
+        { parse_mode: 'HTML' }
+      );
+    }
+    const targetId = match && match[1] ? match[1].trim() : '';
+    if (!targetId) {
+      return bot.sendMessage(chatId, "ℹ️ <b>Foydalanish:</b> <code>/remove_admin &lt;telegram_id&gt;</code>\n\nMasalan: <code>/remove_admin 987654321</code>", { parse_mode: 'HTML' });
+    }
+    if (targetId === HEAD_ADMIN_ID) {
+      return bot.sendMessage(chatId, "⚠️ <b>Bosh Adminni (Founder) o'chirib bo'lmaydi!</b>", { parse_mode: 'HTML' });
+    }
+    if (!ADMIN_CHAT_IDS.includes(targetId)) {
+      return bot.sendMessage(chatId, "❌ Ushbu ID adminlar ro'yxatida topilmadi.", { parse_mode: 'HTML' });
+    }
+
+    ADMIN_CHAT_IDS = ADMIN_CHAT_IDS.filter(id => id !== targetId);
+    await saveAdminsToDb();
+
+    bot.sendMessage(chatId, `✅ Foydalanuvchi (ID: <code>${targetId}</code>) adminlar ro'yxatidan muvaffaqiyatli o'chirildi.`, { parse_mode: 'HTML' });
+
+    try {
+      bot.sendMessage(targetId, "ℹ️ Sizning <b>kuzavnoy.uzz</b> tizimidagi adminlik vakolatingiz to'xtatildi.", { parse_mode: 'HTML' });
+    } catch(e) {}
+  });
+
+  // 4. /admins — Barcha faol adminlar ro'yxati
+  bot.onText(/\/admins/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    if (!ADMIN_CHAT_IDS.includes(chatId)) {
+      return bot.sendMessage(chatId, "⛔️ Ushbu buyruq faqat adminlar uchun.");
+    }
+
+    const isHead = (chatId === HEAD_ADMIN_ID);
+    let text = "👥 <b>kuzavnoy.uzz — Do'kon Ma'muriyati:</b>\n\n";
+    text += `👑 <b>Bosh Admin (Founder):</b> <code>${HEAD_ADMIN_ID}</code> ${isHead ? '<i>(Siz)</i>' : ''}\n\n`;
+
+    const subAdmins = ADMIN_CHAT_IDS.filter(id => id !== HEAD_ADMIN_ID);
+    if (subAdmins.length === 0) {
+      text += "<i>Hozircha qo'shimcha oddiy adminlar yo'q.</i>\n";
+    } else {
+      text += "👤 <b>Do'kon Adminlari (Menejerlar):</b>\n";
+      subAdmins.forEach((id, idx) => {
+        text += `${idx + 1}. <code>${id}</code> ${id === chatId ? '<i>(Siz)</i>' : ''}\n`;
+      });
+    }
+
+    if (isHead) {
+      text += "\n👑 <b>Bosh Admin Buyruqlari:</b>\n" +
+              "• /invite_admin — Bir martalik taklif havolasi yaratish\n" +
+              "• /add_admin &lt;id&gt; — Yangi admin qo'shish\n" +
+              "• /remove_admin &lt;id&gt; — Adminni o'chirish";
+    } else {
+      text += "\nℹ️ <i>Siz do'konda oddiy adminsiz (buyurtmalar va tovarlar bilan ishlaysiz). Admin qo'shish yoki o'chirish faqat Bosh Admin vakolatida.</i>";
+    }
+
+    const buttons = [];
+    if (isHead) {
+      subAdmins.forEach(id => {
+        buttons.push([{ text: `❌ ID: ${id} ni o'chirish`, callback_data: `rem_adm_${id}` }]);
+      });
+      buttons.push([{ text: "🔗 Bir martalik taklif havolasi olish", callback_data: "gen_invite_btn" }]);
+    }
+
+    bot.sendMessage(chatId, text, {
+      parse_mode: 'HTML',
+      reply_markup: buttons.length > 0 ? { inline_keyboard: buttons } : undefined
+    });
+  });
+
+  // 5. /admin_login buyrug'i — Parol tizimi butunlay bekor qilingan
+  bot.onText(/\/admin_login/, async (msg) => {
+    bot.sendMessage(String(msg.chat.id),
+      "🔒 <b>Xavfsizlik choralari kuchaytirilgan!</b>\n\n" +
+      "Parol orqali kirish tizimi xavfsizlik maqsadida bekor qilingan.\n" +
+      "Yangi xodimlar faqat <b>Bosh Admin (Founder)</b> yuborgan <b>Bir Martalik Taklif Havolasi</b> yoki tasdiqlashi orqali qo'shiladi.",
+      { parse_mode: 'HTML' }
+    );
+  });
+
+  // 6. /admin buyrug'i
+  bot.onText(/\/admin$/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    const firstName = msg.from.first_name || 'Admin';
+
+    if (!ADMIN_CHAT_IDS.includes(chatId)) {
+      return bot.sendMessage(chatId, 
+        "⛔️ <b>Kirish taqiqlangan!</b>\n\n" +
+        "Ushbu bo'lim faqat <b>kuzavnoy.uzz</b> do'koni xodimlari uchun mo'ljallangan.\n" +
+        `Sizning Telegram ID: <code>${chatId}</code>\n\n` +
+        "Agar siz ushbu do'kon xodimi bo'lsangiz, Bosh Adminga (Founder) adminlik so'rovini yuborishingiz mumkin: 👇", 
+        { 
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "📩 Bosh adminga so'rov yuborish", callback_data: `req_admin_${chatId}` }]
+            ]
+          }
+        }
+      );
+    }
+
+    const isHttps = WEB_APP_URL.startsWith('https://');
+    const isHead = (chatId === HEAD_ADMIN_ID);
+
+    const adminButtons = isHttps ? [
+      [{ text: "📊 Admin Dashboardni ochish", web_app: { url: `${WEB_APP_URL}/admin` } }],
+      [{ text: "👥 Adminlar ro'yxati", callback_data: 'view_admins_list' }],
+      ...(isHead ? [[{ text: "🔗 Yangi admin taklif qilish (Havola)", callback_data: 'gen_invite_btn' }]] : []),
+      [{ text: "🛒 Mijoz do'koni (Mini App)", web_app: { url: WEB_APP_URL } }]
+    ] : [
+      [{ text: "📊 Admin Dashboardni ochish", url: `${WEB_APP_URL}/admin` }]
+    ];
+
+    bot.sendMessage(chatId, 
+      `👨‍💼 <b>kuzavnoy.uzz — Boshqaruv Paneli</b>\n\n` +
+      `Xush kelibsiz, <b>${firstName}</b>!\n` +
+      `Maqomingiz: ${isHead ? '👑 <b>Bosh Admin (Founder)</b>' : '👤 <b>Admin (Menejer)</b>'}\n\n` +
+      `Pastdagi tugmani bosib, Telegram ichida do'konni boshqarishingiz mumkin! 👇`, 
+      {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: adminButtons }
+      }
+    );
+  });
+
+  // 7. Callback Query Handler (Faqat Bosh Admin tasdiqlashi uchun)
+  bot.on('callback_query', async (query) => {
+    const data = query.data;
+    const fromId = String(query.from.id);
+
+    try {
+      // 7.1 Xodimdan Bosh Adminga so'rov yuborish
+      if (data && data.startsWith('req_admin_')) {
+        const targetId = data.replace('req_admin_', '');
+        const senderName = query.from.first_name || 'Foydalanuvchi';
+        const senderUser = query.from.username ? `@${query.from.username}` : 'username yo\'q';
+
+        await bot.answerCallbackQuery(query.id, {
+          text: "✅ So'rovingiz do'kon egasiga (Bosh Adminga) yuborildi!",
+          show_alert: true
+        });
+
+        await bot.editMessageText(
+          `⏳ <b>Adminlik so'rovi yuborildi!</b>\n\n` +
+          `Sizning Telegram ID: <code>${targetId}</code>\n` +
+          `Bosh Admin (Founder) so'rovingizni tasdiqlashi bilan sizga xabar yuboriladi.`,
+          {
+            chat_id: fromId,
+            message_id: query.message.message_id,
+            parse_mode: 'HTML'
+          }
+        );
+
+        // Faqat Bosh Adminga so'rov yuboriladi!
+        try {
+          await bot.sendMessage(HEAD_ADMIN_ID,
+            `👑 <b>BOSH ADMIN NAZORATI:</b>\n` +
+            `🔔 <b>YANGI ADMINLIK SO'ROVI!</b>\n\n` +
+            `👤 <b>Ism:</b> ${senderName}\n` +
+            `🔗 <b>Profil:</b> ${senderUser}\n` +
+            `🆔 <b>Telegram ID:</b> <code>${targetId}</code>\n\n` +
+            `Ushbu xodimga do'konning oddiy adminlik huquqini berishni tasdiqlaysizmi?\n` +
+            `<i>(Oddiy admin faqat buyurtmalar bilan ishlaydi, boshqalarga admin bera olmaydi)</i>`,
+            {
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: "✅ Tasdiqlash (Admin qilish)", callback_data: `appr_adm_${targetId}` },
+                    { text: "❌ Rad etish", callback_data: `rejc_adm_${targetId}` }
+                  ]
+                ]
+              }
+            }
+          );
+        } catch(err) {}
+      }
+
+      // 7.2 FAQAT Bosh Admin tomonidan tasdiqlash
+      else if (data && data.startsWith('appr_adm_')) {
+        if (fromId !== HEAD_ADMIN_ID) {
+          return bot.answerCallbackQuery(query.id, { text: "⛔️ Faqat Bosh Admin (Founder) tasdiqlay oladi!", show_alert: true });
+        }
+        const targetId = data.replace('appr_adm_', '');
+        if (!ADMIN_CHAT_IDS.includes(targetId)) {
+          ADMIN_CHAT_IDS.push(targetId);
+          await saveAdminsToDb();
+        }
+
+        await bot.answerCallbackQuery(query.id, { text: "✅ Admin muvaffaqiyatli qo'shildi!" });
+        await bot.editMessageText(
+          `${query.message.text}\n\n➖➖➖➖➖➖➖➖➖➖\n✅ <b>TASDIQLANDI:</b> Foydalanuvchi (ID: <code>${targetId}</code>) oddiy admin etib tayinlandi! (Bosh Admin tasdiqladi)`,
+          {
+            chat_id: query.message.chat.id,
+            message_id: query.message.message_id,
+            parse_mode: 'HTML'
+          }
+        );
+
+        // Yangi adminga xush kelibsiz xabari
+        try {
+          const isHttps = WEB_APP_URL.startsWith('https://');
+          await bot.sendMessage(targetId,
+            "🎉 <b>Tabriklaymiz!</b>\n\n" +
+            "Bosh Admin (Founder) sizning adminlik so'rovingizni tasdiqladi! 🚀\n" +
+            "Endi siz <b>kuzavnoy.uzz</b> do'konining administratori etib tayinlandingiz.\n\n" +
+            "Pastdagi tugma orqali Admin Dashboardga kiring: 👇",
+            {
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: isHttps ? [
+                  [{ text: "📊 Admin Dashboardni ochish", web_app: { url: `${WEB_APP_URL}/admin` } }]
+                ] : [
+                  [{ text: "📊 Admin Dashboardni ochish", url: `${WEB_APP_URL}/admin` }]
+                ]
+              }
+            }
+          );
+        } catch(e) {}
+      }
+
+      // 7.3 FAQAT Bosh Admin tomonidan rad etish
+      else if (data && data.startsWith('rejc_adm_')) {
+        if (fromId !== HEAD_ADMIN_ID) {
+          return bot.answerCallbackQuery(query.id, { text: "⛔️ Faqat Bosh Admin (Founder) rad eta oladi!", show_alert: true });
+        }
+        const targetId = data.replace('rejc_adm_', '');
+        await bot.answerCallbackQuery(query.id, { text: "So'rov rad etildi" });
+        await bot.editMessageText(
+          `${query.message.text}\n\n➖➖➖➖➖➖➖➖➖➖\n❌ <b>RAD ETILDI:</b> Bu foydalanuvchiga ruxsat berilmadi.`,
+          {
+            chat_id: query.message.chat.id,
+            message_id: query.message.message_id,
+            parse_mode: 'HTML'
+          }
+        );
+
+        try {
+          await bot.sendMessage(targetId, "❌ Kechirasiz, do'kon egasi sizning adminlik so'rovingizni rad etdi.");
+        } catch(e) {}
+      }
+
+      // 7.4 FAQAT Bosh Admin tomonidan o'chirish
+      else if (data && data.startsWith('rem_adm_')) {
+        if (fromId !== HEAD_ADMIN_ID) {
+          return bot.answerCallbackQuery(query.id, { text: "⛔️ Faqat Bosh Admin o'chira oladi!", show_alert: true });
+        }
+        const targetId = data.replace('rem_adm_', '');
+        if (targetId === HEAD_ADMIN_ID) {
+          return bot.answerCallbackQuery(query.id, { text: "Bosh Adminni o'chirib bo'lmaydi!", show_alert: true });
+        }
+        ADMIN_CHAT_IDS = ADMIN_CHAT_IDS.filter(id => id !== targetId);
+        await saveAdminsToDb();
+
+        await bot.answerCallbackQuery(query.id, { text: `ID: ${targetId} o'chirildi!` });
+        await bot.sendMessage(query.message.chat.id, `✅ Foydalanuvchi (ID: <code>${targetId}</code>) adminlikdan chiqarildi.`, { parse_mode: 'HTML' });
+      }
+
+      // 7.5 Bir martalik taklif havolasi yaratish tugmasi
+      else if (data === 'gen_invite_btn') {
+        if (fromId !== HEAD_ADMIN_ID) {
+          return bot.answerCallbackQuery(query.id, { text: "⛔️ Faqat Bosh Admin havola yarata oladi!", show_alert: true });
+        }
+        await bot.answerCallbackQuery(query.id);
+
+        const crypto = require('crypto');
+        const token = 'adm_' + crypto.randomBytes(4).toString('hex');
+        activeAdminInvites.set(token, {
+          createdAt: Date.now(),
+          expiresAt: Date.now() + 15 * 60 * 1000
+        });
+
+        let botUsername = 'kuzavnoyuz_bot';
+        try {
+          const me = await bot.getMe();
+          if (me && me.username) botUsername = me.username;
+        } catch(e) {}
+
+        const inviteLink = `https://t.me/${botUsername}?start=${token}`;
+
+        await bot.sendMessage(fromId,
+          "👑 <b>Bosh Admin — Bir Martalik Taklif Havolasi</b>\n\n" +
+          "Yangi sotuvchi/ishchingizga ushbu havolani yuboring:\n" +
+          `👉 <code>${inviteLink}</code>\n\n` +
+          "• Faqat 1 marta ishlaydi.\n" +
+          "• Muddati: 15 daqiqa.",
+          {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "📤 Havolani ulashish (Share)", url: `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent("kuzavnoy.uzz adminlik taklifi")}` }]
+              ]
+            }
+          }
+        );
+      }
+
+      // 7.6 Adminlar ro'yxatini ko'rish
+      else if (data === 'view_admins_list') {
+        if (!ADMIN_CHAT_IDS.includes(fromId)) {
+          return bot.answerCallbackQuery(query.id, { text: "Ruxsat yo'q" });
+        }
+        await bot.answerCallbackQuery(query.id);
+        const isHead = (fromId === HEAD_ADMIN_ID);
+        let text = "👥 <b>kuzavnoy.uzz — Do'kon Ma'muriyati:</b>\n\n";
+        text += `👑 <b>Bosh Admin (Founder):</b> <code>${HEAD_ADMIN_ID}</code>\n\n`;
+        const subAdmins = ADMIN_CHAT_IDS.filter(id => id !== HEAD_ADMIN_ID);
+        if (subAdmins.length === 0) {
+          text += "<i>Qo'shimcha adminlar yo'q.</i>\n";
+        } else {
+          text += "👤 <b>Oddiy Adminlar:</b>\n";
+          subAdmins.forEach((id, idx) => {
+            text += `${idx + 1}. <code>${id}</code>\n`;
+          });
+        }
+        if (isHead) {
+          text += "\n💡 <i>Admin taklif qilish: /invite_admin\nAdmin o'chirish: /remove_admin &lt;id&gt;</i>";
+        }
+        await bot.sendMessage(fromId, text, { parse_mode: 'HTML' });
+      }
+    } catch(err) {
+      console.error('Callback query error:', err.message);
+    }
+  });
+
+  // 8. /start buyrug'i (Bir martalik taklif havolasi orqali kirishni tekshirish)
+  bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
     const chatId = String(msg.chat.id);
     const firstName = msg.from.first_name || 'Hurmatli mijoz';
+    const startParam = match && match[1] ? match[1].trim() : '';
+
+    // Bir martalik xavfsiz taklif havolasini tekshirish
+    if (startParam && startParam.startsWith('adm_')) {
+      const invite = activeAdminInvites.get(startParam);
+      if (invite && invite.expiresAt > Date.now()) {
+        activeAdminInvites.delete(startParam); // Bir martalik — darhol kuyadi!
+
+        if (!ADMIN_CHAT_IDS.includes(chatId)) {
+          ADMIN_CHAT_IDS.push(chatId);
+          await saveAdminsToDb();
+        }
+
+        const isHttps = WEB_APP_URL.startsWith('https://');
+
+        await bot.sendMessage(chatId,
+          "🎉 <b>Tabriklaymiz!</b>\n\n" +
+          "Bosh Admin (Founder) taklifi orqali siz <b>kuzavnoy.uzz</b> do'koni administratori etib tayinlandingiz! 🚀\n\n" +
+          "Endi siz buyurtmalarni boshqarishingiz mumkin.\n" +
+          "Boshqaruv panelini ochish uchun pastdagi tugmani bosing: 👇",
+          {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: isHttps ? [
+                [{ text: "📊 Admin Dashboardni ochish", web_app: { url: `${WEB_APP_URL}/admin` } }],
+                [{ text: "🛒 Do'konni ochish (Mini App)", web_app: { url: WEB_APP_URL } }]
+              ] : [
+                [{ text: "📊 Admin Dashboardni ochish", url: `${WEB_APP_URL}/admin` }]
+              ]
+            }
+          }
+        );
+
+        try {
+          await bot.sendMessage(HEAD_ADMIN_ID,
+            `👑 <b>BOSH ADMIN BILDIRISHNOMASI:</b>\n\n` +
+            `✅ Yangi admin bir martalik taklif havolasi orqali tizimga qo'shildi!\n` +
+            `👤 <b>Ism:</b> ${firstName} (@${msg.from.username || 'yoq'})\n` +
+            `🆔 <b>Telegram ID:</b> <code>${chatId}</code>\n` +
+            `<i>Ushbu bir martalik havola avtomatik bekor qilindi.</i>`,
+            { parse_mode: 'HTML' }
+          );
+        } catch(e) {}
+
+        return;
+      } else {
+        await bot.sendMessage(chatId,
+          "❌ <b>Ushbu taklif havolasi yaroqsiz yoki muddati (15 daqiqa) o'tgan!</b>\n\n" +
+          "Iltimos, do'kon egasidan (Bosh Admin) yangi taklif havolasini so'rang.",
+          { parse_mode: 'HTML' }
+        );
+        return;
+      }
+    }
 
     // Foydalanuvchini bazaga qo'shish
     try {
@@ -827,9 +1275,10 @@ app.put('/api/settings', async (req, res) => {
          instagram_url, youtube_url, store_address, store_hours,
          uzcard_active, humo_active, visa_active,
          phone1_active, phone2_active, phone3_active,
+         store_location_url,
          updated_at
        )
-       VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, CURRENT_TIMESTAMP)
+       VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, CURRENT_TIMESTAMP)
        ON CONFLICT (id) DO UPDATE SET
          card_number = EXCLUDED.card_number,
          card_holder = EXCLUDED.card_holder,
@@ -852,6 +1301,7 @@ app.put('/api/settings', async (req, res) => {
          phone1_active = EXCLUDED.phone1_active,
          phone2_active = EXCLUDED.phone2_active,
          phone3_active = EXCLUDED.phone3_active,
+         store_location_url = EXCLUDED.store_location_url,
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
       [
@@ -875,7 +1325,8 @@ app.put('/api/settings', async (req, res) => {
         Boolean(visa_active),
         phone1_active !== false,
         phone2_active !== false,
-        phone3_active !== false
+        phone3_active !== false,
+        store_location_url || ''
       ]
     );
     res.json(result.rows[0]);
@@ -2481,11 +2932,34 @@ function getMiniAppHtml() {
                           />
                         </div>
                       ) : (
-                        <div className={'p-3 rounded-2xl border flex items-start gap-2.5 ' + (isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-red-50/60 border-red-100 text-slate-800')}>
-                          <span className="text-base">📍</span>
-                          <div className="text-[11px] leading-relaxed">
-                            <span className="font-bold block text-xs">{t('pickupStoreAddress')}</span>
-                            <span className={'text-[10px] block mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('pickupStoreBadge')}</span>
+                        <div className={'p-3.5 rounded-2xl border space-y-2 ' + (isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-red-50/60 border-red-100 text-slate-800')}>
+                          <div className="flex items-start gap-2.5">
+                            <span className="text-base">📍</span>
+                            <div className="text-[11px] leading-relaxed">
+                              <span className="font-bold block text-xs">{t('pickupStoreAddress')}</span>
+                              <span className={'text-[10px] block mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{settings.store_address || t('pickupStoreBadge')}</span>
+                            </div>
+                          </div>
+                          {/* Yandex va Google Maps tugmalari */}
+                          <div className="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-800">
+                            <a 
+                              href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://yandex.uz/maps/?text=' + encodeURIComponent(settings.store_address || "Toshkent Sergeli mashina bozori"))}
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex-1 py-1.5 px-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 border border-amber-500/30 text-[10px] font-black flex items-center justify-center gap-1 transition active:scale-95"
+                            >
+                              <span>🗺</span>
+                              <span>Yandex Karta</span>
+                            </a>
+                            <a 
+                              href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(settings.store_address || "Toshkent Sergeli mashina bozori"))}
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex-1 py-1.5 px-2.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-500 border border-blue-500/30 text-[10px] font-black flex items-center justify-center gap-1 transition active:scale-95"
+                            >
+                              <span>📍</span>
+                              <span>Google Maps</span>
+                            </a>
                           </div>
                         </div>
                       )}
@@ -2690,9 +3164,37 @@ function getMiniAppHtml() {
                       </div>
                     )}
                   </div>
-                  <div className={'text-[10px] mt-2.5 pt-2.5 border-t flex items-center gap-1.5 ' + (isDark ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500')}>
-                    <span>📍</span>
-                    <span>{settings.store_address || "Toshkent sh., Sergeli mashina bozori"}</span>
+                  <div className={'text-xs mt-3 pt-3 border-t space-y-2 ' + (isDark ? 'border-slate-800' : 'border-slate-100')}>
+                    <div className="flex items-start gap-2">
+                      <span className="text-base leading-none mt-0.5">📍</span>
+                      <div>
+                        <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Do'konimiz manzili:</span>
+                        <span className={'text-xs font-black ' + (isDark ? 'text-slate-200' : 'text-slate-800')}>
+                          {settings.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon"}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Yandex Karta va Google Maps tugmalari */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <a 
+                        href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://yandex.uz/maps/?text=' + encodeURIComponent(settings.store_address || "Toshkent Sergeli mashina bozori"))}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex-1 py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 text-[11px] font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
+                      >
+                        <span>🗺</span>
+                        <span>Yandex Karta</span>
+                      </a>
+                      <a 
+                        href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(settings.store_address || "Toshkent Sergeli mashina bozori"))}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex-1 py-2 px-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30 text-[11px] font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
+                      >
+                        <span>📍</span>
+                        <span>Google Maps</span>
+                      </a>
+                    </div>
                   </div>
                 </div>
 
@@ -4936,7 +5438,7 @@ function getAdminPanelHtml() {
                           required
                           value={settings.store_address || ''}
                           onChange={e => setSettings({ ...settings, store_address: e.target.value })}
-                          placeholder="Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon"
+                          placeholder="Toshkent sh., Chilonzor tumani, Abdulla Qodiriy ko'chasi 14"
                           className={'w-full px-3.5 py-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
                             (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
                         />
@@ -4953,6 +5455,42 @@ function getAdminPanelHtml() {
                           className={'w-full px-3.5 py-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
                             (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
                         />
+                      </div>
+                    </div>
+
+                    {/* Karta lokatsiyasi havolasi */}
+                    <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className={'font-bold text-[11px] ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>🗺 Xarita Lokatsiyasi Havolasi (Google Maps yoki Yandex Karta - Ixtiyoriy)</label>
+                        <span className="text-[10px] text-slate-400">Bo'sh qolsa manzil bo'yicha avtomatik ochadi</span>
+                      </div>
+                      <input 
+                        type="url"
+                        value={settings.store_location_url || ''}
+                        onChange={e => setSettings({ ...settings, store_location_url: e.target.value })}
+                        placeholder="https://maps.google.com/?q=... yoki https://yandex.uz/maps/..."
+                        className={'w-full px-3 py-2 border rounded-xl text-xs focus:outline-none focus:border-red-500 ' + 
+                          (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
+                      />
+                      <div className="flex items-center gap-2 pt-1">
+                        <a 
+                          href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://yandex.uz/maps/?text=' + encodeURIComponent(settings.store_address || "Toshkent"))}
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="px-3 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 rounded-lg text-[11px] font-bold flex items-center gap-1 transition"
+                        >
+                          <span>🗺</span>
+                          <span>Yandex Kartada tekshirish</span>
+                        </a>
+                        <a 
+                          href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(settings.store_address || "Toshkent"))}
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="px-3 py-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30 rounded-lg text-[11px] font-bold flex items-center gap-1 transition"
+                        >
+                          <span>📍</span>
+                          <span>Google Maps'da tekshirish</span>
+                        </a>
                       </div>
                     </div>
                   </div>

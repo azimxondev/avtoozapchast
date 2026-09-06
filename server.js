@@ -34,6 +34,15 @@ if (HEAD_ADMIN_ID && !ADMIN_CHAT_IDS.includes(HEAD_ADMIN_ID)) {
 // 1.3 Bir martalik xavfsiz taklif tokenlari (Muddati 15 daqiqa)
 const activeAdminInvites = new Map();
 
+// Telegram HTML xabarlari uchun xavfsiz escape yordamchisi
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 // 1.4 Adminlarni bazadan o'qish va doimiy saqlash
 async function loadAdminsFromDb() {
   try {
@@ -1937,17 +1946,18 @@ app.post('/api/orders', async (req, res) => {
     // Telegram Bot orqali mijozga tasdiqlash xabari yuborish
     if (bot && telegram_id && telegram_id !== 0) {
       try {
-        let itemsList = items.map((it, idx) => `• ${it.name} (${it.quantity || 1} dona) — ${((it.new_price || 0) * (it.quantity || 1)).toLocaleString()} so'm`).join('\n');
+        let cleanLocDisplay = location ? escapeHtml(location.split(' | 🗺 Xarita: ')[0]) : "Ko'rsatilmagan";
+        let itemsList = items.map((it, idx) => `• ${escapeHtml(it.name)} (${it.quantity || 1} dona) — ${((it.new_price || 0) * (it.quantity || 1)).toLocaleString()} so'm`).join('\n');
         
         const messageText = 
           `🎉 <b>Buyurtmangiz muvaffaqiyatli qabul qilindi!</b>\n` +
           (dType === 'pickup' ? `Do'konimizdan olib ketishingiz mumkin 🏬\n\n` : `Kuryerimiz tez orada siz bilan bog'lanadi 🚗💨\n\n`) +
           `<b>Buyurtma raqami:</b> #${order.id}\n` +
-          `<b>Mijoz:</b> ${customer_name}\n` +
-          `<b>Telefon:</b> ${phone}\n` +
+          `<b>Mijoz:</b> ${escapeHtml(customer_name)}\n` +
+          `<b>Telefon:</b> ${escapeHtml(phone)}\n` +
           `<b>Yetkazish turi:</b> ${dTypeText}\n` +
           `<b>To'lov usuli:</b> ${pMethodText}\n` +
-          (dType === 'delivery' ? `<b>Yetkazish manzili:</b> ${location || "Ko'rsatilmagan"}\n\n` : `<b>Do'kon manzili:</b> Toshkent sh., Sergeli mashina bozori\n\n`) +
+          (dType === 'delivery' ? `<b>Yetkazish manzili:</b> ${cleanLocDisplay}\n\n` : `<b>Do'kon manzili:</b> Toshkent sh., Sergeli mashina bozori\n\n`) +
           `<b>Xarid qilingan detallar:</b>\n${itemsList}\n\n` +
           `💰 <b>Jami summa:</b> ${total_price.toLocaleString()} so'm\n\n` +
           `<i>kuzavnoy.uzz ni tanlaganingiz uchun rahmat!</i>`;
@@ -1961,8 +1971,9 @@ app.post('/api/orders', async (req, res) => {
     // Telegram Bot orqali ADMINGA yangi buyurtma haqida go'zal dizayndagi tezkor xabar (Task 9)
     if (bot && ADMIN_CHAT_IDS && ADMIN_CHAT_IDS.length > 0) {
       try {
-        let itemsList = items.map((it, idx) => 
-          `   ${idx + 1}. <b>${it.name}</b>\n` +
+        let cleanLocForAdmin = location ? escapeHtml(location.split(' | 🗺 Xarita: ')[0]) : "Ko'rsatilmagan";
+        let adminItemsList = items.map((it, idx) => 
+          `   ${idx + 1}. <b>${escapeHtml(it.name)}</b>\n` +
           `      └ <i>${it.quantity || 1} dona × ${it.new_price.toLocaleString()} so'm = <b>${((it.quantity || 1) * it.new_price).toLocaleString()} so'm</b></i>`
         ).join('\n');
         
@@ -1972,17 +1983,17 @@ app.post('/api/orders', async (req, res) => {
           `🆔 <b>Buyurtma raqami:</b> <code>#${order.id}</code>\n` +
           `⏰ <b>Vaqti:</b> <i>${new Date().toLocaleString('uz-UZ')}</i>\n\n` +
           `👤 <b>MIJOZ MA'LUMOTLARI:</b>\n` +
-          `• <b>Ismi:</b> <b>${customer_name}</b>\n` +
-          `• <b>Telefon:</b> <code>${phone}</code>\n` +
+          `• <b>Ismi:</b> <b>${escapeHtml(customer_name)}</b>\n` +
+          `• <b>Telefon:</b> <code>${escapeHtml(phone)}</code>\n` +
           `• <b>Telegram ID:</b> <code>${telegram_id || 'Mavjud emas'}</code>\n\n` +
           `🚚 <b>YETKAZIB BERISH:</b>\n` +
           `• <b>Turi:</b> ${dTypeText}\n` +
-          `• <b>Manzil:</b> <i>${location || "Ko'rsatilmagan"}</i>\n\n` +
+          `• <b>Manzil:</b> <i>${cleanLocForAdmin}</i>\n\n` +
           `💳 <b>TO'LOV HOLATI:</b>\n` +
           `• <b>Usuli:</b> ${pMethodText}\n` +
           `• <b>JAMI TUSHUM:</b> 💰 <b>${total_price.toLocaleString()} SO'M</b>\n\n` +
           `📦 <b>BUYURTMA TARKIBI (${items.length} xil detal):</b>\n` +
-          `${itemsList}\n` +
+          `${adminItemsList}\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           `👇 <i>Buyurtmani boshqarish uchun pastdagi tugmani bosing:</i>`;
 
@@ -4046,6 +4057,7 @@ function getAdminPanelHtml() {
         all: "Barchasi",
         pending: "Kutilmoqda",
         processing: "Jarayonda",
+        ready: "Tayyorlandi",
         delivered: "Yetkazildi",
         cancelled: "Bekor qilindi",
         searchOrderPlaceholder: "Buyurtma ID, ism yoki telefon...",
@@ -4143,6 +4155,7 @@ function getAdminPanelHtml() {
         all: "Все",
         pending: "Ожидание",
         processing: "В процессе",
+        ready: "Готов",
         delivered: "Доставлен",
         cancelled: "Отменен",
         searchOrderPlaceholder: "ID заказа, имя или телефон...",
@@ -4240,6 +4253,7 @@ function getAdminPanelHtml() {
         all: "All",
         pending: "Pending",
         processing: "Processing",
+        ready: "Ready",
         delivered: "Delivered",
         cancelled: "Cancelled",
         searchOrderPlaceholder: "Order ID, customer name or phone...",
@@ -5171,7 +5185,7 @@ function getAdminPanelHtml() {
                     if (st === "Barchasi") { emoji = "📋"; label = t('all'); }
                     else if (st === "Kutilmoqda") { emoji = "🟡"; label = t('pending'); }
                     else if (st === "Jarayonda") { emoji = "🔵"; label = t('processing'); }
-                    else if (st === "Tayyorlandi") { emoji = "📦"; label = "Tayyorlandi"; }
+                    else if (st === "Tayyorlandi") { emoji = "📦"; label = t('ready') || "Tayyorlandi"; }
                     else if (st === "Yetkazildi") { emoji = "🟢"; label = t('delivered'); }
                     else if (st === "Bekor qilindi") { emoji = "🔴"; label = t('cancelled'); }
 
@@ -5278,7 +5292,7 @@ function getAdminPanelHtml() {
                               >
                                 <option value="Kutilmoqda">🟡 {t('pending')}</option>
                                 <option value="Jarayonda">🔵 {t('processing')}</option>
-                                <option value="Tayyorlandi">📦 Tayyorlandi</option>
+                                <option value="Tayyorlandi">📦 {t('ready') || "Tayyorlandi"}</option>
                                 <option value="Yetkazildi">🟢 {t('delivered')}</option>
                                 <option value="Bekor qilindi">🔴 {t('cancelled')}</option>
                               </select>

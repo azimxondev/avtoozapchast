@@ -1069,6 +1069,10 @@ if (BOT_TOKEN) {
       [{ text: "📊 Admin Dashboardni ochish", url: `${WEB_APP_URL}/admin` }]
     ];
 
+    await bot.sendMessage(chatId, "👨‍💼 Boshqaruv menyusi", {
+      reply_markup: { remove_keyboard: true }
+    }).catch(() => {});
+
     bot.sendMessage(chatId, 
       `👨‍💼 <b>kuzavnoy.uzz — Boshqaruv Paneli</b>\n\n` +
       `Xush kelibsiz, <b>${firstName}</b>!\n` +
@@ -1414,10 +1418,16 @@ if (BOT_TOKEN) {
       resize_keyboard: true
     };
 
-    // 1-xabar: Reply keyboard menyusini o'rnatish
-    await bot.sendMessage(chatId, "Bosh menyu faollashtirildi 👇", {
-      reply_markup: replyKeyboard
-    }).catch(() => {});
+    // 1-xabar: Pastki klaviatura FAQAT oddiy foydalanuvchilar (userlar) uchun chiqadi, Admin uchun kerak emas!
+    if (!isAdmin) {
+      await bot.sendMessage(chatId, "Bosh menyu faollashtirildi 👇", {
+        reply_markup: replyKeyboard
+      }).catch(() => {});
+    } else {
+      await bot.sendMessage(chatId, "👨‍💼 Boshqaruv paneli faol", {
+        reply_markup: { remove_keyboard: true }
+      }).catch(() => {});
+    }
 
     // 2-xabar: Rasmiy tanishtiruv posti (Inline tugmalar bilan)
     await bot.sendMessage(chatId, welcomeText, {
@@ -2640,6 +2650,33 @@ function getMiniAppHtml() {
       }
     };
 
+    // Rasmiy brend SVG logolari (Instagram, YouTube, Telegram, Veb-sayt)
+    const InstagramIcon = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+      </svg>
+    );
+
+    const YouTubeIcon = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+      </svg>
+    );
+
+    const TelegramIcon = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+      </svg>
+    );
+
+    const WebsiteIcon = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+      </svg>
+    );
+
     function App() {
       const [lang, setLang] = useState(localStorage.getItem('kuzavnoy_lang') || 'uz');
       const [theme, setTheme] = useState(localStorage.getItem('kuzavnoy_theme') || 'light');
@@ -3318,19 +3355,19 @@ function getMiniAppHtml() {
                     <a 
                       href={settings.instagram_url || "https://instagram.com/kuzavnoy.uzz"} 
                       target="_blank" 
-                      className={'px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition flex items-center gap-1 ' + 
+                      className={'px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition flex items-center gap-1.5 ' + 
                         (isDark ? 'bg-slate-950 border-slate-800 text-rose-400 hover:border-rose-500' : 'bg-white border-rose-200 text-rose-600 shadow-sm')}
                     >
-                      <span>📸</span>
+                      <InstagramIcon className="w-3.5 h-3.5 fill-rose-500" />
                       <span>Instagram</span>
                     </a>
                     <a 
                       href={settings.youtube_url || "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G"} 
                       target="_blank" 
-                      className={'px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition flex items-center gap-1 ' + 
+                      className={'px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition flex items-center gap-1.5 ' + 
                         (isDark ? 'bg-slate-950 border-slate-800 text-red-400 hover:border-red-500' : 'bg-white border-red-200 text-red-600 shadow-sm')}
                     >
-                      <span>▶️</span>
+                      <YouTubeIcon className="w-3.5 h-3.5 fill-red-500" />
                       <span>YouTube</span>
                     </a>
                   </div>
@@ -3896,8 +3933,8 @@ function getMiniAppHtml() {
                         rel="noopener noreferrer"
                         className="p-3 rounded-2xl bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-purple-600/10 hover:from-amber-500/20 hover:via-rose-500/20 hover:to-purple-600/20 border border-rose-500/30 flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
-                          📸
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                          <InstagramIcon className="w-4 h-4 fill-white" />
                         </div>
                         <div className="min-w-0">
                           <span className="text-[11px] font-black block truncate text-slate-900 dark:text-white">Instagram</span>
@@ -3914,8 +3951,8 @@ function getMiniAppHtml() {
                         rel="noopener noreferrer"
                         className="p-3 rounded-2xl bg-red-500/10 hover:bg-red-500/15 border border-red-500/30 flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-red-600 flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
-                          ▶️
+                        <div className="w-8 h-8 rounded-xl bg-[#FF0000] flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                          <YouTubeIcon className="w-4 h-4 fill-white" />
                         </div>
                         <div className="min-w-0">
                           <span className="text-[11px] font-black block truncate text-slate-900 dark:text-white">YouTube</span>
@@ -3932,8 +3969,8 @@ function getMiniAppHtml() {
                         rel="noopener noreferrer"
                         className="p-3 rounded-2xl bg-sky-500/10 hover:bg-sky-500/15 border border-sky-500/30 flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-sky-500 flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
-                          ✈️
+                        <div className="w-8 h-8 rounded-xl bg-[#229ED9] flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                          <TelegramIcon className="w-4 h-4 fill-white" />
                         </div>
                         <div className="min-w-0">
                           <span className="text-[11px] font-black block truncate text-slate-900 dark:text-white">Telegram</span>
@@ -3950,8 +3987,8 @@ function getMiniAppHtml() {
                         rel="noopener noreferrer"
                         className="p-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/30 flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
-                          🌐
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                          <WebsiteIcon className="w-4 h-4 text-white" />
                         </div>
                         <div className="min-w-0">
                           <span className="text-[11px] font-black block truncate text-slate-900 dark:text-white">Veb-sayt</span>

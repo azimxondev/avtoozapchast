@@ -110,6 +110,19 @@ async function initDatabase() {
       ALTER TABLE products ADD COLUMN IF NOT EXISTS color VARCHAR(100) DEFAULT 'Universal';
       ALTER TABLE products ADD COLUMN IF NOT EXISTS car_model VARCHAR(100);
 
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) UNIQUE NOT NULL,
+        icon VARCHAR(50) DEFAULT '🚗',
+        display_order INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_name VARCHAR(100) DEFAULT 'Sardor (Kuzavnoy Express)';
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_phone VARCHAR(50) DEFAULT '+998 90 123 45 67';
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS needs_installation BOOLEAN DEFAULT false;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS installation_service VARCHAR(255);
+
       ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS telegram_channel_url VARCHAR(255) DEFAULT 'https://t.me/kuzavnoy_uz';
       ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS website_url VARCHAR(255) DEFAULT 'https://kuzavnoy.uz';
       ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS instagram_active BOOLEAN DEFAULT true;
@@ -827,6 +840,22 @@ if (BOT_TOKEN) {
             ]
           ]
         }
+      }
+    );
+  });
+
+  // /register va /profil — Qaytadan ro'yxatdan o'tish yoki ma'lumotlarni yangilash
+  bot.onText(/\/(?:register|profil|qaytadan|royxat)/, async (msg) => {
+    const chatId = String(msg.chat.id);
+    const firstName = msg.from.first_name || 'Mijoz';
+    userRegStates.set(chatId, { step: 'ASK_NAME' });
+    await bot.sendMessage(chatId,
+      "📝 <b>kuzavnoy.uzz — Ro'yxatdan o'tish / Profilni yangilash</b>\n\n" +
+      "Assalomu alaykum, <b>" + escapeHtml(firstName) + "</b>!\n\n" +
+      "Iltimos, buyurtmalarni rasmiylashtirish uchun <b>Ism va Familiyangizni</b> kiriting: 👇",
+      {
+        parse_mode: 'HTML',
+        reply_markup: { remove_keyboard: true }
       }
     );
   });
@@ -1808,8 +1837,23 @@ app.get('/api/user/orders/:telegramId', async (req, res) => {
 app.put('/api/orders/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
-    const result = await pool.query('UPDATE orders SET status=$1 WHERE id=$2 RETURNING *', [status, id]);
+    const { status, courier_name, courier_phone } = req.body;
+    let queryStr = 'UPDATE orders SET status=$1';
+    const params = [status];
+    let pIdx = 2;
+    if (courier_name !== undefined) {
+      queryStr += ', courier_name=$' + pIdx;
+      params.push(courier_name);
+      pIdx++;
+    }
+    if (courier_phone !== undefined) {
+      queryStr += ', courier_phone=$' + pIdx;
+      params.push(courier_phone);
+      pIdx++;
+    }
+    queryStr += ' WHERE id=$' + pIdx + ' RETURNING *';
+    params.push(id);
+    const result = await pool.query(queryStr, params);
     if (result.rows.length === 0) return res.status(404).json({ error: "Buyurtma topilmadi" });
     const order = result.rows[0];
 
@@ -2122,6 +2166,80 @@ app.put('/api/products/:id/quick-price', async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
+
+// API: Tezkor ombor/qoldiq boshqaruvi (Offline bozor savdosi va qoldiq sozlash)
+app.put('/api/products/:id/quick-stock', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stock, delta } = req.body;
+    let result;
+    if (delta !== undefined) {
+      result = await pool.query(
+        'UPDATE products SET stock = GREATEST(0, COALESCE(stock, 10) + $1) WHERE id=$2 RETURNING *',
+        [parseInt(delta), id]
+      );
+    } else {
+      result = await pool.query(
+        'UPDATE products SET stock = GREATEST(0, $1) WHERE id=$2 RETURNING *',
+        [parseInt(stock) || 0, id]
+      );
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Bo'limlar & Modellarni olish (Kategoriyalar)
+app.get('/api/categories', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM categories ORDER BY display_order ASC, id ASC');
+    if (result.rows.length === 0) {
+      const defaults = [
+        ['Cobalt', '🚗', 1], ['Gentra / Lacetti', '🚗', 2], ['Nexia (1 / 2 / 3)', '🚗', 3],
+        ['Spark', '🚗', 4], ['Matiz', '🚗', 5], ['Damas / Labo', '🚐', 6],
+        ['Malibu (1 / 2)', '🚘', 7], ['Tracker (1 / 2)', '🚙', 8], ['Onix', '🚗', 9],
+        ['Monjaro / Xitoy avto', '⚡️', 10], ['Kia / Hyundai', '🚘', 11], ['Boshqa / Import', '🌐', 12]
+      ];
+      for (const d of defaults) {
+        await pool.query('INSERT INTO categories (name, icon, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING', d);
+      }
+      const refreshed = await pool.query('SELECT * FROM categories ORDER BY display_order ASC, id ASC');
+      return res.json(refreshed.rows);
+    }
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Yangi bo'lim/model qo'shish (Admin)
+app.post('/api/categories', async (req, res) => {
+  try {
+    const { name, icon } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Nomi kiritilishi shart' });
+    const maxOrderRes = await pool.query('SELECT MAX(display_order) as m FROM categories');
+    const nextOrder = (maxOrderRes.rows[0]?.m || 0) + 1;
+    const result = await pool.query(
+      'INSERT INTO categories (name, icon, display_order) VALUES ($1, $2, $3) RETURNING *',
+      [name.trim(), icon || '🚗', nextOrder]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Bo'lim/modelni o'chirish (Admin)
+app.delete('/api/categories/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM categories WHERE id=$1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
   }
 });
 
@@ -2178,17 +2296,27 @@ app.post('/api/broadcast', async (req, res) => {
 // API: Yangi buyurtma yaratish (Mini App) + Telegram orqali xabar yuborish (Task 9)
 app.post('/api/orders', async (req, res) => {
   try {
-    const { telegram_id, customer_name, phone, items, total_price, location, delivery_type, payment_method } = req.body;
+    const { 
+      telegram_id, customer_name, phone, items, total_price, location, 
+      delivery_type, payment_method, needs_installation, installation_service 
+    } = req.body;
 
     const dType = delivery_type === 'pickup' ? 'pickup' : 'delivery';
     const pMethod = payment_method === 'card' ? 'card' : 'cash';
 
     const result = await pool.query(
-      `INSERT INTO orders (telegram_id, customer_name, phone, items, total_price, location, delivery_type, payment_method)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [telegram_id || 0, customer_name, phone, JSON.stringify(items), total_price, location, dType, pMethod]
+      `INSERT INTO orders (
+        telegram_id, customer_name, phone, items, total_price, location, 
+        delivery_type, payment_method, needs_installation, installation_service, 
+        courier_name, courier_phone
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Sardor (Kuzavnoy Express)', '+998 90 123 45 67') 
+      RETURNING *`,
+      [
+        telegram_id || 0, customer_name, phone, JSON.stringify(items), total_price, location, 
+        dType, pMethod, Boolean(needs_installation), installation_service || null
+      ]
     );
-
     const order = result.rows[0];
 
     // Ombordan tovarlar qoldig'ini (stock) avtomatik kamaytirish
@@ -2697,6 +2825,9 @@ function getMiniAppHtml() {
         } catch(e) {}
       }, [cart]);
 
+      const [dbCategories, setDbCategories] = useState([]);
+      const [needsInstallation, setNeedsInstallation] = useState(false);
+      const [selectedWorkshop, setSelectedWorkshop] = useState("Kuzavnoy Service (Chilonzor, 4-mavze)");
       const [selectedProduct, setSelectedProduct] = useState(null); // Bottom sheet
       const [selectedCategory, setSelectedCategory] = useState('Barchasi');
       const [addOnFragrance, setAddOnFragrance] = useState(false);
@@ -2822,6 +2953,82 @@ function getMiniAppHtml() {
         if (tgUser?.id) fetchUserOrders(tgUser.id);
       }, []);
 
+      const fetchCategories = async () => {
+        try {
+          const res = await fetch("/api/categories");
+          const data = await res.json();
+          if (Array.isArray(data)) setCategories(data);
+        } catch(e) {}
+      };
+
+      const handleQuickStock = async (prodId, delta) => {
+        try {
+          const res = await fetch("/api/products/" + prodId + "/quick-stock", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ delta })
+          });
+          const updated = await res.json();
+          if (updated && updated.id) {
+            setProducts(prev => prev.map(p => p.id === updated.id ? { ...p, stock: updated.stock } : p));
+          }
+        } catch(e) {
+          alert("Qoldiqni yangilashda xatolik yuz berdi");
+        }
+      };
+
+      const handlePromptStock = async (prod) => {
+        const input = prompt("Offline/Online ombor sonini kiriting:", prod.stock !== undefined ? prod.stock : 10);
+        if (input === null) return;
+        const val = parseInt(input);
+        if (isNaN(val) || val < 0) {
+          alert("Iltimos, to'g'ri musbat son kiriting!");
+          return;
+        }
+        try {
+          const res = await fetch("/api/products/" + prod.id + "/quick-stock", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ stock: val })
+          });
+          const updated = await res.json();
+          if (updated && updated.id) {
+            setProducts(prev => prev.map(p => p.id === updated.id ? { ...p, stock: updated.stock } : p));
+          }
+        } catch(e) {
+          alert("Qoldiqni saqlashda xatolik yuz berdi");
+        }
+      };
+
+      const handleAddCategory = async (e) => {
+        e.preventDefault();
+        if (!newCategoryName.trim()) return;
+        try {
+          const res = await fetch("/api/categories", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: newCategoryName.trim(), icon: newCategoryIcon || "🚗" })
+          });
+          const saved = await res.json();
+          if (saved && saved.id) {
+            setCategories(prev => [...prev, saved]);
+            setNewCategoryName("");
+          }
+        } catch(e) {
+          alert("Bo'lim qo'shishda xatolik");
+        }
+      };
+
+      const handleDeleteCategory = async (id, name) => {
+        if (!confirm("Haqiqatan ham «" + name + "» bo'limini o'chirmoqchimisiz?")) return;
+        try {
+          await fetch("/api/categories/" + id, { method: "DELETE" });
+          setCategories(prev => prev.filter(c => c.id !== id));
+        } catch(e) {
+          alert("O'chirishda xatolik");
+        }
+      };
+
       const fetchProducts = async () => {
         try {
           const res = await fetch('/api/products');
@@ -2926,7 +3133,8 @@ function getMiniAppHtml() {
         try {
           const t = Date.now();
           await Promise.all([
-            fetch('/api/products?_t=' + t).then(r => r.json()).then(d => { if (Array.isArray(d)) setProducts(d); }),
+            fetch('/api/categories?_t=' + t).then(r => r.json()).then(d => { if (Array.isArray(d)) setDbCategories(d); }),
+        fetch('/api/products?_t=' + t).then(r => r.json()).then(d => { if (Array.isArray(d)) setProducts(d); }),
             fetch('/api/stories?_t=' + t).then(r => r.json()).then(d => { if (Array.isArray(d)) setStories(d); }),
             fetch('/api/settings?_t=' + t).then(r => r.json()).then(d => { if (d) setSettings(d); }),
             fetch('/api/reviews?_t=' + t).then(r => r.json()).then(d => { if (Array.isArray(d)) setReviews(d); }),
@@ -3070,7 +3278,9 @@ function getMiniAppHtml() {
             total_price: cartTotal,
             location: finalLocation,
             delivery_type: deliveryType,
-            payment_method: paymentMethod
+            payment_method: paymentMethod,
+            needs_installation: needsInstallation,
+            installation_service: needsInstallation ? selectedWorkshop : null
           };
 
           const res = await fetch('/api/orders', {
@@ -3098,15 +3308,18 @@ function getMiniAppHtml() {
         'Barchasi', 
         'Cobalt', 
         'Gentra / Lacetti', 
-        'Malibu 1 / 2', 
-        'Tracker 1 / 2', 
+        'Nexia (1 / 2 / 3)',
+        'Spark',
+        'Matiz',
+        'Damas / Labo',
+        'Malibu (1 / 2)', 
+        'Tracker (1 / 2)', 
         'Onix', 
-        'Nexia 1 / 2 / 3', 
-        'Monjaro / Xitoy', 
+        'Monjaro / Xitoy avto', 
         'Kia / Hyundai', 
-        'Universal / Boshqa'
+        'Boshqa / Import'
       ];
-      const categories = ['Barchasi', ...new Set([...carPresets.slice(1), ...products.map(p => p.category).filter(Boolean)])];
+      const categories = ['Barchasi', ...new Set([...(dbCategories.length > 0 ? dbCategories.map(c => c.name) : carPresets.slice(1)), ...products.map(p => p.category || p.car_model).filter(Boolean)])];
       const filteredProducts = selectedCategory === 'Barchasi' 
         ? products 
         : products.filter(p => p.category === selectedCategory || (p.category && p.category.toLowerCase().includes(selectedCategory.toLowerCase())));
@@ -3882,6 +4095,67 @@ function getMiniAppHtml() {
                         </span>
                       </div>
 
+                      {/* 🛠 HAMKOR AVTOSERVIS & O'RNATISH TAVSIYASI (Task Feature) */}
+                      <div className={'p-4 rounded-2xl border mb-3 ' + (isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-50 border-slate-200')}>
+                        <label className="flex items-center justify-between cursor-pointer">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-xl">🛠</span>
+                            <div>
+                              <div className="text-xs font-black text-slate-900 dark:text-white">O'rnatib berish servisi kerakmi?</div>
+                              <div className="text-[10px] text-slate-400">Hamkor avtoservislarimizda kafolatli o'rnatiladi</div>
+                            </div>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            checked={needsInstallation} 
+                            onChange={e => setNeedsInstallation(e.target.checked)}
+                            className="w-4 h-4 accent-red-600 rounded cursor-pointer"
+                          />
+                        </label>
+
+                        {needsInstallation && (
+                          <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
+                            <div className="text-[11px] font-bold text-slate-500">Toshkentdagi hamkor ustaxonani tanlang:</div>
+                            <div className="space-y-2">
+                              <label className={'p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer text-xs transition ' + 
+                                (selectedWorkshop.includes('Chilonzor') ? (isDark ? 'bg-slate-800 border-red-500/50' : 'bg-white border-red-500 shadow-sm') : (isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200'))}>
+                                <input 
+                                  type="radio" 
+                                  name="workshop" 
+                                  checked={selectedWorkshop.includes('Chilonzor')}
+                                  onChange={() => setSelectedWorkshop("Kuzavnoy Service (Chilonzor, 4-mavze)")}
+                                  className="accent-red-600"
+                                />
+                                <div className="min-w-0">
+                                  <div className="font-extrabold text-[11px]">🔧 Kuzavnoy Service (Chilonzor, 4-mavze)</div>
+                                  <div className="text-[10px] text-slate-400">Rul, bar, kuzov va optika o'rnatish • Tel: +998 97 765 43 21</div>
+                                </div>
+                              </label>
+
+                              <label className={'p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer text-xs transition ' + 
+                                (selectedWorkshop.includes('Sergeli') ? (isDark ? 'bg-slate-800 border-red-500/50' : 'bg-white border-red-500 shadow-sm') : (isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200'))}>
+                                <input 
+                                  type="radio" 
+                                  name="workshop" 
+                                  checked={selectedWorkshop.includes('Sergeli')}
+                                  onChange={() => setSelectedWorkshop("Autotuning Master (Sergeli bozori yonida)")}
+                                  className="accent-red-600"
+                                />
+                                <div className="min-w-0">
+                                  <div className="font-extrabold text-[11px]">⚡️ Autotuning Master (Sergeli mashina bozori)</div>
+                                  <div className="text-[10px] text-slate-400">Labavoy, bakavoy oyna va elektrika • Tel: +998 99 888 77 66</div>
+                                </div>
+                              </label>
+                            </div>
+
+                            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-between">
+                              <span>🎁 10% chegirma promokodingiz:</span>
+                              <span className="font-mono font-black text-xs bg-emerald-600 text-white px-2 py-0.5 rounded">KUZAVNOY-USTA</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       <button 
                         onClick={handleCheckout}
                         disabled={isSubmitting}
@@ -4131,19 +4405,19 @@ function getMiniAppHtml() {
 
                         {/* Bosqichma-bosqich vizual status-treker */}
                         {o.status !== 'Bekor qilindi' && (
-                          <div className={'px-3 py-2 rounded-xl mb-2.5 border ' + (isDark ? 'bg-slate-950 border-slate-800/80' : 'bg-slate-50 border-slate-200')}>
+                          <div className={'px-3 py-2.5 rounded-2xl mb-2.5 border ' + (isDark ? 'bg-slate-950 border-slate-800/80' : 'bg-slate-50 border-slate-200')}>
                             <div className="flex items-center justify-between text-[9px] font-black text-slate-400">
                               <span className={o.status === 'Kutilmoqda' ? 'text-amber-400 font-extrabold' : 'text-emerald-500'}>1. Qabul</span>
                               <span>→</span>
-                              <span className={o.status === 'Jarayonda' ? 'text-sky-400 font-extrabold' : (['Tayyorlandi', 'Yetkazildi'].includes(o.status) ? 'text-emerald-500' : '')}>2. Tayyorlanmoqda</span>
+                              <span className={o.status === 'Jarayonda' ? 'text-sky-400 font-extrabold' : (['Tayyorlandi', 'Yetkazildi'].includes(o.status) ? 'text-emerald-500' : '')}>2. Yig'ilmoqda</span>
                               <span>→</span>
-                              <span className={o.status === 'Tayyorlandi' ? 'text-indigo-400 font-extrabold' : (o.status === 'Yetkazildi' ? 'text-emerald-500' : '')}>3. Tayyor</span>
+                              <span className={o.status === 'Tayyorlandi' ? 'text-indigo-400 font-extrabold' : (o.status === 'Yetkazildi' ? 'text-emerald-500' : '')}>3. Kuryer yo'lda</span>
                               <span>→</span>
                               <span className={o.status === 'Yetkazildi' ? 'text-emerald-500 font-extrabold' : ''}>4. Yetkazildi</span>
                             </div>
-                            <div className="w-full bg-slate-700/30 h-1.5 rounded-full overflow-hidden mt-1.5">
+                            <div className="w-full bg-slate-700/20 h-1.5 rounded-full overflow-hidden mt-1.5">
                               <div 
-                                className="h-full bg-gradient-to-r from-red-600 via-amber-500 to-emerald-500 rounded-full transition-all duration-500"
+                                className="h-full bg-red-600 rounded-full transition-all duration-500"
                                 style={{
                                   width: o.status === 'Kutilmoqda' ? '25%' : 
                                          (o.status === 'Jarayonda' ? '50%' : 
@@ -4151,6 +4425,34 @@ function getMiniAppHtml() {
                                 }}
                               />
                             </div>
+                          </div>
+                        )}
+
+                        {/* 🚚 KURYER BILAN BOG'LANISH KARTASI (Task Feature) */}
+                        {['Jarayonda', 'Tayyorlandi', 'Yetkazildi'].includes(o.status) && (
+                          <div className={'p-2.5 rounded-2xl mb-2.5 border flex items-center justify-between ' + (isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-50 border-slate-200')}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">🚚</span>
+                              <div className="min-w-0">
+                                <div className="text-[11px] font-black truncate">{o.courier_name || 'Sardor (Kuzavnoy Express)'}</div>
+                                <div className="text-[9px] text-slate-400">Mas'ul yetkazib beruvchi kuryer</div>
+                              </div>
+                            </div>
+                            <a 
+                              href={"tel:" + (o.courier_phone || "+998901234567")}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black shadow-sm flex items-center gap-1 active:scale-95 transition flex-shrink-0"
+                            >
+                              <span>📞</span>
+                              <span>Qo'ng'iroq</span>
+                            </a>
+                          </div>
+                        )}
+
+                        {/* O'rnatish servisi nishoni */}
+                        {o.needs_installation && (
+                          <div className={'p-2 rounded-xl mb-2 text-[10px] font-bold border flex items-center gap-1.5 ' + (isDark ? 'bg-amber-950/30 border-amber-800/40 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800')}>
+                            <span>🛠</span>
+                            <span><b>O'rnatish:</b> {o.installation_service || 'Kuzavnoy Hamkor Servis'} (10% chegirma kod: KUZAVNOY-USTA)</span>
                           </div>
                         )}
                         <div className={'text-[11px] mb-2 leading-relaxed ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>
@@ -4833,7 +5135,7 @@ function getAdminPanelHtml() {
       const handleAdminRefresh = async () => {
         setIsRefreshing(true);
         try {
-          await Promise.all([fetchOrders(), fetchProducts(), fetchUsers(), fetchStories(), fetchSettings()]);
+          await Promise.all([fetchOrders(), fetchProducts(), fetchUsers(), fetchStories(), fetchSettings(), fetchCategories()]);
           setRefreshToast(true);
           setTimeout(() => setRefreshToast(false), 3000);
         } catch(e) {
@@ -4869,6 +5171,10 @@ function getAdminPanelHtml() {
 
       // Mahsulot Modal
       const [showProductModal, setShowProductModal] = useState(false);
+      const [categories, setCategories] = useState([]);
+      const [showCategoryModal, setShowCategoryModal] = useState(false);
+      const [newCategoryName, setNewCategoryName] = useState("");
+      const [newCategoryIcon, setNewCategoryIcon] = useState("🚗");
       const [editingProduct, setEditingProduct] = useState(null);
       const [productImagePreview, setProductImagePreview] = useState("");
       const [formData, setFormData] = useState({
@@ -5798,13 +6104,21 @@ function getAdminPanelHtml() {
                     />
 
                     <button 
+                      onClick={() => setShowCategoryModal(true)}
+                      className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-700 active:scale-95 shadow-sm"
+                      title="Yangi avto bo'limlarini ochish yoki o'chirish"
+                    >
+                      <span>📁 Bo'limlar & Modellar</span>
+                    </button>
+
+                    <button 
                       onClick={() => {
                         setEditingProduct(null);
                         setProductImagePreview("");
                         setFormData({
-                          name: "", category: "Cobalt", new_price: "", old_price: "",
+                          name: "", category: categories.length > 0 ? categories[0].name : "Cobalt", new_price: "", old_price: "",
                           image_url: "", description: "", detailsText: "Original sifat\\nKafolat beriladi",
-                          condition: "Yangi", stock: "10", color: "Universal", car_model: "Cobalt"
+                          condition: "Yangi", stock: "10", color: "Universal", car_model: categories.length > 0 ? categories[0].name : "Cobalt"
                         });
                         setShowProductModal(true);
                       }}
@@ -5817,7 +6131,7 @@ function getAdminPanelHtml() {
 
                 {/* Kategoriyalar filtri */}
                 <div className={'px-6 py-2.5 border-b flex gap-2 overflow-x-auto no-scrollbar ' + (isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                  {["Barchasi", "Cobalt", "Gentra / Lacetti", "Malibu 1 / 2", "Tracker 1 / 2", "Onix", "Nexia 1 / 2 / 3", "Monjaro / Xitoy", "Kia / Hyundai", "Universal / Boshqa"].map(cat => (
+                  {["Barchasi", ...(categories.length > 0 ? categories.map(c => c.name) : ["Cobalt", "Gentra / Lacetti", "Nexia (1 / 2 / 3)", "Spark", "Matiz", "Damas / Labo", "Malibu (1 / 2)", "Tracker (1 / 2)", "Onix", "Monjaro / Xitoy avto", "Kia / Hyundai", "Boshqa / Import"])].map(cat => (
                     <button
                       key={cat}
                       onClick={() => setProductCategoryFilter(cat)}
@@ -5862,14 +6176,37 @@ function getAdminPanelHtml() {
                                   : (isDark ? 'text-emerald-400 bg-emerald-950/40 border-emerald-500/20' : 'text-emerald-700 bg-emerald-50 border-emerald-200'))}>
                                 {prod.condition === 'B/U (Ideal)' ? '🔄 B/U' : '✨ Yangi'}
                               </span>
-                              <span className={'text-[9px] font-black px-1.5 py-0.5 rounded border ' + 
-                                (prod.stock > 3 
-                                  ? (isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200') 
-                                  : (prod.stock > 0 
-                                      ? (isDark ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-200') 
-                                      : (isDark ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-600 border-rose-200')))}>
-                                {prod.stock > 0 ? ("📦 " + prod.stock + " dona") : "🔴 Tugagan"}
-                              </span>
+                              <div className="flex items-center gap-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickStock(prod.id, -1)}
+                                  title="Offline bozor: 1 dona sotildi (-1)"
+                                  className="w-4 h-4 rounded bg-slate-200 dark:bg-slate-800 hover:bg-rose-500 hover:text-white flex items-center justify-center text-[10px] font-black transition"
+                                >
+                                  -
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handlePromptStock(prod)}
+                                  title="Bosib aniq son yozing (Offline / Online)"
+                                  className={'text-[9px] font-black px-1.5 py-0.5 rounded border ' + 
+                                    (prod.stock > 3 
+                                      ? (isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200') 
+                                      : (prod.stock > 0 
+                                          ? (isDark ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-200') 
+                                          : (isDark ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-600 border-rose-200')))}
+                                >
+                                  {prod.stock > 0 ? ("📦 " + prod.stock) : "🔴 0"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickStock(prod.id, 1)}
+                                  title="Yangi keltirildi: +1 dona"
+                                  className="w-4 h-4 rounded bg-slate-200 dark:bg-slate-800 hover:bg-emerald-500 hover:text-white flex items-center justify-center text-[10px] font-black transition"
+                                >
+                                  +
+                                </button>
+                              </div>
                               {prod.color && prod.color !== 'Universal' && (
                                 <span className={'text-[9px] font-semibold px-1.5 py-0.5 rounded border ' + 
                                   (isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200')}>
@@ -6841,6 +7178,83 @@ function getAdminPanelHtml() {
           )}
 
           {/* PRODUCT MODAL */}
+          {/* 📁 BO'LIMLAR & MODELLARNI BOSHQARISH MODALI */}
+          {showCategoryModal && (
+            <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+              <div className={'w-full max-w-lg rounded-3xl border shadow-2xl p-6 ' + (isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900')}>
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800/40 mb-4">
+                  <div>
+                    <h3 className="text-base font-black flex items-center gap-2">
+                      <span>📁</span>
+                      <span>Bo'limlar & Avto Modellarni Boshqarish</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Admin bu yerda xohlagan yangi avto toifasini ocha oladi</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowCategoryModal(false)}
+                    className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-bold text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Yangi bo'lim qo'shish formasi */}
+                <form onSubmit={handleAddCategory} className="flex gap-2 mb-4">
+                  <input 
+                    type="text" 
+                    placeholder="Masalan: Labo yoki BYD Song"
+                    value={newCategoryName}
+                    onChange={e => setNewCategoryName(e.target.value)}
+                    className={'flex-1 p-2.5 rounded-xl border text-xs focus:outline-none focus:border-red-500 ' + 
+                      (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900')}
+                  />
+                  <select
+                    value={newCategoryIcon}
+                    onChange={e => setNewCategoryIcon(e.target.value)}
+                    className={'p-2.5 rounded-xl border text-xs focus:outline-none ' + 
+                      (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900')}
+                  >
+                    <option value="🚗">🚗 Yengil</option>
+                    <option value="🚘">🚘 Sedan</option>
+                    <option value="🚙">🚙 Krossover</option>
+                    <option value="🚐">🚐 Mini-ven</option>
+                    <option value="⚡️">⚡️ Elektro</option>
+                    <option value="🌐">🌐 Import</option>
+                  </select>
+                  <button 
+                    type="submit"
+                    className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black transition"
+                  >
+                    + Qo'shish
+                  </button>
+                </form>
+
+                {/* Mavjud bo'limlar ro'yxati */}
+                <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
+                  {categories.map((c, idx) => (
+                    <div 
+                      key={c.id || c.name} 
+                      className={'p-2.5 rounded-xl border flex items-center justify-between text-xs ' + 
+                        (isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{c.icon || '🚗'}</span>
+                        <span className="font-bold">{c.name}</span>
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteCategory(c.id, c.name)}
+                        className="text-slate-400 hover:text-rose-500 transition p-1"
+                        title="O'chirish"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {showProductModal && (
             <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
               <div className={'border rounded-3xl max-w-lg w-full p-6 shadow-2xl ' + (isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900')}>
@@ -6874,15 +7288,24 @@ function getAdminPanelHtml() {
                         className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
                           (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
                       >
-                        <option value="Cobalt">Cobalt</option>
-                        <option value="Gentra / Lacetti">Gentra / Lacetti</option>
-                        <option value="Malibu 1 / 2">Malibu 1 / 2</option>
-                        <option value="Tracker 1 / 2">Tracker 1 / 2</option>
-                        <option value="Onix">Onix</option>
-                        <option value="Nexia 1 / 2 / 3">Nexia 1 / 2 / 3</option>
-                        <option value="Monjaro / Xitoy">Monjaro / Xitoy</option>
-                        <option value="Kia / Hyundai">Kia / Hyundai</option>
-                        <option value="Universal / Boshqa">Universal / Boshqa</option>
+                        {(categories.length > 0 ? categories : [
+                          { name: 'Cobalt', icon: '🚗' },
+                          { name: 'Gentra / Lacetti', icon: '🚗' },
+                          { name: 'Nexia (1 / 2 / 3)', icon: '🚗' },
+                          { name: 'Spark', icon: '🚗' },
+                          { name: 'Matiz', icon: '🚗' },
+                          { name: 'Damas / Labo', icon: '🚐' },
+                          { name: 'Malibu (1 / 2)', icon: '🚘' },
+                          { name: 'Tracker (1 / 2)', icon: '🚙' },
+                          { name: 'Onix', icon: '🚗' },
+                          { name: 'Monjaro / Xitoy avto', icon: '⚡️' },
+                          { name: 'Kia / Hyundai', icon: '🚘' },
+                          { name: 'Boshqa / Import', icon: '🌐' }
+                        ]).map(cat => (
+                          <option key={cat.name} value={cat.name}>
+                            {(cat.icon || '🚗') + ' ' + cat.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
 

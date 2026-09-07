@@ -1715,6 +1715,15 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Qat'iy keshga qarshi middleware (No-Cache headers) — barcha platformalar va brauzerlar uchun
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
+
 // API: Barcha istoriyalarni olish (Stories)
 app.get('/api/stories', async (req, res) => {
   try {
@@ -2837,6 +2846,7 @@ function getMiniAppHtml() {
       const [isStoryPaused, setIsStoryPaused] = useState(false);
       const [stories, setStories] = useState([]);
       const [miniRefreshing, setMiniRefreshing] = useState(false);
+      const [miniRefreshToast, setMiniRefreshToast] = useState(false);
       const [showOnboarding, setShowOnboarding] = useState(false);
       const [onboardSlide, setOnboardSlide] = useState(0);
 
@@ -2953,11 +2963,12 @@ function getMiniAppHtml() {
         if (tgUser?.id) fetchUserOrders(tgUser.id);
       }, []);
 
-      const fetchCategories = async () => {
+      const fetchCategories = async (force) => {
         try {
-          const res = await fetch("/api/categories");
+          const url = "/api/categories" + (force ? "?_t=" + Date.now() : "");
+          const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
           const data = await res.json();
-          if (Array.isArray(data)) setCategories(data);
+          if (Array.isArray(data)) setDbCategories(data);
         } catch(e) {}
       };
 
@@ -3132,17 +3143,25 @@ function getMiniAppHtml() {
         setMiniRefreshing(true);
         try {
           const t = Date.now();
+          const fetchOpts = { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } };
           await Promise.all([
-            fetch('/api/categories?_t=' + t).then(r => r.json()).then(d => { if (Array.isArray(d)) setDbCategories(d); }),
-        fetch('/api/products?_t=' + t).then(r => r.json()).then(d => { if (Array.isArray(d)) setProducts(d); }),
-            fetch('/api/stories?_t=' + t).then(r => r.json()).then(d => { if (Array.isArray(d)) setStories(d); }),
-            fetch('/api/settings?_t=' + t).then(r => r.json()).then(d => { if (d) setSettings(d); }),
-            fetch('/api/reviews?_t=' + t).then(r => r.json()).then(d => { if (Array.isArray(d)) setReviews(d); }),
-            tgUser?.id ? fetch('/api/user/orders/' + tgUser.id + '?_t=' + t).then(r => r.json()).then(d => { if (Array.isArray(d)) setUserOrders(d); }) : Promise.resolve()
+            fetch('/api/categories?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (Array.isArray(d)) setDbCategories(d); }),
+            fetch('/api/products?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (Array.isArray(d)) setProducts(d); }),
+            fetch('/api/stories?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (Array.isArray(d)) setStories(d); }),
+            fetch('/api/settings?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (d && d.card_number) setSettings(d); }),
+            fetch('/api/reviews?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (Array.isArray(d)) setReviews(d); }),
+            tgUser?.id ? fetch('/api/user/orders/' + tgUser.id + '?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (Array.isArray(d)) setUserOrders(d); }) : Promise.resolve()
           ]);
-          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        } catch(e) {}
-        setTimeout(() => setMiniRefreshing(false), 600);
+          setMiniRefreshToast(true);
+          setTimeout(() => setMiniRefreshToast(false), 2500);
+          if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+          }
+        } catch(e) {
+          console.error('Mini refresh error:', e);
+        } finally {
+          setTimeout(() => setMiniRefreshing(false), 500);
+        }
       };
 
       const availableCards = useMemo(() => {
@@ -3328,6 +3347,13 @@ function getMiniAppHtml() {
 
       return (
         <div className={'min-h-screen transition-colors duration-200 ' + (isDark ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-900')}>
+          {/* MINI APP YANGILANISH BILDIRISHNOMASI (TOAST) */}
+          {miniRefreshToast && (
+            <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 border border-emerald-400/40 animate-bounce pointer-events-none">
+              <span>🔄</span>
+              <span>Do'kon ma'lumotlari muvaffaqiyatli yangilandi!</span>
+            </div>
+          )}
           <div className="max-w-md mx-auto min-h-screen flex flex-col pb-24">
             
             {/* ONBOARDING MODAL */}
@@ -5095,11 +5121,19 @@ function getAdminPanelHtml() {
       const handleAdminRefresh = async () => {
         setIsRefreshing(true);
         try {
-          await Promise.all([fetchOrders(), fetchProducts(), fetchUsers(), fetchStories(), fetchSettings(), fetchCategories()]);
+          await Promise.all([
+            fetchOrders(true),
+            fetchProducts(true),
+            fetchCategories(true),
+            fetchUsers(true),
+            fetchStories(true),
+            fetchSettings(true)
+          ]);
           setRefreshToast(true);
+          if (soundEnabled) playChime();
           setTimeout(() => setRefreshToast(false), 3000);
         } catch(e) {
-          console.error('Refresh error:', e);
+          console.error('Admin Refresh error:', e);
         } finally {
           setIsRefreshing(false);
         }
@@ -5129,13 +5163,16 @@ function getAdminPanelHtml() {
       const [productSearch, setProductSearch] = useState("");
       const [productCategoryFilter, setProductCategoryFilter] = useState("Barchasi");
 
-      // Mahsulot Modal
+      // Mahsulot Modal & Tahrirlash holati
       const [showProductModal, setShowProductModal] = useState(false);
       const [categories, setCategories] = useState([]);
       const [showCategoryModal, setShowCategoryModal] = useState(false);
       const [newCategoryName, setNewCategoryName] = useState("");
       const [newCategoryIcon, setNewCategoryIcon] = useState("🚗");
       const [editingProduct, setEditingProduct] = useState(null);
+      const [initialFormData, setInitialFormData] = useState(null);
+      const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
+      const [productSaving, setProductSaving] = useState(false);
       const [productImagePreview, setProductImagePreview] = useState("");
       const [formData, setFormData] = useState({
         name: "", category: "Cobalt", new_price: "", old_price: "",
@@ -5196,21 +5233,31 @@ function getAdminPanelHtml() {
 
       const loadAllData = async () => {
         setLoading(true);
-        await Promise.all([fetchOrders(), fetchProducts(), fetchUsers(), fetchStories(), fetchSettings()]);
+        await Promise.all([
+          fetchOrders(true),
+          fetchProducts(true),
+          fetchCategories(true),
+          fetchUsers(true),
+          fetchStories(true),
+          fetchSettings(true)
+        ]);
         setLoading(false);
       };
 
-      const fetchOrders = async () => {
+      const fetchOrders = async (force) => {
         try {
-          const res = await fetch("/api/orders");
+          const url = "/api/orders" + (force ? "?_t=" + Date.now() : "");
+          const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
           const data = await res.json();
           if (Array.isArray(data)) setOrders(data);
-        } catch(e) {}
+        } catch(e) {
+          console.error("fetchOrders error:", e);
+        }
       };
 
       const checkForNewOrders = async () => {
         try {
-          const res = await fetch("/api/orders");
+          const res = await fetch("/api/orders?_t=" + Date.now(), { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
           const data = await res.json();
           if (Array.isArray(data)) {
             setOrders(prev => {
@@ -5223,38 +5270,129 @@ function getAdminPanelHtml() {
         } catch(e) {}
       };
 
-      const fetchProducts = async () => {
+      const fetchProducts = async (force) => {
         try {
-          const res = await fetch("/api/products");
+          const url = "/api/products" + (force ? "?_t=" + Date.now() : "");
+          const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
           const data = await res.json();
           if (Array.isArray(data)) setProducts(data);
-        } catch(e) {}
+        } catch(e) {
+          console.error("fetchProducts error:", e);
+        }
       };
 
-      const fetchUsers = async () => {
+      const fetchCategories = async (force) => {
         try {
-          const res = await fetch("/api/users");
+          const url = "/api/categories" + (force ? "?_t=" + Date.now() : "");
+          const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
+          const data = await res.json();
+          if (Array.isArray(data)) setCategories(data);
+        } catch(e) {
+          console.error("fetchCategories error:", e);
+        }
+      };
+
+      const fetchUsers = async (force) => {
+        try {
+          const url = "/api/users" + (force ? "?_t=" + Date.now() : "");
+          const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
           const data = await res.json();
           if (Array.isArray(data)) setUsers(data);
-        } catch(e) {}
+        } catch(e) {
+          console.error("fetchUsers error:", e);
+        }
       };
 
-      const fetchStories = async () => {
+      const fetchStories = async (force) => {
         try {
-          const res = await fetch("/api/stories");
+          const url = "/api/stories" + (force ? "?_t=" + Date.now() : "");
+          const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
           const data = await res.json();
           if (Array.isArray(data)) setStories(data);
-        } catch(e) {}
+        } catch(e) {
+          console.error("fetchStories error:", e);
+        }
       };
 
-      const fetchSettings = async () => {
+      const fetchSettings = async (force) => {
         try {
-          const res = await fetch("/api/settings");
+          const url = "/api/settings" + (force ? "?_t=" + Date.now() : "");
+          const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
           const data = await res.json();
           if (data && data.card_number) {
             setSettings(data);
           }
-        } catch(e) {}
+        } catch(e) {
+          console.error("fetchSettings error:", e);
+        }
+      };
+
+      const handleAddCategory = async (e) => {
+        e.preventDefault();
+        if (!newCategoryName.trim()) return;
+        try {
+          const res = await fetch("/api/categories", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: newCategoryName.trim(), icon: newCategoryIcon || "🚗" })
+          });
+          const saved = await res.json();
+          if (saved && saved.id) {
+            setCategories(prev => [...prev, saved]);
+            setNewCategoryName("");
+          }
+        } catch(e) {
+          alert("Bo'lim qo'shishda xatolik");
+        }
+      };
+
+      const handleDeleteCategory = async (id, name) => {
+        if (!confirm("Haqiqatan ham «" + name + "» bo'limini o'chirmoqchimisiz?")) return;
+        try {
+          await fetch("/api/categories/" + id, { method: "DELETE" });
+          setCategories(prev => prev.filter(c => c.id !== id));
+        } catch(e) {
+          alert("O'chirishda xatolik");
+        }
+      };
+
+      const handleQuickStock = async (prodId, delta) => {
+        try {
+          const res = await fetch("/api/products/" + prodId + "/quick-stock", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ delta })
+          });
+          const updated = await res.json();
+          if (updated && updated.id) {
+            setProducts(prev => prev.map(p => p.id === updated.id ? { ...p, stock: updated.stock } : p));
+          }
+        } catch(e) {
+          alert("Qoldiqni yangilashda xatolik yuz berdi");
+        }
+      };
+
+      const handlePromptStock = async (prod) => {
+        const input = prompt("Offline/Online ombor sonini kiriting:", prod.stock !== undefined ? prod.stock : 10);
+        if (input === null) return;
+        const val = parseInt(input);
+        if (isNaN(val) || val < 0) {
+          alert("Iltimos, to'g'ri musbat son kiriting!");
+          return;
+        }
+        try {
+          const res = await fetch("/api/products/" + prod.id + "/quick-stock", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ stock: val })
+          });
+          const updated = await res.json();
+          if (updated && updated.id) {
+            setProducts(prev => prev.map(p => p.id === updated.id ? { ...p, stock: updated.stock } : p));
+          }
+        } catch(e) {
+          alert("Qoldiqni saqlashda xatolik yuz berdi");
+        }
       };
 
       const handleSaveSettings = async (e) => {
@@ -5468,19 +5606,40 @@ function getAdminPanelHtml() {
         }
       };
 
-      const handleSaveProduct = async (e) => {
-        e.preventDefault();
+      const hasProductFormChanged = () => {
+        if (!initialFormData) return false;
+        return JSON.stringify(formData) !== JSON.stringify(initialFormData) || 
+               (productImagePreview && productImagePreview !== initialFormData.image_url);
+      };
+
+      const handleAttemptCloseProductModal = () => {
+        if (hasProductFormChanged()) {
+          setShowUnsavedConfirm(true);
+        } else {
+          setShowProductModal(false);
+          setEditingProduct(null);
+          setInitialFormData(null);
+          setProductImagePreview("");
+        }
+      };
+
+      const executeSaveProduct = async () => {
+        if (!formData.name || !formData.new_price) {
+          alert("Iltimos, mahsulot nomi va yangi narxini kiriting!");
+          return false;
+        }
+        setProductSaving(true);
         try {
           const payload = {
             name: formData.name,
-            category: formData.category,
-            new_price: parseInt(formData.new_price),
+            category: formData.category || formData.car_model || "Cobalt",
+            new_price: parseInt(formData.new_price) || 0,
             old_price: formData.old_price ? parseInt(formData.old_price) : 0,
-            image_url: formData.image_url,
-            description: formData.description,
+            image_url: formData.image_url || "",
+            description: formData.description || "",
             condition: formData.condition || "Yangi",
-            details: formData.detailsText.split("\\n").filter(Boolean),
-            stock: parseInt(formData.stock) || 0,
+            details: (formData.detailsText || "").split("\\n").map(s => s.trim()).filter(Boolean),
+            stock: (formData.stock !== undefined && formData.stock !== null && formData.stock !== '') ? parseInt(formData.stock) : 10,
             color: formData.color || "Universal",
             car_model: formData.car_model || formData.category || "Cobalt"
           };
@@ -5488,19 +5647,34 @@ function getAdminPanelHtml() {
           const url = editingProduct ? "/api/products/" + editingProduct.id : "/api/products";
           const method = editingProduct ? "PUT" : "POST";
 
-          await fetch(url, {
+          const res = await fetch(url, {
             method,
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
+          const saved = await res.json();
+          if (!res.ok) {
+            throw new Error(saved.error || "Saqlashda xatolik yuz berdi");
+          }
 
+          setShowUnsavedConfirm(false);
           setShowProductModal(false);
           setEditingProduct(null);
+          setInitialFormData(null);
           setProductImagePreview("");
-          fetchProducts();
+          await fetchProducts(true);
+          return true;
         } catch(e) {
-          alert("Saqlashda xatolik!");
+          alert("Saqlashda xatolik: " + e.message);
+          return false;
+        } finally {
+          setProductSaving(false);
         }
+      };
+
+      const handleSaveProduct = async (e) => {
+        if (e) e.preventDefault();
+        await executeSaveProduct();
       };
 
       const handleQuickPrice = async (prod, newPrice) => {
@@ -6073,13 +6247,15 @@ function getAdminPanelHtml() {
 
                     <button 
                       onClick={() => {
-                        setEditingProduct(null);
-                        setProductImagePreview("");
-                        setFormData({
+                        const initial = {
                           name: "", category: categories.length > 0 ? categories[0].name : "Cobalt", new_price: "", old_price: "",
                           image_url: "", description: "", detailsText: "Original sifat\\nKafolat beriladi",
                           condition: "Yangi", stock: "10", color: "Universal", car_model: categories.length > 0 ? categories[0].name : "Cobalt"
-                        });
+                        };
+                        setEditingProduct(null);
+                        setProductImagePreview("");
+                        setFormData(initial);
+                        setInitialFormData(JSON.parse(JSON.stringify(initial)));
                         setShowProductModal(true);
                       }}
                       className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black shadow-lg shadow-red-950/40 active:scale-95 transition flex items-center gap-1.5"
@@ -6202,21 +6378,23 @@ function getAdminPanelHtml() {
                             <div className="flex justify-end gap-2">
                               <button 
                                 onClick={() => {
-                                  setEditingProduct(prod);
-                                  setProductImagePreview(prod.image_url);
-                                  setFormData({
-                                    name: prod.name,
+                                  const initial = {
+                                    name: prod.name || "",
                                     category: prod.category || prod.car_model || "Cobalt",
-                                    new_price: prod.new_price,
-                                    old_price: prod.old_price || "",
-                                    image_url: prod.image_url,
+                                    new_price: String(prod.new_price || ""),
+                                    old_price: prod.old_price ? String(prod.old_price) : "",
+                                    image_url: prod.image_url || "",
                                     description: prod.description || "",
                                     condition: prod.condition || "Yangi",
                                     detailsText: (Array.isArray(prod.details) ? prod.details : []).join("\\n"),
                                     stock: String(prod.stock !== undefined && prod.stock !== null ? prod.stock : 10),
                                     color: prod.color || "Universal",
                                     car_model: prod.car_model || prod.category || "Cobalt"
-                                  });
+                                  };
+                                  setEditingProduct(prod);
+                                  setProductImagePreview(prod.image_url || "");
+                                  setFormData(initial);
+                                  setInitialFormData(JSON.parse(JSON.stringify(initial)));
                                   setShowProductModal(true);
                                 }}
                                 className={'px-3 py-1.5 font-bold rounded-xl border transition ' + 
@@ -7140,8 +7318,15 @@ function getAdminPanelHtml() {
           {/* PRODUCT MODAL */}
           {/* 📁 BO'LIMLAR & MODELLARNI BOSHQARISH MODALI */}
           {showCategoryModal && (
-            <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-              <div className={'w-full max-w-lg rounded-3xl border shadow-2xl p-6 ' + (isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900')}>
+            <div 
+              onClick={() => setShowCategoryModal(false)}
+              className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain min-h-screen"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              <div 
+                onClick={e => e.stopPropagation()}
+                className={'w-full max-w-lg my-auto rounded-3xl border shadow-2xl p-5 sm:p-6 max-h-[92vh] flex flex-col ' + 
+                  (isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900')}>
                 <div className="flex items-center justify-between pb-4 border-b border-slate-800/40 mb-4">
                   <div>
                     <h3 className="text-base font-black flex items-center gap-2">
@@ -7216,210 +7401,250 @@ function getAdminPanelHtml() {
           )}
 
           {showProductModal && (
-            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-              <div className={'border rounded-3xl max-w-lg w-full p-6 shadow-2xl ' + (isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900')}>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-base font-black">
-                    {editingProduct ? t('modalEditProduct') : t('modalNewProduct')}
-                  </h3>
-                  <button onClick={() => setShowProductModal(false)} className="text-slate-400 hover:text-slate-500 font-bold">✕</button>
+            <div 
+              onClick={handleAttemptCloseProductModal}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto overscroll-contain flex items-center justify-center p-2 sm:p-4 min-h-screen"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              <div 
+                onClick={e => e.stopPropagation()} 
+                className={'border rounded-3xl max-w-xl w-full my-auto shadow-2xl flex flex-col max-h-[92vh] overflow-hidden ' + 
+                  (isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900')}
+              >
+                {/* 1. STICKY HEADER: BO'LIM NOMI VA YAQQOL [ ✕ ] TUGMASI */}
+                <div className={'px-5 py-4 border-b flex items-center justify-between sticky top-0 z-10 shrink-0 ' + 
+                  (isDark ? 'bg-slate-900/95 border-slate-800 backdrop-blur' : 'bg-white/95 border-slate-200 backdrop-blur')}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl">📦</span>
+                    <div>
+                      <h3 className="text-base font-black tracking-tight">
+                        {editingProduct ? t('modalEditProduct') : t('modalNewProduct')}
+                      </h3>
+                      <p className={'text-[11px] ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>
+                        {editingProduct ? (formData.name || "Ehtiyot qismni tahrirlash") : "Yangi ehtiyot qism katalogga qo'shish"}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* YAQQOL KO'RINADIGAN O'NG BURCHAK [ ✕ ] YOPISH TUGMASI */}
+                  <button 
+                    type="button"
+                    onClick={handleAttemptCloseProductModal}
+                    className={'w-9 h-9 rounded-full flex items-center justify-center font-black text-sm transition active:scale-90 shadow-md cursor-pointer ' + 
+                      (isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700')}
+                    title="Yopish (✕)"
+                  >
+                    ✕
+                  </button>
                 </div>
 
-                <form onSubmit={handleSaveProduct} className="space-y-3 text-xs">
-                  <div>
-                    <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('productName')}</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={formData.name}
-                      onChange={e => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="M-Sport Anatomiya Rul" 
-                      className={'w-full p-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
-                        (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* 2. FORM BODY & STICKY FOOTER */}
+                <form onSubmit={handleSaveProduct} className="flex-1 flex flex-col overflow-hidden min-h-0">
+                  {/* SCROLLABLE BODY (Touch scrolling & pan-y enabled) */}
+                  <div 
+                    className="p-5 overflow-y-auto flex-1 space-y-3.5 text-xs overscroll-contain"
+                    style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+                  >
                     <div>
-                      <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('categoryCarModel')}</label>
-                      <select 
-                        value={formData.category}
-                        onChange={e => setFormData({ ...formData, category: e.target.value, car_model: e.target.value })}
-                        className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                          (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                      >
-                        {(categories.length > 0 ? categories : [
-                          { name: 'Cobalt', icon: '🚗' },
-                          { name: 'Gentra / Lacetti', icon: '🚗' },
-                          { name: 'Nexia (1 / 2 / 3)', icon: '🚗' },
-                          { name: 'Spark', icon: '🚗' },
-                          { name: 'Matiz', icon: '🚗' },
-                          { name: 'Damas / Labo', icon: '🚐' },
-                          { name: 'Malibu (1 / 2)', icon: '🚘' },
-                          { name: 'Tracker (1 / 2)', icon: '🚙' },
-                          { name: 'Onix', icon: '🚗' },
-                          { name: 'Monjaro / Xitoy avto', icon: '⚡️' },
-                          { name: 'Kia / Hyundai', icon: '🚘' },
-                          { name: 'Boshqa / Import', icon: '🌐' }
-                        ]).map(cat => (
-                          <option key={cat.name} value={cat.name}>
-                            {(cat.icon || '🚗') + ' ' + cat.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('partCondition')}</label>
-                      <select 
-                        value={formData.condition || 'Yangi'}
-                        onChange={e => setFormData({ ...formData, condition: e.target.value })}
-                        className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                          (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                      >
-                        <option value="Yangi">{t('conditionNew')}</option>
-                        <option value="B/U (Ideal)">{t('conditionUsed')}</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>Ombor (Stock)</label>
-                      <input 
-                        type="number" 
-                        min="0"
-                        value={formData.stock !== undefined ? formData.stock : "10"}
-                        onChange={e => setFormData({ ...formData, stock: e.target.value })}
-                        placeholder="10"
-                        className={'w-full p-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
-                          (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                      />
-                    </div>
-
-                    <div>
-                      <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>Rangi (Color)</label>
+                      <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('productName')} *</label>
                       <input 
                         type="text" 
-                        value={formData.color || ""}
-                        onChange={e => setFormData({ ...formData, color: e.target.value })}
-                        placeholder="Qora / Oq / Karbon"
+                        required
+                        value={formData.name}
+                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="M-Sport Anatomiya Rul" 
                         className={'w-full p-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
                           (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('categoryCarModel')}</label>
+                        <select 
+                          value={formData.category}
+                          onChange={e => setFormData({ ...formData, category: e.target.value, car_model: e.target.value })}
+                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
+                            (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        >
+                          {(categories.length > 0 ? categories : [
+                            { name: 'Cobalt', icon: '🚗' },
+                            { name: 'Gentra / Lacetti', icon: '🚗' },
+                            { name: 'Nexia (1 / 2 / 3)', icon: '🚗' },
+                            { name: 'Spark', icon: '🚗' },
+                            { name: 'Matiz', icon: '🚗' },
+                            { name: 'Damas / Labo', icon: '🚐' },
+                            { name: 'Malibu (1 / 2)', icon: '🚘' },
+                            { name: 'Tracker (1 / 2)', icon: '🚙' },
+                            { name: 'Onix', icon: '🚗' },
+                            { name: 'Monjaro / Xitoy avto', icon: '⚡️' },
+                            { name: 'Kia / Hyundai', icon: '🚘' },
+                            { name: 'Boshqa / Import', icon: '🌐' }
+                          ]).map(cat => (
+                            <option key={cat.name} value={cat.name}>
+                              {(cat.icon || '🚗') + ' ' + cat.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('partCondition')}</label>
+                        <select 
+                          value={formData.condition || 'Yangi'}
+                          onChange={e => setFormData({ ...formData, condition: e.target.value })}
+                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
+                            (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        >
+                          <option value="Yangi">{t('conditionNew')}</option>
+                          <option value="B/U (Ideal)">{t('conditionUsed')}</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>Ombor (Stock)</label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={formData.stock !== undefined ? formData.stock : "10"}
+                          onChange={e => setFormData({ ...formData, stock: e.target.value })}
+                          placeholder="10" 
+                          className={'w-full p-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
+                            (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>Rangi (Color)</label>
+                        <input 
+                          type="text" 
+                          value={formData.color || ""}
+                          onChange={e => setFormData({ ...formData, color: e.target.value })}
+                          placeholder="Qora / Oq / Karbon" 
+                          className={'w-full p-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
+                            (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('newPrice')} *</label>
+                        <input 
+                          type="number" 
+                          required
+                          value={formData.new_price}
+                          onChange={e => setFormData({ ...formData, new_price: e.target.value })}
+                          placeholder="1450000" 
+                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
+                            (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('oldPrice')}</label>
+                        <input 
+                          type="number" 
+                          value={formData.old_price}
+                          onChange={e => setFormData({ ...formData, old_price: e.target.value })}
+                          placeholder="1850000" 
+                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
+                            (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        />
+                      </div>
+                    </div>
+
+                    {/* TELEFON RASMI YOKI URL */}
                     <div>
-                      <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('newPrice')}</label>
+                      <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('photoPhoneOrUrl')}</label>
+                      
+                      <div className={'border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition relative mb-2 ' + 
+                        (isDark ? 'border-slate-700 hover:border-red-500 bg-slate-950/60' : 'border-slate-300 hover:border-red-500 bg-slate-50')}>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          onChange={(e) => {
+                            const file = e.target.files && e.target.files[0];
+                            if (file) {
+                              handleImageUpload(file, (dataUrl) => {
+                                setFormData(prev => ({ ...prev, image_url: dataUrl }));
+                                setProductImagePreview(dataUrl);
+                              });
+                            }
+                          }}
+                        />
+                        {productImagePreview || formData.image_url ? (
+                          <div className="flex flex-col items-center">
+                            <img src={productImagePreview || formData.image_url} className="w-24 h-24 object-cover rounded-xl border border-slate-700 shadow-md mb-2" />
+                            <span className="text-[11px] text-emerald-500 font-bold">{t('photoSelected')}</span>
+                          </div>
+                        ) : (
+                          <div className="py-2">
+                            <div className="text-3xl mb-1">📸</div>
+                            <p className="text-xs font-bold">{t('photoFromPhone')}</p>
+                            <p className={'text-[10px] mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('photoHint')}</p>
+                          </div>
+                        )}
+                      </div>
+
                       <input 
-                        type="number" 
-                        required
-                        value={formData.new_price}
-                        onChange={e => setFormData({ ...formData, new_price: e.target.value })}
-                        placeholder="1450000" 
+                        type="url" 
+                        value={(formData.image_url && formData.image_url.startsWith("data:")) ? "" : (formData.image_url || "")}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setFormData(prev => ({ ...prev, image_url: val }));
+                          setProductImagePreview(val);
+                        }}
+                        placeholder="yoki internetdagi rasm havolasi (URL): https://..." 
+                        className={'w-full p-2 border rounded-xl text-[11px] focus:outline-none ' + 
+                          (isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700')}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('shortDesc')}</label>
+                      <input 
+                        type="text" 
+                        value={formData.description}
+                        onChange={e => setFormData({ ...formData, description: e.target.value })}
+                        placeholder="Malibu va Tracker uchun original sport rul" 
+                        className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
+                          (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('featuresInput')}</label>
+                      <textarea 
+                        rows="3"
+                        value={formData.detailsText}
+                        onChange={e => setFormData({ ...formData, detailsText: e.target.value })}
+                        placeholder="Nappa charm qoplama&#10;Ko'p funksiyali tugmalar&#10;Airbag bilan mos" 
                         className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
                           (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('oldPrice')}</label>
-                    <input 
-                      type="number" 
-                      value={formData.old_price}
-                      onChange={e => setFormData({ ...formData, old_price: e.target.value })}
-                      placeholder="1850000" 
-                      className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                        (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                    />
-                  </div>
-
-                  {/* TELEFON RASMI YOKI URL */}
-                  <div>
-                    <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('photoPhoneOrUrl')}</label>
-                    
-                    <div className={'border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition relative mb-2 ' + 
-                      (isDark ? 'border-slate-700 hover:border-red-500 bg-slate-950/60' : 'border-slate-300 hover:border-red-500 bg-slate-50')}>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                        onChange={(e) => {
-                          const file = e.target.files && e.target.files[0];
-                          if (file) {
-                            handleImageUpload(file, (dataUrl) => {
-                              setFormData(prev => ({ ...prev, image_url: dataUrl }));
-                              setProductImagePreview(dataUrl);
-                            });
-                          }
-                        }}
-                      />
-                      {productImagePreview || formData.image_url ? (
-                        <div className="flex flex-col items-center">
-                          <img src={productImagePreview || formData.image_url} className="w-24 h-24 object-cover rounded-xl border border-slate-700 shadow-md mb-2" />
-                          <span className="text-[11px] text-emerald-500 font-bold">{t('photoSelected')}</span>
-                        </div>
-                      ) : (
-                        <div className="py-2">
-                          <div className="text-3xl mb-1">📸</div>
-                          <p className="text-xs font-bold">{t('photoFromPhone')}</p>
-                          <p className={'text-[10px] mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('photoHint')}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <input 
-                      type="url" 
-                      value={(formData.image_url && formData.image_url.startsWith("data:")) ? "" : (formData.image_url || "")}
-                      onChange={e => {
-                        const val = e.target.value;
-                        setFormData(prev => ({ ...prev, image_url: val }));
-                        setProductImagePreview(val);
-                      }}
-                      placeholder="yoki internetdagi rasm havolasi (URL): https://..." 
-                      className={'w-full p-2 border rounded-xl text-[11px] focus:outline-none ' + 
-                        (isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700')}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('shortDesc')}</label>
-                    <input 
-                      type="text" 
-                      value={formData.description}
-                      onChange={e => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Malibu va Tracker uchun original sport rul" 
-                      className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                        (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('featuresInput')}</label>
-                    <textarea 
-                      rows="3"
-                      value={formData.detailsText}
-                      onChange={e => setFormData({ ...formData, detailsText: e.target.value })}
-                      placeholder="Nappa charm qoplama&#10;Ko'p funksiyali tugmalar&#10;Airbag bilan mos"
-                      className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                        (isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-3">
+                  {/* 3. STICKY FOOTER (DOIM KO'RINIB TURADI) */}
+                  <div className={'px-5 py-3.5 border-t flex items-center justify-between gap-3 sticky bottom-0 z-10 shrink-0 ' + 
+                    (isDark ? 'bg-slate-900/95 border-slate-800 backdrop-blur' : 'bg-white/95 border-slate-200 backdrop-blur')}>
                     <button 
                       type="button" 
-                      onClick={() => setShowProductModal(false)}
-                      className={'px-4 py-2 rounded-xl font-bold ' + (isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')}
+                      onClick={handleAttemptCloseProductModal}
+                      className={'px-4 py-2.5 rounded-xl font-bold transition active:scale-95 ' + 
+                        (isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')}
                     >
                       {t('cancel')}
                     </button>
                     <button 
                       type="submit" 
-                      className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold"
+                      disabled={productSaving}
+                      className="px-6 py-2.5 bg-red-600 hover:bg-red-500 active:scale-95 text-white rounded-xl font-bold transition shadow-lg shadow-red-950/40 flex items-center gap-2 cursor-pointer"
                     >
-                      {t('save')}
+                      <span>💾</span>
+                      <span>{productSaving ? "Saqlanmoqda..." : t('save')}</span>
                     </button>
                   </div>
                 </form>
@@ -7427,16 +7652,88 @@ function getAdminPanelHtml() {
             </div>
           )}
 
+          {/* 4. TAHRIRLANGAN MA'LUMOTLARNI TASDIQLASH MODALI (UNSAVED CHANGES CONFIRMATION) */}
+          {showUnsavedConfirm && (
+            <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+              <div className={'border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 ' + 
+                (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900')}>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-2xl font-black shrink-0">
+                    ⚠️
+                  </div>
+                  <div>
+                    <h4 className="text-base font-black">O'zgarishlar saqlanmadi!</h4>
+                    <p className={'text-xs mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>
+                      Siz mahsulot ma'lumotlarini tahrirladingiz
+                    </p>
+                  </div>
+                </div>
+
+                <p className={'text-xs leading-relaxed ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>
+                  Qanday yo'l tutmoqchisiz? Tahrirlangan holatda saqlansinmi yoki eski holatda qoldirilsinmi?
+                </p>
+
+                <div className="space-y-2 pt-2">
+                  {/* Variant 1: Tahrirlangan holatda saqlash */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setShowUnsavedConfirm(false);
+                      await executeSaveProduct();
+                    }}
+                    className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/30 cursor-pointer"
+                  >
+                    <span>💾</span>
+                    <span>Tahrirlangan holatda saqlansin (Saqlash)</span>
+                  </button>
+
+                  {/* Variant 2: Eski holatda qolsin */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUnsavedConfirm(false);
+                      setShowProductModal(false);
+                      setEditingProduct(null);
+                      setInitialFormData(null);
+                      setProductImagePreview("");
+                    }}
+                    className="w-full py-3 px-4 bg-rose-600/15 hover:bg-rose-600/25 active:scale-95 text-rose-500 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition border border-rose-500/30 cursor-pointer"
+                  >
+                    <span>🔄</span>
+                    <span>Eski holatda qolsin (Bekor qilish & Chiqish)</span>
+                  </button>
+
+                  {/* Variant 3: Tahrirlashda davom etish */}
+                  <button
+                    type="button"
+                    onClick={() => setShowUnsavedConfirm(false)}
+                    className={'w-full py-2.5 px-4 rounded-2xl font-bold text-xs transition active:scale-95 cursor-pointer ' + 
+                      (isDark ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700')}
+                  >
+                    ✏️ Tahrirlashda davom etish
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* STORY MODAL */}
           {showStoryModal && (
-            <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-              <div className={'border rounded-3xl max-w-md w-full p-6 shadow-2xl ' + (isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900')}>
+            <div 
+              onClick={() => setShowStoryModal(false)}
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto overscroll-contain min-h-screen"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              <div 
+                onClick={e => e.stopPropagation()}
+                className={'border rounded-3xl max-w-md w-full my-auto p-5 sm:p-6 shadow-2xl max-h-[92vh] flex flex-col overflow-hidden ' + 
+                  (isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900')}>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-base font-black">{t('modalNewStory')}</h3>
                   <button onClick={() => setShowStoryModal(false)} className="text-slate-400 hover:text-slate-500 font-bold">✕</button>
                 </div>
 
-                <form onSubmit={handleSaveStory} className="space-y-3.5 text-xs">
+                <form onSubmit={handleSaveStory} className="space-y-3.5 text-xs overflow-y-auto flex-1 overscroll-contain pr-1" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <div>
                     <label className={'block mb-1 font-semibold ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{t('storyTitle')}</label>
                     <input 

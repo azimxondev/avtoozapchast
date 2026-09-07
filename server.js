@@ -196,7 +196,7 @@ async function initDatabase() {
         phone3 VARCHAR(50) DEFAULT '+998 99 888 77 66',
         instagram_url VARCHAR(255) DEFAULT 'https://instagram.com/kuzavnoy.uzz',
         youtube_url VARCHAR(255) DEFAULT 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
-        store_address TEXT DEFAULT 'Toshkent sh., Sergeli mashina bozori, 4-qator 12-do''kon',
+        store_address TEXT DEFAULT 'Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori',
         store_hours VARCHAR(100) DEFAULT '09:00 - 19:00',
         uzcard_active BOOLEAN DEFAULT true,
         humo_active BOOLEAN DEFAULT true,
@@ -421,7 +421,7 @@ async function initDatabase() {
     if (parseInt(settingsCount.rows[0].count) === 0) {
       await client.query(`
         INSERT INTO store_settings (id, card_number, card_holder, phone, instagram_url, youtube_url, store_address, store_hours)
-        VALUES (1, '8600 5304 1234 5678', 'AZIMXON (KUZAVNOY.UZZ)', '+998 90 123 45 67', 'https://instagram.com/kuzavnoy.uzz', 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G', 'Toshkent sh., Sergeli mashina bozori, 4-qator 12-do''kon', '09:00 - 19:00')
+        VALUES (1, '8600 5304 1234 5678', 'AZIMXON (KUZAVNOY.UZZ)', '+998 90 123 45 67', 'https://instagram.com/kuzavnoy.uzz', 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G', 'Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori', '09:00 - 19:00')
         ON CONFLICT (id) DO NOTHING;
       `);
       console.log('✅ Dastlabki do\'kon sozlamalari (store_settings) bazaga kiritildi!');
@@ -499,7 +499,7 @@ if (BOT_TOKEN) {
       if (st.phone3_active !== false && st.phone3) phones.push(`• Texnik yordam: <b>${st.phone3}</b>`);
       if (phones.length === 0) phones.push('• Telefon: +998 90 123 45 67');
 
-      const addr = st.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon";
+      const addr = st.store_address || "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori";
       const yandexMapUrl = st.store_location_url && st.store_location_url.trim() ? st.store_location_url : `https://yandex.uz/maps/?text=${encodeURIComponent(addr)}`;
       const googleMapUrl = st.store_location_url && st.store_location_url.trim() ? st.store_location_url : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
 
@@ -528,7 +528,7 @@ if (BOT_TOKEN) {
         }
       );
     } catch(e) {
-      bot.sendMessage(chatId, "📞 Aloqa: +998 90 123 45 67\nManzil: Toshkent sh., Sergeli mashina bozori");
+      bot.sendMessage(chatId, "📞 Aloqa: +998 90 123 45 67\nManzil: Toshkent sh., Farhod avto bozori");
     }
   });
 
@@ -636,14 +636,14 @@ if (BOT_TOKEN) {
     try {
       const sRes = await pool.query('SELECT store_address, store_location_url, store_hours FROM store_settings WHERE id=1');
       const st = sRes.rows[0] || {};
-      const addr = st.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon";
+      const addr = st.store_address || "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori";
       const yandexMapUrl = st.store_location_url && st.store_location_url.trim() ? st.store_location_url : `https://yandex.uz/maps/?text=${encodeURIComponent(addr)}`;
       const googleMapUrl = st.store_location_url && st.store_location_url.trim() ? st.store_location_url : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
 
       bot.sendMessage(chatId,
         "📍 <b>kuzavnoy.uzz — Do'kon Manzili & Lokatsiya</b>\n\n" +
         `🏢 <b>Manzil:</b> ${addr}\n` +
-        "🧭 <b>Mo'ljal:</b> Sergeli mashina bozori markaziy qatori\n" +
+        "🧭 <b>Mo'ljal:</b> Farhod avto bozori, kuzavnoy.uzz do'koni\n" +
         "🚗 <b>Avtoturargoh:</b> Mijozlar uchun qulay bepul to'xtash joyi mavjud\n" +
         `⏰ <b>Ish vaqti:</b> ${st.store_hours || "09:00 - 19:00"} (Dam olish kunlarisiz)\n\n` +
         "Xaritada ko'rish va yo'nalish (navigator) chizish uchun tugmani bosing: 👇",
@@ -663,7 +663,7 @@ if (BOT_TOKEN) {
         }
       );
     } catch(e) {
-      bot.sendMessage(chatId, "📍 Manzil: Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon\nIsh vaqti: 09:00 - 19:00");
+      bot.sendMessage(chatId, "📍 Manzil: Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori\nIsh vaqti: 09:00 - 19:00");
     }
   });
 
@@ -675,7 +675,7 @@ if (BOT_TOKEN) {
       const st = sRes.rows[0] || {};
       bot.sendMessage(chatId,
         "⏰ <b>kuzavnoy.uzz — Ish Vaqti va Ish Tartibi:</b>\n\n" +
-        `🏬 <b>Do'konimiz:</b> ${st.store_address || "Toshkent sh., Sergeli mashina bozori"}\n` +
+        `🏬 <b>Do'konimiz:</b> ${st.store_address || "Toshkent sh., Farhod avto bozori"}\n` +
         `• Ish kunlari: <b>Dushanba — Yakshanba (Har kuni)</b>\n` +
         `• Ish soatlari: <b>${st.store_hours || "09:00 — 19:00"}</b>\n` +
         "• Tushlik tanaffusisiz va dam olish kunlarisiz!\n\n" +
@@ -794,7 +794,7 @@ if (BOT_TOKEN) {
       "• BTS Pochta, Fargo yoki viloyat taksilari (Damas / Pitak) orqali <b>1 kunda</b> yetkaziladi.\n" +
       "• Barcha qismlar sinmaydigan, zarbaga chidamli maxsus qutilarga o'raladi!\n\n" +
       "🏬 <b>Do'kondan olib ketish (Samovivoz):</b>\n" +
-      "• Sergeli mashina bozori, 4-qator 12-do'konimizdan bepul olib ketishingiz mumkin.\n\n" +
+      "• Farhod avto ehtiyot qismlar bozori, kuzavnoy.uzz do'konimizdan bepul olib ketishingiz mumkin.\n\n" +
       "Savollaringiz bo'lsa, mutaxassislarimiz bilan bog'laning: 👇",
       {
         parse_mode: 'HTML',
@@ -1138,11 +1138,11 @@ if (BOT_TOKEN) {
         await bot.answerCallbackQuery(query.id);
         const sRes = await pool.query('SELECT store_address, store_location_url FROM store_settings WHERE id=1');
         const st = sRes.rows[0] || {};
-        const addr = st.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon";
+        const addr = st.store_address || "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori";
         const yMap = st.store_location_url || `https://yandex.uz/maps/?text=${encodeURIComponent(addr)}`;
         const gMap = st.store_location_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
         return bot.sendMessage(fromId,
-          `📍 <b>Do'kon Manzili:</b> ${addr}\n\nSergeli mashina bozori markaziy qatori.`,
+          `📍 <b>Do'kon Manzili:</b> ${addr}\n\nFarhod avto bozori, kuzavnoy.uzz do'koni.`,
           {
             parse_mode: 'HTML',
             reply_markup: {
@@ -1660,7 +1660,7 @@ if (BOT_TOKEN) {
       try {
         const sRes = await pool.query('SELECT * FROM store_settings WHERE id = 1');
         const st = sRes.rows[0] || {};
-        const addr = st.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon";
+        const addr = st.store_address || "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori";
         const yMap = st.store_location_url || `https://yandex.uz/maps/?text=${encodeURIComponent(addr)}`;
         const gMap = st.store_location_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
 
@@ -2005,7 +2005,7 @@ app.put('/api/settings', async (req, res) => {
         youtube_url || 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
         telegram_channel_url || 'https://t.me/kuzavnoy_uz',
         website_url || 'https://kuzavnoy.uz',
-        store_address || 'Toshkent sh., Sergeli mashina bozori, 4-qator 12-do\'kon',
+        store_address || 'Toshkent sh., Farhod avto bozori, 4-qator 12-do\'kon',
         store_hours || '09:00 - 19:00',
         store_hours_open || '09:00',
         store_hours_close || '19:00',
@@ -2348,7 +2348,7 @@ app.post('/api/orders', async (req, res) => {
           `<b>Telefon:</b> ${escapeHtml(phone)}\n` +
           `<b>Yetkazish turi:</b> ${dTypeText}\n` +
           `<b>To'lov usuli:</b> ${pMethodText}\n` +
-          (dType === 'delivery' ? `<b>Yetkazish manzili:</b> ${cleanLocDisplay}\n\n` : `<b>Do'kon manzili:</b> Toshkent sh., Sergeli mashina bozori\n\n`) +
+          (dType === 'delivery' ? `<b>Yetkazish manzili:</b> ${cleanLocDisplay}\n\n` : `<b>Do'kon manzili:</b> Toshkent sh., Farhod avto bozori\n\n`) +
           `<b>Xarid qilingan detallar:</b>\n${itemsList}\n\n` +
           `💰 <b>Jami summa:</b> ${total_price.toLocaleString()} so'm\n\n` +
           `<i>kuzavnoy.uzz ni tanlaganingiz uchun rahmat!</i>`;
@@ -2524,8 +2524,8 @@ function getMiniAppHtml() {
         deliveryTypeLabel: "Yetkazib berish usuli",
         deliveryCourier: "🚚 Kuryer orqali",
         deliveryPickup: "🏬 O'zi olib ketish",
-        pickupStoreAddress: "Toshkent sh., Sergeli mashina bozori (Samovivoz)",
-        pickupStoreBadge: "Samovivoz manzili: Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon. Ish vaqti: 09:00 - 19:00",
+        pickupStoreAddress: "Toshkent sh., Farhod avto bozori (Samovivoz)",
+        pickupStoreBadge: "Samovivoz manzili: Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori. Ish vaqti: 09:00 - 19:00",
         paymentMethodLabel: "To'lov usuli",
         payCard: "💳 Karta / Visa / Click",
         payCash: "💵 Qabul qilganda naqd",
@@ -2712,8 +2712,8 @@ function getMiniAppHtml() {
         deliveryTypeLabel: "Delivery Method",
         deliveryCourier: "🚚 Courier Delivery",
         deliveryPickup: "🏬 Store Pickup",
-        pickupStoreAddress: "Tashkent city, Sergeli car market (Pickup)",
-        pickupStoreBadge: "Pickup address: Tashkent, Sergeli car market, row 4, shop 12. Working hours: 09:00 - 19:00",
+        pickupStoreAddress: "Tashkent city, Farhod car market (Pickup)",
+        pickupStoreBadge: "Pickup address: Tashkent, Farhod car market, row 4, shop 12. Working hours: 09:00 - 19:00",
         paymentMethodLabel: "Payment Method",
         payCard: "💳 Card / Visa / Click",
         payCash: "💵 Cash on Delivery",
@@ -2827,7 +2827,7 @@ function getMiniAppHtml() {
 
       const [dbCategories, setDbCategories] = useState([]);
       const [needsInstallation, setNeedsInstallation] = useState(false);
-      const [selectedWorkshop, setSelectedWorkshop] = useState("Kuzavnoy Service (Chilonzor, 4-mavze)");
+      const [selectedWorkshop, setSelectedWorkshop] = useState("kuzavnoy.uzz Farhod bozori ustaxonasi");
       const [selectedProduct, setSelectedProduct] = useState(null); // Bottom sheet
       const [selectedCategory, setSelectedCategory] = useState('Barchasi');
       const [addOnFragrance, setAddOnFragrance] = useState(false);
@@ -2900,7 +2900,7 @@ function getMiniAppHtml() {
         phone3_active: true,
         instagram_url: 'https://instagram.com/kuzavnoy.uzz',
         youtube_url: 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
-        store_address: "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon",
+        store_address: "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori",
         store_hours: '09:00 - 19:00'
       });
       const [selectedCardIdx, setSelectedCardIdx] = useState(0);
@@ -3280,7 +3280,7 @@ function getMiniAppHtml() {
             delivery_type: deliveryType,
             payment_method: paymentMethod,
             needs_installation: needsInstallation,
-            installation_service: needsInstallation ? selectedWorkshop : null
+            installation_service: needsInstallation ? "kuzavnoy.uzz Farhod bozori ustaxonasi" : null
           };
 
           const res = await fetch('/api/orders', {
@@ -3988,7 +3988,7 @@ function getMiniAppHtml() {
                           {/* Yandex va Google Maps tugmalari */}
                           <div className="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-800">
                             <a 
-                              href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://yandex.uz/maps/?text=' + encodeURIComponent(settings.store_address || "Toshkent Sergeli mashina bozori"))}
+                              href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://yandex.uz/maps/?text=' + encodeURIComponent(settings.store_address || "Toshkent Farhod avto bozori"))}
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="flex-1 py-1.5 px-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 border border-amber-500/30 text-[10px] font-black flex items-center justify-center gap-1 transition active:scale-95"
@@ -3997,7 +3997,7 @@ function getMiniAppHtml() {
                               <span>Yandex Karta</span>
                             </a>
                             <a 
-                              href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(settings.store_address || "Toshkent Sergeli mashina bozori"))}
+                              href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(settings.store_address || "Toshkent Farhod avto bozori"))}
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="flex-1 py-1.5 px-2.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-500 border border-blue-500/30 text-[10px] font-black flex items-center justify-center gap-1 transition active:scale-95"
@@ -4095,14 +4095,14 @@ function getMiniAppHtml() {
                         </span>
                       </div>
 
-                      {/* 🛠 HAMKOR AVTOSERVIS & O'RNATISH TAVSIYASI (Task Feature) */}
+                      {/* 🛠 O'RNATIB BERISH XIZMATI (Do'konning o'z ustaxonasi - Farhod bozori) */}
                       <div className={'p-4 rounded-2xl border mb-3 ' + (isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-50 border-slate-200')}>
                         <label className="flex items-center justify-between cursor-pointer">
                           <div className="flex items-center gap-2.5">
                             <span className="text-xl">🛠</span>
                             <div>
                               <div className="text-xs font-black text-slate-900 dark:text-white">O'rnatib berish servisi kerakmi?</div>
-                              <div className="text-[10px] text-slate-400">Hamkor avtoservislarimizda kafolatli o'rnatiladi</div>
+                              <div className="text-[10px] text-slate-400">Farhod bozoridagi do'konimiz ustaxonasida o'rnatib beriladi</div>
                             </div>
                           </div>
                           <input 
@@ -4115,37 +4115,17 @@ function getMiniAppHtml() {
 
                         {needsInstallation && (
                           <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
-                            <div className="text-[11px] font-bold text-slate-500">Toshkentdagi hamkor ustaxonani tanlang:</div>
-                            <div className="space-y-2">
-                              <label className={'p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer text-xs transition ' + 
-                                (selectedWorkshop.includes('Chilonzor') ? (isDark ? 'bg-slate-800 border-red-500/50' : 'bg-white border-red-500 shadow-sm') : (isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200'))}>
-                                <input 
-                                  type="radio" 
-                                  name="workshop" 
-                                  checked={selectedWorkshop.includes('Chilonzor')}
-                                  onChange={() => setSelectedWorkshop("Kuzavnoy Service (Chilonzor, 4-mavze)")}
-                                  className="accent-red-600"
-                                />
-                                <div className="min-w-0">
-                                  <div className="font-extrabold text-[11px]">🔧 Kuzavnoy Service (Chilonzor, 4-mavze)</div>
-                                  <div className="text-[10px] text-slate-400">Rul, bar, kuzov va optika o'rnatish • Tel: +998 97 765 43 21</div>
-                                </div>
-                              </label>
-
-                              <label className={'p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer text-xs transition ' + 
-                                (selectedWorkshop.includes('Sergeli') ? (isDark ? 'bg-slate-800 border-red-500/50' : 'bg-white border-red-500 shadow-sm') : (isDark ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-slate-200'))}>
-                                <input 
-                                  type="radio" 
-                                  name="workshop" 
-                                  checked={selectedWorkshop.includes('Sergeli')}
-                                  onChange={() => setSelectedWorkshop("Autotuning Master (Sergeli bozori yonida)")}
-                                  className="accent-red-600"
-                                />
-                                <div className="min-w-0">
-                                  <div className="font-extrabold text-[11px]">⚡️ Autotuning Master (Sergeli mashina bozori)</div>
-                                  <div className="text-[10px] text-slate-400">Labavoy, bakavoy oyna va elektrika • Tel: +998 99 888 77 66</div>
-                                </div>
-                              </label>
+                            <div className="p-3 rounded-xl border bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-xs space-y-1">
+                              <div className="font-black text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                                <span>🏬</span>
+                                <span>kuzavnoy.uzz Ustaxonasi (Farhod bozori)</span>
+                              </div>
+                              <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                                Xarid qilingan detal do'konimizning Farhod bozoridagi professional ustaxonasida 100% kafolat bilan o'rnatib beriladi.
+                              </p>
+                              <div className="text-[10px] text-slate-400 pt-1">
+                                📍 <b>Manzil:</b> Toshkent sh., Farhod avto bozori, kuzavnoy.uzz do'koni va servisi
+                              </div>
                             </div>
 
                             <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-between">
@@ -4337,14 +4317,14 @@ function getMiniAppHtml() {
                       <div>
                         <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Do'konimiz manzili:</span>
                         <span className={'text-xs font-black ' + (isDark ? 'text-slate-200' : 'text-slate-800')}>
-                          {settings.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon"}
+                          {settings.store_address || "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori"}
                         </span>
                       </div>
                     </div>
                     {/* Yandex Karta va Google Maps tugmalari */}
                     <div className="flex items-center gap-2 pt-1">
                       <a 
-                        href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://yandex.uz/maps/?text=' + encodeURIComponent(settings.store_address || "Toshkent Sergeli mashina bozori"))}
+                        href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://yandex.uz/maps/?text=' + encodeURIComponent(settings.store_address || "Toshkent Farhod avto bozori"))}
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex-1 py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 text-[11px] font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
@@ -4353,7 +4333,7 @@ function getMiniAppHtml() {
                         <span>Yandex Karta</span>
                       </a>
                       <a 
-                        href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(settings.store_address || "Toshkent Sergeli mashina bozori"))}
+                        href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(settings.store_address || "Toshkent Farhod avto bozori"))}
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex-1 py-2 px-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30 text-[11px] font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
@@ -4425,26 +4405,6 @@ function getMiniAppHtml() {
                                 }}
                               />
                             </div>
-                          </div>
-                        )}
-
-                        {/* 🚚 KURYER BILAN BOG'LANISH KARTASI (Task Feature) */}
-                        {['Jarayonda', 'Tayyorlandi', 'Yetkazildi'].includes(o.status) && (
-                          <div className={'p-2.5 rounded-2xl mb-2.5 border flex items-center justify-between ' + (isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                            <div className="flex items-center gap-2">
-                              <span className="text-base">🚚</span>
-                              <div className="min-w-0">
-                                <div className="text-[11px] font-black truncate">{o.courier_name || 'Sardor (Kuzavnoy Express)'}</div>
-                                <div className="text-[9px] text-slate-400">Mas'ul yetkazib beruvchi kuryer</div>
-                              </div>
-                            </div>
-                            <a 
-                              href={"tel:" + (o.courier_phone || "+998901234567")}
-                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black shadow-sm flex items-center gap-1 active:scale-95 transition flex-shrink-0"
-                            >
-                              <span>📞</span>
-                              <span>Qo'ng'iroq</span>
-                            </a>
                           </div>
                         )}
 
@@ -5128,7 +5088,7 @@ function getAdminPanelHtml() {
         phone3_active: true,
         instagram_url: "https://instagram.com/kuzavnoy.uzz",
         youtube_url: "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G",
-        store_address: "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon",
+        store_address: "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori",
         store_hours: "09:00 - 19:00"
       });
 
@@ -5409,7 +5369,7 @@ function getAdminPanelHtml() {
                 "<div class='center'>" +
                   "<div style='font-size: 18px; font-weight: 900;'>🚗 kuzavnoy.uzz</div>" +
                   "<div style='font-size: 11px; color: #475569; margin-top: 2px;'>Avto Ehtiyot Qismlar Do'koni</div>" +
-                  "<div style='font-size: 10px; color: #64748b; margin-top: 2px;'>" + (settings.store_address || "Toshkent sh., Sergeli mashina bozori") + "</div>" +
+                  "<div style='font-size: 10px; color: #64748b; margin-top: 2px;'>" + (settings.store_address || "Toshkent sh., Farhod avto bozori") + "</div>" +
                   "<div style='font-size: 10px; color: #64748b;'>Tel: " + (settings.phone || "+998 90 123 45 67") + (settings.phone2 ? " • " + settings.phone2 : "") + (settings.phone3 ? " • " + settings.phone3 : "") + " | @kuzavnoyuz_bot</div>" +
                 "</div>" +
                 "<div class='divider'></div>" +
@@ -6858,7 +6818,7 @@ function getAdminPanelHtml() {
                         required
                         value={settings.store_address || ''}
                         onChange={e => setSettings({ ...settings, store_address: e.target.value })}
-                        placeholder="Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon"
+                        placeholder="Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori"
                         className={'w-full px-3.5 py-2.5 border rounded-xl focus:outline-none focus:border-red-500 ' + 
                           (isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900')}
                       />
@@ -7016,7 +6976,7 @@ function getAdminPanelHtml() {
                       <span className="text-xl font-black tracking-tight text-slate-900">kuzavnoy.uzz</span>
                     </div>
                     <p className="text-[11px] font-bold text-slate-600 mt-0.5">Avto Ehtiyot Qismlar Do'koni</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">{settings.store_address || "Toshkent sh., Sergeli mashina bozori, 4-qator 12-do'kon"}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{settings.store_address || "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori"}</p>
                     <p className="text-[10px] text-slate-500">Tel: {settings.phone || "+998 90 123 45 67"} {settings.phone2 ? " • " + settings.phone2 : ""} | @kuzavnoyuz_bot</p>
                     
                     <div className="flex items-center justify-between text-[11px] font-mono mt-2.5 pt-2 border-t border-dashed border-slate-200 text-slate-600">

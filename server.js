@@ -2456,369 +2456,649 @@ app.listen(PORT, () => {
 
 function getMiniAppHtml() {
   return `<!DOCTYPE html>
-<html lang="uz">
+<html lang="uz" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>kuzavnoy.uzz | Avto Ehtiyot Qismlar</title>
+  
   <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+              800: '#9f1239',
+              900: '#881337',
+            },
+            dark: {
+              bg: '#090D16',
+              card: '#101726',
+              elevated: '#162033',
+              border: '#1F2B45',
+              subtle: '#263554',
+              hover: '#1B263D'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  
   <!-- React & Babel -->
   <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.4/babel.min.js"></script>
+  
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
   <style>
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
     }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .animate-spin-custom { animation: spin 0.8s linear infinite; }
+    .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 72px); }
+    .safe-top { padding-top: env(safe-area-inset-top, 0px); }
   </style>
-  <script>
-    window.onerror = function(msg, url, line) {
-      var el = document.getElementById('debug-err');
-      if (el) el.innerHTML = '<b>Xatolik:</b> ' + msg + ' (' + line + ')';
-    };
-  </script>
 </head>
-<body class="select-none transition-colors duration-200">
+<body class="select-none transition-colors duration-200 antialiased bg-[#090D16] text-[#F8FAFC]">
   <div id="root">
-    <div class="flex flex-col items-center justify-center min-h-[80vh] text-center px-4">
-      <div class="w-10 h-10 border-4 border-slate-100 border-t-red-600 rounded-full animate-spin-custom mb-3"></div>
-      <p class="text-xs font-bold text-slate-700">kuzavnoy.uzz yuklanmoqda...</p>
-      <span class="text-[10px] text-slate-400 mt-1">Avto ehtiyot qismlar do'koni</span>
-      <div id="debug-err" class="mt-4 text-xs text-red-600 max-w-xs font-mono"></div>
+    <div class="flex flex-col items-center justify-center min-h-[85vh] text-center px-4">
+      <div class="w-10 h-10 border-2 border-slate-700 border-t-red-600 rounded-full animate-spin-custom mb-4"></div>
+      <div class="text-sm font-bold text-slate-200 tracking-tight">kuzavnoy.uzz</div>
+      <div class="text-xs text-slate-500 mt-1">Avto ehtiyot qismlar tizimi yuklanmoqda...</div>
     </div>
   </div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useMemo, useRef } = React;
 
+    // ==========================================
+    // 1. PROFESSIONAL SVG ICON SYSTEM (NO EMOJIS)
+    // ==========================================
+    const Icon = ({ name, className = "w-5 h-5", strokeWidth = 1.8 }) => {
+      const icons = {
+        home: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        ),
+        grid: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <rect width="7" height="7" x="3" y="3" rx="1.5"/>
+            <rect width="7" height="7" x="14" y="3" rx="1.5"/>
+            <rect width="7" height="7" x="14" y="14" rx="1.5"/>
+            <rect width="7" height="7" x="3" y="14" rx="1.5"/>
+          </svg>
+        ),
+        cart: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+            <path d="M3 6h18"/>
+            <path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+        ),
+        user: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M20 21a8 8 0 0 0-16 0"/>
+          </svg>
+        ),
+        search: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" x2="16.65" y1="21" y2="16.65"/>
+          </svg>
+        ),
+        heart: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+          </svg>
+        ),
+        'heart-solid': (
+          <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1">
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+          </svg>
+        ),
+        sliders: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/>
+            <line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/>
+            <line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/>
+            <line x1="1" x2="7" y1="14" y2="14"/>
+            <line x1="9" x2="15" y1="8" y2="8"/>
+            <line x1="17" x2="23" y1="16" y2="16"/>
+          </svg>
+        ),
+        refresh: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>
+          </svg>
+        ),
+        sun: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/>
+            <path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+          </svg>
+        ),
+        moon: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+          </svg>
+        ),
+        globe: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+          </svg>
+        ),
+        'arrow-left': (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
+          </svg>
+        ),
+        'arrow-right': (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+          </svg>
+        ),
+        close: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        ),
+        check: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        ),
+        'check-circle': (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        ),
+        star: (
+          <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        ),
+        truck: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-5l-3-4h-5v10Z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>
+          </svg>
+        ),
+        'map-pin': (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+        ),
+        phone: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+        ),
+        wrench: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+        ),
+        shield: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        ),
+        'shield-check': (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>
+          </svg>
+        ),
+        package: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
+          </svg>
+        ),
+        trash: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>
+          </svg>
+        ),
+        plus: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14"/><path d="M12 5v14"/>
+          </svg>
+        ),
+        minus: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14"/>
+          </svg>
+        ),
+        car: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 10.7 2 11 2 11.3V16c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+          </svg>
+        ),
+        tag: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><circle cx="7" cy="7" r=".5" fill="currentColor"/>
+          </svg>
+        ),
+        receipt: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-8"/><path d="M16 12h-8"/><path d="M10 16h-2"/>
+          </svg>
+        ),
+        copy: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+          </svg>
+        ),
+        clock: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        ),
+        info: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+        ),
+        instagram: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+          </svg>
+        ),
+        youtube: (
+          <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+          </svg>
+        ),
+        telegram: (
+          <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+          </svg>
+        )
+      };
+      return icons[name] || icons.package;
+    };
+
+    // ==========================================
+    // 2. MULTI-LANGUAGE TRANSLATIONS
+    // ==========================================
     const I18N = {
       uz: {
         appName: "kuzavnoy.uzz",
         subtitle: "Avto Ehtiyot Qismlar",
-        greeting: "Salom",
-        driver: "Haydovchi",
-        official: "Rasmiy Do'kon",
-        heroBadge: "Rasmiy Mahsulotlar",
+        greetingTitle: "Salom!",
+        greetingDesc: "Avtomobilingiz uchun kerakli ehtiyot qismlarni toping.",
+        searchPlaceholder: "Ehtiyot qism yoki avto modelini qidiring...",
+        officialBadge: "Rasmiy Do'kon",
+        heroBadge: "Original Ehtiyot Qismlar",
         heroTitle: "Avtomobilingizni yangilang va zavqlaning!",
-        heroDesc: "Original rul, bar, oyna va balonlar kafolat bilan taqdim etiladi.",
-        heroBtn: "Yangi buyurtma berish →",
+        heroDesc: "Zavod sifati, 30 kun kafolat va Farhod bozorida o'rnatib berish xizmati.",
+        heroBtn: "Katalogni ko'rish",
         popularTitle: "Eng ko'p xarid qilinganlar",
         viewAll: "Barchasi",
-        add: "Qo'shish",
-        catalogTitle: "Mahsulotlar Katalogi",
-        catalogDesc: "Kerakli bo'limni tanlang va qulay xarid qiling",
-        all: "Barchasi",
-        universal: "Universal / Boshqa",
+        addToCart: "Savatga",
+        inCart: "Savatda",
+        buyNow: "Hozir xarid qilish",
+        catalogTitle: "Katalog",
+        catalogSubtitle: "Barcha toifalar va mos ehtiyot qismlar",
+        allCategories: "Barchasi",
+        filter: "Filtrlar",
+        sortBy: "Saralash",
+        sortPopular: "Ommabop",
+        sortPriceAsc: "Arzonroq",
+        sortPriceDesc: "Qimmatroq",
+        sortNewest: "Yangilari",
+        conditionNew: "Yangi",
+        conditionUsed: "B/U (Ideal)",
+        inStock: "Omborda bor",
+        outOfStock: "Buyurtmaga",
+        stockQty: "dona mavjud",
+        som: "so'm",
         cartTitle: "Savatcha",
-        cartDesc: "Tanlangan ehtiyot qismlar va buyurtmani rasmiylashtirish",
-        cartEmpty: "Savatchangiz bo'sh!",
-        cartEmptyDesc: "Katalogdan o'zingizga yoqqan ehtiyot qismlarni tanlang",
-        aromaPromo: "Kola / BubbleGum Premium Aromatizator qo'shish (+35,000 so'm)",
-        checkoutInfo: "Yetkazib berish ma'lumotlari",
-        nameLabel: "Ismingiz",
+        cartEmpty: "Savatchangiz bo'sh",
+        cartEmptyDesc: "Katalogdan o'zingizga kerakli ehtiyot qismlarni tanlang",
+        orderSummary: "Xarid xulosasi",
+        subtotal: "Mahsulotlar",
+        delivery: "Yetkazib berish",
+        deliveryFree: "Bepul",
+        discount: "Chegirma",
+        total: "Jami to'lov",
+        checkoutBtn: "Buyurtmani rasmiylashtirish",
+        workshopServiceTitle: "O'rnatib berish servisi kerakmi?",
+        workshopServiceDesc: "Farhod bozoridagi ustaxonamizda o'rnatib berish (10% chegirma promokodi: KUZAVNOY-USTA)",
+        promoPlaceholder: "Promokod (masalan: KUZAVNOY-USTA)",
+        applyPromo: "Qo'llash",
+        promoApplied: "Promokod qo'llandi (-10%)",
+        checkoutTitle: "Buyurtmani tasdiqlash",
+        nameLabel: "Ism va Familiyangiz",
         phoneLabel: "Telefon raqamingiz",
-        addressLabel: "Yetkazib berish manzili",
-        addressPlaceholder: "Toshkent shahri, Yunusobod 4-mavze...",
-        deliveryTypeLabel: "Yetkazib berish usuli",
-        deliveryCourier: "🚚 Kuryer orqali",
-        deliveryPickup: "🏬 O'zi olib ketish",
-        pickupStoreAddress: "Toshkent sh., Farhod avto bozori (Samovivoz)",
-        pickupStoreBadge: "Samovivoz manzili: Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori. Ish vaqti: 09:00 - 19:00",
-        paymentMethodLabel: "To'lov usuli",
-        payCard: "💳 Karta / Visa / Click",
-        payCash: "💵 Qabul qilganda naqd",
-        cardDetailsTitle: "Oldindan to'lov uchun karta:",
-        cardNumber: "8600 5304 1234 5678",
-        cardHolder: "AZIMXON (KUZAVNOY.UZZ)",
-        cardCopyBtn: "Nusxa olish",
-        cardCopiedText: "Nusxalandi! ✅",
-        cardPaymentHint: "To'lovni Click / Payme / Visa orqali ushbu kartaga o'tkazishingiz mumkin",
-        cashPaymentHint: "Kuryer mahsulotni yetkazganda yoki do'konda qabul qilayotganingizda to'laysiz",
-        reviewsTitle: "Mijozlar Fikrlari & Sharhlar",
+        deliveryType: "Yetkazib berish turi",
+        deliveryCourier: "Kuryer orqali yetkazish (Toshkent va viloyatlar)",
+        deliveryPickup: "Olib ketish (Farhod avto bozori, kuzavnoy.uzz)",
+        addressLabel: "Yetkazish manzili",
+        detectGps: "GPS manzilni aniqlash",
+        paymentType: "To'lov usuli",
+        paymentCard: "Karta orqali oldindan to'lov (Uzcard / Humo)",
+        paymentCash: "Qabul qilganda to'lash (Naqd / Kuryerga)",
+        confirmOrder: "Buyurtmani yuborish",
+        orderSuccessTitle: "Buyurtmangiz qabul qilindi!",
+        orderSuccessDesc: "Tez orada menejerimiz siz bilan bog'lanadi va yetkazib berishni muvofiqlashtiradi.",
+        orderId: "Buyurtma raqami",
+        closeBtn: "Yopish",
+        profileTitle: "Profil va Sozlamalar",
+        ordersTab: "Buyurtmalarim",
+        favoritesTab: "Yoqtirganlar",
+        settingsTab: "Do'kon & Sozlamalar",
+        noOrders: "Sizda hali buyurtmalar yo'q",
+        noFavorites: "Hali sevimli tovarlar yo'q",
+        orderStatusNew: "Yangi",
+        orderStatusConfirmed: "Tasdiqlandi",
+        orderStatusPreparing: "Tayyorlanmoqda",
+        orderStatusShipped: "Yetkazilmoqda",
+        orderStatusDelivered: "Yetkazildi",
+        orderStatusCancelled: "Bekor qilindi",
+        storeAddressTitle: "Do'kon manzili",
+        storeHoursTitle: "Ish vaqti",
+        supportPhoneTitle: "Aloqa telefonlari",
+        callNow: "Qo'ng'iroq",
+        viewReceipt: "Chekni ko'rish",
+        backBtn: "Orqaga",
+        specifications: "Xususiyatlar",
+        description: "Batafsil tavsif",
+        reviews: "Mijozlar sharhlari",
         writeReview: "Sharh qoldirish",
-        sendReview: "Sharhni yuborish ⭐️",
-        reviewPlaceholder: "Ehtiyot qism sifati va xizmat haqida fikringiz...",
-        noReviews: "Hozircha sharhlar yo'q. Birinchi bo'lib fikr bildiring!",
-        reviewSent: "Sharhingiz muvaffaqiyatli qabul qilindi! Rahmat! 🎉",
-        socialChannels: "Rasmiy Ijtimoiy Tarmoqlarimiz",
-        cancelOrderBtn: "Buyurtmani bekor qilish ❌",
-        cancelOrderConfirm: "Haqiqatdan ham ushbu buyurtmani bekor qilmoqchimisiz?",
-        orderCancelledMsg: "Buyurtmangiz muvaffaqiyatli bekor qilindi! 🔴",
-        callStore: "Do'konga qo'ng'iroq",
-        storePhoneTitle: "Bog'lanish uchun telefon",
-        totalPayment: "JAMI TO'LOV:",
-        confirmOrder: "Buyurtmani Tasdiqlash 🚀",
-        submitting: "Buyurtma yuborilmoqda...",
-        orderSuccessTitle: "Buyurtmangiz qabul qilindi! 🎉",
-        orderSuccessDesc: "Kuryerimiz tez orada siz bilan bog'lanadi 🚗💨",
-        continueShopping: "Xaridni davom ettirish",
-        profileTitle: "Mijoz Profili",
-        profileDesc: "Shaxsiy ma'lumotlar va buyurtmalar tarixi",
-        ordersHistory: "Mening Buyurtmalarim",
-        noOrders: "Hali buyurtmalar berilmagan",
-        orderNum: "Buyurtma",
-        repeatOrder: "Qayta buyurtma",
-        specsTitle: "Asosiy Xususiyatlari & Sifat:",
-        viewInCatalog: "Katalogda ko'rish",
-        close: "Yopish",
-        skip: "O'tkazib yuborish",
-        next: "Davom etish →",
-        start: "Boshlash 🚀",
+        relatedProducts: "O'xshash mahsulotlar",
+        warrantyNote: "30 kunlik sinov muddati va zavod kafolati beriladi.",
+        deliveryNote: "Toshkent shahri bo'ylab 2-4 soatda tezkor yetkazib berish.",
         navHome: "Asosiy",
         navCatalog: "Katalog",
         navCart: "Savatcha",
         navProfile: "Profil",
-        som: "so'm",
-        themeLight: "Kun",
-        themeDark: "Tun",
-        onboard1Title: "Mashinangizga sifatli zapchast qidiryapsizmi?",
-        onboard1Desc: "kuzavnoy.uzz — labavoy, bakavoy, rul, bar va original ehtiyot qismlarni tezkor yetkazib beradi!",
-        onboard2Title: "Bu qanday ishlaydi?",
-        onboard2Desc: "Katalogdan detalni tanlang, savatchaga soling va birgina tugma orqali buyurtma bering. Kuryerimiz bevosita yetkazadi.",
-        onboard3Title: "10,000+ Haydovchilar biz bilan!",
-        onboard3Desc: "Toshkent va O'zbekiston bo'ylab 100% ishonchli va kafolatlangan zapchastlar bitta ilovada jamlangan.",
-        condition: "Mahsulot Holati",
-        conditionNew: "✨ Yangi (Original)",
-        conditionUsed: "🔄 B/U (Ideal holatda)",
-        warrantyTitle: "Sifat Kafolati",
-        warrantyText: "100% tekshirilgan",
-        adminPanel: "Admin Panel",
-        adminPanelDesc: "Do'kon egasi uchun boshqaruv",
-        openAdmin: "Kirish"
+        refreshSuccess: "Ma'lumotlar yangilandi"
       },
       ru: {
         appName: "kuzavnoy.uzz",
         subtitle: "Автозапчасти",
-        greeting: "Привет",
-        driver: "Водитель",
-        official: "Официальный магазин",
-        heroBadge: "Официальные Товары",
-        heroTitle: "Обновите свой автомобиль с удовольствием!",
-        heroDesc: "Оригинальные рули, бары, стекла и шины с гарантией.",
-        heroBtn: "Оформить заказ →",
-        popularTitle: "Популярные детали",
+        greetingTitle: "Привет!",
+        greetingDesc: "Найдите необходимые автозапчасти для вашего авто.",
+        searchPlaceholder: "Поиск запчасти или модели авто...",
+        officialBadge: "Официальный магазин",
+        heroBadge: "Оригинальные запчасти",
+        heroTitle: "Обновите ваш авто с гарантией качества!",
+        heroDesc: "Заводское качество, 30 дней гарантии и сервис установки на авторынке Фархад.",
+        heroBtn: "Смотреть каталог",
+        popularTitle: "Популярные товары",
         viewAll: "Все",
-        add: "В корзину",
-        catalogTitle: "Каталог Запчастей",
-        catalogDesc: "Выберите нужный раздел и закажите удобно",
-        all: "Все",
-        universal: "Универсал / Другое",
+        addToCart: "В корзину",
+        inCart: "В корзине",
+        buyNow: "Купить сейчас",
+        catalogTitle: "Каталог",
+        catalogSubtitle: "Все категории и совместимые автозапчасти",
+        allCategories: "Все",
+        filter: "Фильтры",
+        sortBy: "Сортировка",
+        sortPopular: "Популярные",
+        sortPriceAsc: "Сначала дешевые",
+        sortPriceDesc: "Сначала дорогие",
+        sortNewest: "Новинки",
+        conditionNew: "Новый",
+        conditionUsed: "Б/У (Идеал)",
+        inStock: "В наличии",
+        outOfStock: "Под заказ",
+        stockQty: "шт. в наличии",
+        som: "сум",
         cartTitle: "Корзина",
-        cartDesc: "Выбранные запчасти и оформление заказа",
-        cartEmpty: "Ваша корзина пуста!",
-        cartEmptyDesc: "Выберите понравившиеся товары из каталога",
-        aromaPromo: "Добавить премиум ароматизатор Cola / BubbleGum (+35 000 сум)",
-        checkoutInfo: "Данные для доставки",
+        cartEmpty: "Ваша корзина пуста",
+        cartEmptyDesc: "Выберите нужные автозапчасти из каталога",
+        orderSummary: "Итог заказа",
+        subtotal: "Товары",
+        delivery: "Доставка",
+        deliveryFree: "Бесплатно",
+        discount: "Скидка",
+        total: "Всего к оплате",
+        checkoutBtn: "Оформить заказ",
+        workshopServiceTitle: "Нужна установка детали?",
+        workshopServiceDesc: "Установка в нашем сервисе на авторынке Фархад (промокод -10%: KUZAVNOY-USTA)",
+        promoPlaceholder: "Промокод (например: KUZAVNOY-USTA)",
+        applyPromo: "Применить",
+        promoApplied: "Промокод применен (-10%)",
+        checkoutTitle: "Подтверждение заказа",
         nameLabel: "Ваше имя",
         phoneLabel: "Номер телефона",
+        deliveryType: "Способ получения",
+        deliveryCourier: "Доставка курьером",
+        deliveryPickup: "Самовывоз (авторынок Фархад)",
         addressLabel: "Адрес доставки",
-        addressPlaceholder: "г. Ташкент, Юнусабад 4-квартал...",
-        deliveryTypeLabel: "Способ доставки",
-        deliveryCourier: "🚚 Доставка курьером",
-        deliveryPickup: "🏬 Самовывоз",
-        pickupStoreAddress: "г. Ташкент, авторынок Сергели (Самовывоз)",
-        pickupStoreBadge: "Адрес самовывоза: г. Ташкент, авторынок Сергели, 4-й ряд, магазин 12. Время: 09:00 - 19:00",
-        paymentMethodLabel: "Способ оплаты",
-        payCard: "💳 Карта / Visa / Click",
-        payCash: "💵 Наличными курьеру",
-        cardDetailsTitle: "Карта для предоплаты:",
-        cardNumber: "8600 5304 1234 5678",
-        cardHolder: "AZIMXON (KUZAVNOY.UZZ)",
-        cardCopyBtn: "Скопировать",
-        cardCopiedText: "Скопировано! ✅",
-        cardPaymentHint: "Вы можете перевести через Click / Payme / Visa на эту карту",
-        cashPaymentHint: "Оплата при получении товара у курьера или в магазине",
-        reviewsTitle: "Отзывы Клиентов",
+        detectGps: "Определить GPS",
+        paymentType: "Способ оплаты",
+        paymentCard: "Предоплата на карту (Uzcard / Humo)",
+        paymentCash: "Оплата при получении (Наличные)",
+        confirmOrder: "Отправить заказ",
+        orderSuccessTitle: "Ваш заказ успешно принят!",
+        orderSuccessDesc: "Наш менеджер свяжется с вами для согласования деталей.",
+        orderId: "Номер заказа",
+        closeBtn: "Закрыть",
+        profileTitle: "Профиль и Настройки",
+        ordersTab: "Мои заказы",
+        favoritesTab: "Избранное",
+        settingsTab: "Магазин и Настройки",
+        noOrders: "У вас пока нет заказов",
+        noFavorites: "Список избранного пуст",
+        orderStatusNew: "Новый",
+        orderStatusConfirmed: "Подтвержден",
+        orderStatusPreparing: "Собирается",
+        orderStatusShipped: "В пути",
+        orderStatusDelivered: "Доставлен",
+        orderStatusCancelled: "Отменен",
+        storeAddressTitle: "Адрес магазина",
+        storeHoursTitle: "Режим работы",
+        supportPhoneTitle: "Телефоны для связи",
+        callNow: "Позвонить",
+        viewReceipt: "Посмотреть чек",
+        backBtn: "Назад",
+        specifications: "Характеристики",
+        description: "Подробное описание",
+        reviews: "Отзывы клиентов",
         writeReview: "Оставить отзыв",
-        sendReview: "Отправить отзыв ⭐️",
-        reviewPlaceholder: "Ваш отзыв о качестве запчасти...",
-        noReviews: "Отзывов пока нет. Будьте первым!",
-        reviewSent: "Ваш отзыв успешно принят! Спасибо! 🎉",
-        socialChannels: "Наши Официальные Соцсети",
-        cancelOrderBtn: "Отменить заказ ❌",
-        cancelOrderConfirm: "Вы действительно хотите отменить этот заказ?",
-        orderCancelledMsg: "Ваш заказ успешно отменен! 🔴",
-        callStore: "Позвонить в магазин",
-        storePhoneTitle: "Телефон для связи",
-        totalPayment: "ИТОГО К ОПЛАТЕ:",
-        confirmOrder: "Подтвердить Заказ 🚀",
-        submitting: "Отправка заказа...",
-        orderSuccessTitle: "Ваш заказ успешно принят! 🎉",
-        orderSuccessDesc: "Наш курьер свяжется с вами в ближайшее время 🚗💨",
-        continueShopping: "Продолжить покупки",
-        profileTitle: "Профиль Клиента",
-        profileDesc: "Личные данные и история заказов",
-        ordersHistory: "Мои Заказы",
-        noOrders: "Заказов пока нет",
-        orderNum: "Заказ",
-        repeatOrder: "Повторить заказ",
-        specsTitle: "Характеристики & Качество:",
-        viewInCatalog: "Смотреть в каталоге",
-        close: "Закрыть",
-        skip: "Пропустить",
-        next: "Продолжить →",
-        start: "Начать 🚀",
+        relatedProducts: "Похожие запчасти",
+        warrantyNote: "Гарантия качества и 30 дней на проверку.",
+        deliveryNote: "Быстрая доставка по Ташкенту за 2-4 часа.",
         navHome: "Главная",
         navCatalog: "Каталог",
         navCart: "Корзина",
         navProfile: "Профиль",
-        som: "сум",
-        themeLight: "День",
-        themeDark: "Ночь",
-        onboard1Title: "Ищете качественные запчасти на авто?",
-        onboard1Desc: "kuzavnoy.uzz — быстрая доставка лобовых стекол, рулей, консолей и оригинальных автозапчастей!",
-        onboard2Title: "Как это работает?",
-        onboard2Desc: "Выберите нужную деталь из каталога, добавьте в корзину и оформите в один клик. Наш курьер доставит заказ.",
-        onboard3Title: "10,000+ Водителей с нами!",
-        onboard3Desc: "100% надежные запчасти с гарантией по Ташкенту и всему Узбекистану в одном приложении.",
-        condition: "Состояние детали",
-        conditionNew: "✨ Новый (Оригинал)",
-        conditionUsed: "🔄 Б/У (В идеале)",
-        warrantyTitle: "Гарантия качества",
-        warrantyText: "100% проверено",
-        adminPanel: "Панель администратора",
-        adminPanelDesc: "Управление для владельца",
-        openAdmin: "Войти"
+        refreshSuccess: "Данные обновлены"
       },
       en: {
         appName: "kuzavnoy.uzz",
         subtitle: "Auto Spare Parts",
-        greeting: "Hello",
-        driver: "Driver",
-        official: "Official Store",
-        heroBadge: "Official Products",
-        heroTitle: "Upgrade your car and enjoy every ride!",
-        heroDesc: "Original steering wheels, consoles, glass and tires with warranty.",
-        heroBtn: "Order now →",
-        popularTitle: "Most popular parts",
+        greetingTitle: "Hello!",
+        greetingDesc: "Find premium spare parts and accessories for your car.",
+        searchPlaceholder: "Search parts or car models...",
+        officialBadge: "Official Store",
+        heroBadge: "Original Spare Parts",
+        heroTitle: "Upgrade your vehicle with guaranteed quality!",
+        heroDesc: "Factory quality, 30 days warranty, and installation at Farhod auto market.",
+        heroBtn: "Browse catalog",
+        popularTitle: "Popular Products",
         viewAll: "All",
-        add: "Add to cart",
-        catalogTitle: "Products Catalog",
-        catalogDesc: "Select category and shop with ease",
-        all: "All",
-        universal: "Universal / Other",
-        cartTitle: "Shopping Cart",
-        cartDesc: "Selected auto parts and checkout",
-        cartEmpty: "Your cart is empty!",
-        cartEmptyDesc: "Choose items you like from the catalog",
-        aromaPromo: "Add premium air freshener Cola / BubbleGum (+35,000 UZS)",
-        checkoutInfo: "Delivery details",
-        nameLabel: "Your name",
-        phoneLabel: "Phone number",
-        addressLabel: "Delivery address",
-        addressPlaceholder: "Tashkent city, Yunusabad 4th block...",
-        deliveryTypeLabel: "Delivery Method",
-        deliveryCourier: "🚚 Courier Delivery",
-        deliveryPickup: "🏬 Store Pickup",
-        pickupStoreAddress: "Tashkent city, Farhod car market (Pickup)",
-        pickupStoreBadge: "Pickup address: Tashkent, Farhod car market, row 4, shop 12. Working hours: 09:00 - 19:00",
-        paymentMethodLabel: "Payment Method",
-        payCard: "💳 Card / Visa / Click",
-        payCash: "💵 Cash on Delivery",
-        cardDetailsTitle: "Card for prepayment:",
-        cardNumber: "8600 5304 1234 5678",
-        cardHolder: "AZIMXON (KUZAVNOY.UZZ)",
-        cardCopyBtn: "Copy",
-        cardCopiedText: "Copied! ✅",
-        cardPaymentHint: "You can transfer via Click / Payme / Visa to this card",
-        cashPaymentHint: "Pay in cash upon receiving items from courier or at store",
-        reviewsTitle: "Customer Reviews",
-        writeReview: "Write a review",
-        sendReview: "Submit Review ⭐️",
-        reviewPlaceholder: "Your thoughts on part quality...",
-        noReviews: "No reviews yet. Be the first to review!",
-        reviewSent: "Your review has been submitted! Thank you! 🎉",
-        socialChannels: "Our Official Social Networks",
-        cancelOrderBtn: "Cancel Order ❌",
-        cancelOrderConfirm: "Are you sure you want to cancel this order?",
-        orderCancelledMsg: "Your order has been cancelled! 🔴",
-        callStore: "Call Store",
-        storePhoneTitle: "Store Phone",
-        totalPayment: "TOTAL PAYMENT:",
-        confirmOrder: "Confirm Order 🚀",
-        submitting: "Submitting order...",
-        orderSuccessTitle: "Order placed successfully! 🎉",
-        orderSuccessDesc: "Our courier will contact you shortly 🚗💨",
-        continueShopping: "Continue shopping",
-        profileTitle: "Customer Profile",
-        profileDesc: "Personal info and order history",
-        ordersHistory: "My Orders",
+        addToCart: "Add to cart",
+        inCart: "In cart",
+        buyNow: "Buy now",
+        catalogTitle: "Catalog",
+        catalogSubtitle: "All categories and vehicle spare parts",
+        allCategories: "All",
+        filter: "Filters",
+        sortBy: "Sort by",
+        sortPopular: "Popular",
+        sortPriceAsc: "Price: Low to High",
+        sortPriceDesc: "Price: High to Low",
+        sortNewest: "Newest",
+        conditionNew: "New",
+        conditionUsed: "Used (Mint)",
+        inStock: "In Stock",
+        outOfStock: "On Order",
+        stockQty: "items left",
+        som: "UZS",
+        cartTitle: "Cart",
+        cartEmpty: "Your cart is empty",
+        cartEmptyDesc: "Browse the catalog and add items you need",
+        orderSummary: "Order summary",
+        subtotal: "Products",
+        delivery: "Delivery",
+        deliveryFree: "Free",
+        discount: "Discount",
+        total: "Total",
+        checkoutBtn: "Proceed to Checkout",
+        workshopServiceTitle: "Need part installation?",
+        workshopServiceDesc: "Professional installation at Farhod market workshop (-10% code: KUZAVNOY-USTA)",
+        promoPlaceholder: "Promo code (e.g. KUZAVNOY-USTA)",
+        applyPromo: "Apply",
+        promoApplied: "Promo code applied (-10%)",
+        checkoutTitle: "Order Confirmation",
+        nameLabel: "Your Name",
+        phoneLabel: "Phone Number",
+        deliveryType: "Fulfillment",
+        deliveryCourier: "Courier Delivery",
+        deliveryPickup: "Self Pickup (Farhod auto market)",
+        addressLabel: "Delivery Address",
+        detectGps: "Detect GPS",
+        paymentType: "Payment Method",
+        paymentCard: "Card prepayment (Uzcard / Humo)",
+        paymentCash: "Cash on delivery",
+        confirmOrder: "Place Order",
+        orderSuccessTitle: "Order Placed Successfully!",
+        orderSuccessDesc: "Our team will contact you shortly to coordinate delivery.",
+        orderId: "Order ID",
+        closeBtn: "Close",
+        profileTitle: "Profile & Settings",
+        ordersTab: "My Orders",
+        favoritesTab: "Favorites",
+        settingsTab: "Store & Settings",
         noOrders: "No orders placed yet",
-        orderNum: "Order",
-        repeatOrder: "Re-order",
-        specsTitle: "Key Features & Quality:",
-        viewInCatalog: "View in catalog",
-        close: "Close",
-        skip: "Skip",
-        next: "Next →",
-        start: "Get Started 🚀",
+        noFavorites: "No saved favorites yet",
+        orderStatusNew: "New",
+        orderStatusConfirmed: "Confirmed",
+        orderStatusPreparing: "Preparing",
+        orderStatusShipped: "Out for delivery",
+        orderStatusDelivered: "Delivered",
+        orderStatusCancelled: "Cancelled",
+        storeAddressTitle: "Store Address",
+        storeHoursTitle: "Working Hours",
+        supportPhoneTitle: "Support Contacts",
+        callNow: "Call",
+        viewReceipt: "View receipt",
+        backBtn: "Back",
+        specifications: "Specifications",
+        description: "Description",
+        reviews: "Customer Reviews",
+        writeReview: "Write Review",
+        relatedProducts: "Related Parts",
+        warrantyNote: "30-day testing period and factory warranty included.",
+        deliveryNote: "Express 2-4 hour delivery across Tashkent city.",
         navHome: "Home",
         navCatalog: "Catalog",
         navCart: "Cart",
         navProfile: "Profile",
-        som: "UZS",
-        themeLight: "Day",
-        themeDark: "Night",
-        onboard1Title: "Looking for quality auto parts?",
-        onboard1Desc: "kuzavnoy.uzz — fast delivery of windshields, steering wheels, consoles, and original auto parts!",
-        onboard2Title: "How it works",
-        onboard2Desc: "Select parts from catalog, add to cart and order with a single click. Our courier delivers directly.",
-        onboard3Title: "10,000+ Drivers trust us!",
-        onboard3Desc: "100% genuine and guaranteed parts across Tashkent and Uzbekistan in one app.",
-        condition: "Part Condition",
-        conditionNew: "✨ Brand New (Original)",
-        conditionUsed: "🔄 Used (Like New)",
-        warrantyTitle: "Quality Warranty",
-        warrantyText: "100% verified",
-        adminPanel: "Admin Dashboard",
-        adminPanelDesc: "Management for store owner",
-        openAdmin: "Open"
+        refreshSuccess: "Data updated"
       }
     };
 
-    // Rasmiy brend SVG logolari (Instagram, YouTube, Telegram, Veb-sayt)
-    const InstagramIcon = ({ className = "w-4 h-4" }) => (
-      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-      </svg>
-    );
-
-    const YouTubeIcon = ({ className = "w-4 h-4" }) => (
-      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-      </svg>
-    );
-
-    const TelegramIcon = ({ className = "w-4 h-4" }) => (
-      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-      </svg>
-    );
-
-    const WebsiteIcon = ({ className = "w-4 h-4" }) => (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="2" y1="12" x2="22" y2="12"></line>
-        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-      </svg>
-    );
-
+    // ==========================================
+    // 3. MAIN REACT APPLICATION COMPONENT
+    // ==========================================
     function App() {
+      // Global Theme & Localization
       const [lang, setLang] = useState(localStorage.getItem('kuzavnoy_lang') || 'uz');
-      const [theme, setTheme] = useState(localStorage.getItem('kuzavnoy_theme') || 'light');
-      const [activeTab, setActiveTab] = useState('home'); // home | catalog | cart | profile
+      const [theme, setTheme] = useState(localStorage.getItem('kuzavnoy_theme') || 'dark');
+      const isDark = theme === 'dark';
+
+      const t = (key) => (I18N[lang] && I18N[lang][key]) || (I18N['uz'] && I18N['uz'][key]) || key;
+
+      const changeLang = (l) => {
+        setLang(l);
+        localStorage.setItem('kuzavnoy_lang', l);
+      };
+
+      const toggleTheme = () => {
+        const next = theme === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+        localStorage.setItem('kuzavnoy_theme', next);
+      };
+
+      useEffect(() => {
+        const root = document.documentElement;
+        if (isDark) {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+      }, [isDark]);
+
+      // Telegram User Context
+      const tg = window.Telegram?.WebApp;
+      const tgUser = tg?.initDataUnsafe?.user;
+
+      useEffect(() => {
+        if (tg) {
+          tg.ready();
+          tg.expand();
+          if (tg.setHeaderColor) tg.setHeaderColor(isDark ? '#090D16' : '#F8FAFC');
+          if (tg.setBackgroundColor) tg.setBackgroundColor(isDark ? '#090D16' : '#F8FAFC');
+        }
+      }, [isDark]);
+
+      // Navigation & Views
+      const [activeTab, setActiveTab] = useState('home'); // 'home' | 'catalog' | 'cart' | 'profile'
+      const [selectedProduct, setSelectedProduct] = useState(null); // Full Product Detail Page when set!
+
+      // Data States
       const [products, setProducts] = useState([]);
+      const [categories, setCategories] = useState([]);
+      const [stories, setStories] = useState([]);
+      const [reviews, setReviews] = useState([]);
+      const [userOrders, setUserOrders] = useState([]);
+      const [settings, setSettings] = useState({
+        store_address: "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori",
+        store_hours: "09:00 - 19:00",
+        phone: "+998 90 123 45 67",
+        phone2: "+998 97 765 43 21",
+        card_number: "8600 5304 1234 5678",
+        card_holder: "AZIMXON (KUZAVNOY.UZZ)",
+        uzcard_number: "8600 5304 1234 5678",
+        humo_number: "9860 1201 5678 4321",
+        instagram_url: "https://instagram.com/kuzavnoy.uzz",
+        youtube_url: "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G",
+        telegram_channel: "https://t.me/kuzavnoyuz_bot"
+      });
+
+      // Cart State (Persisted)
       const [cart, setCart] = useState(() => {
         try {
           const saved = localStorage.getItem('kuzavnoy_cart');
@@ -2834,31 +3114,171 @@ function getMiniAppHtml() {
         } catch(e) {}
       }, [cart]);
 
-      const [dbCategories, setDbCategories] = useState([]);
-      const [needsInstallation, setNeedsInstallation] = useState(false);
-      const [selectedWorkshop, setSelectedWorkshop] = useState("kuzavnoy.uzz Farhod bozori ustaxonasi");
-      const [selectedProduct, setSelectedProduct] = useState(null); // Bottom sheet
-      const [selectedCategory, setSelectedCategory] = useState('Barchasi');
-      const [addOnFragrance, setAddOnFragrance] = useState(false);
-      const [userOrders, setUserOrders] = useState([]);
-      const [activeStoryIdx, setActiveStoryIdx] = useState(null);
-      const [storyProgress, setStoryProgress] = useState(0);
-      const [isStoryPaused, setIsStoryPaused] = useState(false);
-      const [stories, setStories] = useState([]);
-      const [miniRefreshing, setMiniRefreshing] = useState(false);
-      const [miniRefreshToast, setMiniRefreshToast] = useState(false);
-      const [showOnboarding, setShowOnboarding] = useState(false);
-      const [onboardSlide, setOnboardSlide] = useState(0);
+      // Favorites State (Persisted)
+      const [favorites, setFavorites] = useState(() => {
+        try {
+          const saved = localStorage.getItem('kuzavnoy_favorites');
+          return saved ? JSON.parse(saved) : [];
+        } catch(e) {
+          return [];
+        }
+      });
 
-      // Buyurtma formasi
-      const [custName, setCustName] = useState('');
+      useEffect(() => {
+        try {
+          localStorage.setItem('kuzavnoy_favorites', JSON.stringify(favorites));
+        } catch(e) {}
+      }, [favorites]);
+
+      const toggleFavorite = (prodId, e) => {
+        if (e) e.stopPropagation();
+        setFavorites(prev => {
+          const next = prev.includes(prodId) ? prev.filter(id => id !== prodId) : [...prev, prodId];
+          return next;
+        });
+        if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+      };
+
+      // Search & Filters
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedCategory, setSelectedCategory] = useState('Barchasi');
+      const [selectedCondition, setSelectedCondition] = useState('all'); // 'all' | 'new' | 'used'
+      const [sortBy, setSortBy] = useState('popular'); // 'popular' | 'price_asc' | 'price_desc' | 'newest'
+      const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+
+      // Cart & Checkout
+      const [needsInstallation, setNeedsInstallation] = useState(false);
+      const [promoInput, setPromoInput] = useState('');
+      const [appliedPromo, setAppliedPromo] = useState(null);
+      const [checkoutStep, setCheckoutStep] = useState(0); // 0: not checking out, 1: form, 2: success
+      const [custName, setCustName] = useState(tgUser ? ((tgUser.first_name || '') + ' ' + (tgUser.last_name || '')).trim() : '');
       const [custPhone, setCustPhone] = useState('+998 ');
       const [custAddress, setCustAddress] = useState('');
       const [deliveryType, setDeliveryType] = useState('delivery'); // 'delivery' | 'pickup'
+      const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'cash'
+      const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+      const [createdOrder, setCreatedOrder] = useState(null);
       const [isLocating, setIsLocating] = useState(false);
-      const [geoCoord, setGeoCoord] = useState(null);
 
-      const handleGetLocation = () => {
+      // Profile Subtab & Receipts
+      const [profileTab, setProfileTab] = useState('orders'); // 'orders' | 'favorites' | 'settings'
+      const [selectedReceipt, setSelectedReceipt] = useState(null);
+
+      // Refresh & Feedback
+      const [isRefreshing, setIsRefreshing] = useState(false);
+      const [toastMessage, setToastMessage] = useState('');
+
+      const showToast = (msg) => {
+        setToastMessage(msg);
+        setTimeout(() => setToastMessage(''), 2500);
+      };
+
+      // Fetch Data
+      const loadData = async (forceTimestamp = false) => {
+        try {
+          const t = forceTimestamp ? Date.now() : 0;
+          const opts = { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } };
+          
+          const [catRes, prodRes, storyRes, settRes, revRes] = await Promise.all([
+            fetch('/api/categories' + (t ? '?_t=' + t : ''), opts).then(r => r.json()).catch(() => []),
+            fetch('/api/products' + (t ? '?_t=' + t : ''), opts).then(r => r.json()).catch(() => []),
+            fetch('/api/stories' + (t ? '?_t=' + t : ''), opts).then(r => r.json()).catch(() => []),
+            fetch('/api/settings' + (t ? '?_t=' + t : ''), opts).then(r => r.json()).catch(() => null),
+            fetch('/api/reviews' + (t ? '?_t=' + t : ''), opts).then(r => r.json()).catch(() => [])
+          ]);
+
+          if (Array.isArray(catRes)) setCategories(catRes);
+          if (Array.isArray(prodRes)) setProducts(prodRes);
+          if (Array.isArray(storyRes)) setStories(storyRes);
+          if (settRes && settRes.card_number) setSettings(settRes);
+          if (Array.isArray(revRes)) setReviews(revRes);
+
+          if (tgUser?.id) {
+            const ordRes = await fetch('/api/user/orders/' + tgUser.id + (t ? '?_t=' + t : ''), opts).then(r => r.json()).catch(() => []);
+            if (Array.isArray(ordRes)) setUserOrders(ordRes);
+          }
+        } catch(e) {
+          console.error("Data load error:", e);
+        }
+      };
+
+      useEffect(() => {
+        loadData(false);
+      }, []);
+
+      const handleRefresh = async () => {
+        setIsRefreshing(true);
+        await loadData(true);
+        setIsRefreshing(false);
+        showToast(t('refreshSuccess'));
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      };
+
+      // Cart Actions
+      const addToCart = (product, e) => {
+        if (e) e.stopPropagation();
+        setCart(prev => {
+          const exists = prev.find(item => item.id === product.id);
+          if (exists) {
+            return prev.map(item => item.id === product.id ? { ...item, quantity: (item.quantity || 1) + 1 } : item);
+          }
+          return [...prev, {
+            id: product.id,
+            name: product.name,
+            new_price: product.new_price,
+            old_price: product.old_price,
+            image_url: product.image_url,
+            category: product.category,
+            condition: product.condition || 'Yangi',
+            quantity: 1
+          }];
+        });
+        showToast(product.name + " savatchaga qo'shildi");
+        if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+      };
+
+      const updateCartQty = (id, delta) => {
+        setCart(prev => prev.map(item => {
+          if (item.id === id) {
+            const nextQty = (item.quantity || 1) + delta;
+            return nextQty > 0 ? { ...item, quantity: nextQty } : null;
+          }
+          return item;
+        }).filter(Boolean));
+      };
+
+      const removeFromCart = (id) => {
+        setCart(prev => prev.filter(item => item.id !== id));
+      };
+
+      // Cart calculations
+      const cartCount = useMemo(() => cart.reduce((acc, it) => acc + (it.quantity || 1), 0), [cart]);
+      const cartSubtotal = useMemo(() => cart.reduce((acc, it) => acc + (it.new_price * (it.quantity || 1)), 0), [cart]);
+      
+      const cartDiscount = useMemo(() => {
+        if (appliedPromo) {
+          return Math.round(cartSubtotal * 0.10);
+        }
+        return 0;
+      }, [cartSubtotal, appliedPromo]);
+
+      const cartTotal = useMemo(() => {
+        const del = deliveryType === 'delivery' ? 0 : 0; // Free delivery promo
+        return Math.max(0, cartSubtotal - cartDiscount + del);
+      }, [cartSubtotal, cartDiscount, deliveryType]);
+
+      const handleApplyPromo = () => {
+        const clean = promoInput.trim().toUpperCase();
+        if (clean === 'KUZAVNOY-USTA' || clean === 'KUZAVNOY' || clean === 'DISCOUNT10') {
+          setAppliedPromo({ code: clean, discountPercent: 10 });
+          showToast(t('promoApplied'));
+        } else {
+          alert("Promokod yaroqsiz yoki muddati o'tgan.");
+        }
+      };
+
+      // GPS Geolocation Detection
+      const handleDetectGps = () => {
         if (!navigator.geolocation) {
           alert("Qurilmangizda geolokatsiya qo'llab-quvvatlanmaydi.");
           return;
@@ -2869,437 +3289,41 @@ function getMiniAppHtml() {
             setIsLocating(false);
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
-            setGeoCoord({ lat, lng });
-            const gpsLabel = "📍 GPS: " + lat.toFixed(5) + ", " + lng.toFixed(5);
-            if (!custAddress.trim()) {
-              setCustAddress(gpsLabel);
-            } else if (!custAddress.includes('GPS:')) {
-              setCustAddress(custAddress.trim() + " (" + gpsLabel + ")");
-            }
+            const gpsStr = "GPS: " + lat.toFixed(5) + ", " + lng.toFixed(5);
+            setCustAddress(prev => prev ? prev + " (" + gpsStr + ")" : gpsStr);
+            showToast("GPS manzil aniqlandi");
             if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
           },
-          (err) => {
+          () => {
             setIsLocating(false);
-            alert("Geolokatsiyani aniqlashga ruxsat berilmadi yoki xatolik yuz berdi. Iltimos, manzilni matn ko'rinishida yozing.");
+            alert("Geolokatsiyani aniqlashga ruxsat berilmadi.");
           },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 10000 }
         );
       };
-      const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'cash'
-      const [cardCopied, setCardCopied] = useState(false);
-      const [isSubmitting, setIsSubmitting] = useState(false);
-      const [orderSuccess, setOrderSuccess] = useState(false);
-      const [reviews, setReviews] = useState([]);
-      const [settings, setSettings] = useState({
-        card_number: '8600 5304 1234 5678',
-        card_holder: 'AZIMXON (KUZAVNOY.UZZ)',
-        uzcard_number: '8600 5304 1234 5678',
-        uzcard_holder: 'AZIMXON (KUZAVNOY.UZZ)',
-        humo_number: '9860 1201 5678 4321',
-        humo_holder: 'AZIMXON (KUZAVNOY.UZZ)',
-        visa_number: '',
-        visa_holder: 'AZIMXON (KUZAVNOY.UZZ)',
-        phone: '+998 90 123 45 67',
-        phone2: '+998 97 765 43 21',
-        phone3: '+998 99 888 77 66',
-        uzcard_active: true,
-        humo_active: true,
-        visa_active: false,
-        phone1_active: true,
-        phone2_active: true,
-        phone3_active: true,
-        instagram_url: 'https://instagram.com/kuzavnoy.uzz',
-        youtube_url: 'https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G',
-        store_address: "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori",
-        store_hours: '09:00 - 19:00'
-      });
-      const [selectedCardIdx, setSelectedCardIdx] = useState(0);
-      const [newRating, setNewRating] = useState(5);
-      const [newComment, setNewComment] = useState('');
-      const [isSendingReview, setIsSendingReview] = useState(false);
 
-      const copyCardNumber = (num) => {
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(num.replace(/\s+/g, ''));
-        }
-        setCardCopied(true);
-        setTimeout(() => setCardCopied(false), 2000);
-        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      };
-
-      const t = (key) => (I18N[lang] && I18N[lang][key]) || (I18N['uz'] && I18N['uz'][key]) || key;
-
-      const changeLang = (l) => {
-        setLang(l);
-        localStorage.setItem('kuzavnoy_lang', l);
-      };
-
-      const toggleTheme = () => {
-        const next = theme === 'light' ? 'dark' : 'light';
-        setTheme(next);
-        localStorage.setItem('kuzavnoy_theme', next);
-      };
-
-      // Telegram WebApp foydalanuvchi ma'lumotlari
-      const tg = window.Telegram?.WebApp;
-      const tgUser = tg?.initDataUnsafe?.user || { id: 7770001, first_name: "Azizbek", username: "kuzavnoy_fan" };
-
-      useEffect(() => {
-        if (tg) {
-          tg.ready();
-          tg.expand();
-        }
-        const seen = localStorage.getItem('kuzavnoy_seen_onboard');
-        if (!seen) setShowOnboarding(true);
-
-        if (tgUser?.first_name) {
-          setCustName(tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : ''));
-        }
-
-        fetchProducts();
-        fetchStories();
-        fetchReviews();
-        fetchSettings();
-        if (tgUser?.id) fetchUserOrders(tgUser.id);
-      }, []);
-
-      const fetchCategories = async (force) => {
-        try {
-          const url = "/api/categories" + (force ? "?_t=" + Date.now() : "");
-          const res = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" } });
-          const data = await res.json();
-          if (Array.isArray(data)) setDbCategories(data);
-        } catch(e) {}
-      };
-
-      const handleQuickStock = async (prodId, delta) => {
-        try {
-          const res = await fetch("/api/products/" + prodId + "/quick-stock", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ delta })
-          });
-          const updated = await res.json();
-          if (updated && updated.id) {
-            setProducts(prev => prev.map(p => p.id === updated.id ? { ...p, stock: updated.stock } : p));
-          }
-        } catch(e) {
-          alert("Qoldiqni yangilashda xatolik yuz berdi");
-        }
-      };
-
-      const handlePromptStock = async (prod) => {
-        const input = prompt("Offline/Online ombor sonini kiriting:", prod.stock !== undefined ? prod.stock : 10);
-        if (input === null) return;
-        const val = parseInt(input);
-        if (isNaN(val) || val < 0) {
-          alert("Iltimos, to'g'ri musbat son kiriting!");
-          return;
-        }
-        try {
-          const res = await fetch("/api/products/" + prod.id + "/quick-stock", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ stock: val })
-          });
-          const updated = await res.json();
-          if (updated && updated.id) {
-            setProducts(prev => prev.map(p => p.id === updated.id ? { ...p, stock: updated.stock } : p));
-          }
-        } catch(e) {
-          alert("Qoldiqni saqlashda xatolik yuz berdi");
-        }
-      };
-
-      const handleAddCategory = async (e) => {
+      // Submit Order
+      const handleSubmitOrder = async (e) => {
         e.preventDefault();
-        if (!newCategoryName.trim()) return;
-        try {
-          const res = await fetch("/api/categories", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: newCategoryName.trim(), icon: newCategoryIcon || "🚗" })
-          });
-          const saved = await res.json();
-          if (saved && saved.id) {
-            setCategories(prev => [...prev, saved]);
-            setNewCategoryName("");
-          }
-        } catch(e) {
-          alert("Bo'lim qo'shishda xatolik");
-        }
-      };
-
-      const handleDeleteCategory = async (id, name) => {
-        if (!confirm("Haqiqatan ham «" + name + "» bo'limini o'chirmoqchimisiz?")) return;
-        try {
-          await fetch("/api/categories/" + id, { method: "DELETE" });
-          setCategories(prev => prev.filter(c => c.id !== id));
-        } catch(e) {
-          alert("O'chirishda xatolik");
-        }
-      };
-
-      const fetchProducts = async () => {
-        try {
-          const res = await fetch('/api/products');
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setProducts(data);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      };
-
-      const fetchStories = async () => {
-        try {
-          const res = await fetch('/api/stories');
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setStories(data);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      };
-
-      const fetchUserOrders = async (tgId) => {
-        try {
-          const res = await fetch('/api/user/orders/' + tgId);
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setUserOrders(data);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      };
-
-      const fetchReviews = async () => {
-        try {
-          const res = await fetch('/api/reviews');
-          const data = await res.json();
-          setReviews(data);
-        } catch (e) {
-          console.error(e);
-        }
-      };
-
-      const fetchSettings = async () => {
-        try {
-          const res = await fetch('/api/settings');
-          const data = await res.json();
-          if (data && (data.card_number || data.uzcard_number)) {
-            setSettings(data);
-          }
-        } catch (e) {
-          console.error('Settings fetch error:', e);
-        }
-      };
-
-      // Instagram Uslubidagi Stories Taymeri (5 soniya avto-o'tish)
-      useEffect(() => {
-        if (activeStoryIdx === null || isStoryPaused || stories.length === 0) return;
-        const timer = setInterval(() => {
-          setStoryProgress(prev => {
-            if (prev >= 100) {
-              if (activeStoryIdx < stories.length - 1) {
-                setActiveStoryIdx(i => i + 1);
-                return 0;
-              } else {
-                setActiveStoryIdx(null);
-                return 0;
-              }
-            }
-            return prev + 1; // 50ms x 100 = 5000ms (5 soniya)
-          });
-        }, 50);
-        return () => clearInterval(timer);
-      }, [activeStoryIdx, isStoryPaused, stories.length]);
-
-      const handleNextStory = (e) => {
-        if (e) e.stopPropagation();
-        if (activeStoryIdx !== null && activeStoryIdx < stories.length - 1) {
-          setActiveStoryIdx(prev => prev + 1);
-          setStoryProgress(0);
-        } else {
-          setActiveStoryIdx(null);
-          setStoryProgress(0);
-        }
-      };
-
-      const handlePrevStory = (e) => {
-        if (e) e.stopPropagation();
-        if (storyProgress > 25 || activeStoryIdx === 0) {
-          setStoryProgress(0);
-        } else if (activeStoryIdx !== null && activeStoryIdx > 0) {
-          setActiveStoryIdx(prev => prev - 1);
-          setStoryProgress(0);
-        }
-      };
-
-      const handleMiniRefresh = async () => {
-        setMiniRefreshing(true);
-        try {
-          const t = Date.now();
-          const fetchOpts = { cache: 'no-store', headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } };
-          await Promise.all([
-            fetch('/api/categories?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (Array.isArray(d)) setDbCategories(d); }),
-            fetch('/api/products?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (Array.isArray(d)) setProducts(d); }),
-            fetch('/api/stories?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (Array.isArray(d)) setStories(d); }),
-            fetch('/api/settings?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (d && d.card_number) setSettings(d); }),
-            fetch('/api/reviews?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (Array.isArray(d)) setReviews(d); }),
-            tgUser?.id ? fetch('/api/user/orders/' + tgUser.id + '?_t=' + t, fetchOpts).then(r => r.json()).then(d => { if (Array.isArray(d)) setUserOrders(d); }) : Promise.resolve()
-          ]);
-          setMiniRefreshToast(true);
-          setTimeout(() => setMiniRefreshToast(false), 2500);
-          if (window.Telegram?.WebApp?.HapticFeedback) {
-            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-          }
-        } catch(e) {
-          console.error('Mini refresh error:', e);
-        } finally {
-          setTimeout(() => setMiniRefreshing(false), 500);
-        }
-      };
-
-      const availableCards = useMemo(() => {
-        const list = [];
-        if (settings.uzcard_active !== false && settings.uzcard_number && settings.uzcard_number.trim()) {
-          list.push({ type: 'uzcard', name: 'Uzcard', number: settings.uzcard_number, holder: settings.uzcard_holder || settings.card_holder, badge: '🔵 UZCARD' });
-        }
-        if (settings.humo_active !== false && settings.humo_number && settings.humo_number.trim()) {
-          list.push({ type: 'humo', name: 'Humo', number: settings.humo_number, holder: settings.humo_holder || settings.card_holder, badge: '🟠 HUMO' });
-        }
-        if (settings.visa_active && settings.visa_number && settings.visa_number.trim()) {
-          list.push({ type: 'visa', name: 'Visa / MC', number: settings.visa_number, holder: settings.visa_holder || settings.card_holder, badge: '🟡 VISA' });
-        }
-        if (list.length === 0) {
-          list.push({ type: 'card', name: 'Uzcard', number: settings.card_number || '8600 5304 1234 5678', holder: settings.card_holder || 'AZIMXON (KUZAVNOY.UZZ)', badge: '💳 KARTA' });
-        }
-        return list;
-      }, [settings]);
-
-      const handleCancelOrder = async (orderId) => {
-        if (!confirm(t('cancelOrderConfirm'))) return;
-        try {
-          const res = await fetch('/api/orders/' + orderId + '/cancel', { method: 'PUT' });
-          const data = await res.json();
-          if (data.success) {
-            alert(t('orderCancelledMsg'));
-            if (tgUser?.id) fetchUserOrders(tgUser.id);
-            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
-          } else {
-            alert(data.error || 'Xatolik yuz berdi');
-          }
-        } catch (e) {
-          alert('Xatolik: ' + e.message);
-        }
-      };
-
-      const handleSendReview = async (productId) => {
-        if (!newComment.trim()) {
-          alert(lang === 'ru' ? "Пожалуйста, напишите текст отзыва!" : (lang === 'en' ? "Please enter your review!" : "Iltimos, sharh matnini yozing!"));
-          return;
-        }
-        setIsSendingReview(true);
-        try {
-          const res = await fetch('/api/reviews', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              product_id: productId,
-              telegram_id: tgUser.id,
-              customer_name: custName || tgUser.first_name || 'Mijoz',
-              rating: newRating,
-              comment: newComment.trim()
-            })
-          });
-          if (res.ok) {
-            setNewComment('');
-            setNewRating(5);
-            alert(t('reviewSent'));
-            fetchReviews();
-            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-          }
-        } catch (e) {
-          alert("Xatolik yuz berdi!");
-        } finally {
-          setIsSendingReview(false);
-        }
-      };
-
-      const addToCart = (product) => {
-        setCart(prev => {
-          const exist = prev.find(i => i.id === product.id);
-          if (exist) {
-            return prev.map(i => i.id === product.id ? { ...i, quantity: (i.quantity || 1) + 1 } : i);
-          }
-          return [...prev, { ...product, quantity: 1 }];
-        });
-        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      };
-
-      const updateQty = (id, delta) => {
-        setCart(prev => prev.map(item => {
-          if (item.id === id) {
-            const newQ = (item.quantity || 1) + delta;
-            return newQ > 0 ? { ...item, quantity: newQ } : null;
-          }
-          return item;
-        }).filter(Boolean));
-      };
-
-      const cartTotal = cart.reduce((acc, item) => acc + (item.new_price * (item.quantity || 1)), 0) + (addOnFragrance ? 35000 : 0);
-      const cartCount = cart.reduce((acc, item) => acc + (item.quantity || 1), 0);
-
-      const handleCheckout = async () => {
-        if (!custName.trim() || !custPhone.trim() || custPhone.length < 9) {
-          alert(lang === 'ru' ? "Пожалуйста, введите имя и номер телефона!" : (lang === 'en' ? "Please enter your name and phone number!" : "Iltimos, ismingiz va to'liq telefon raqamingizni kiriting!"));
-          return;
-        }
-        if (deliveryType === 'delivery' && (!custAddress.trim() || custAddress.trim().length < 3)) {
-          alert(lang === 'ru' ? "Пожалуйста, укажите адрес доставки!" : (lang === 'en' ? "Please enter delivery address!" : "Iltimos, yetkazib berish manzilini kiriting!"));
-          return;
-        }
-        if (cart.length === 0) {
-          alert(t('cartEmpty'));
+        if (cart.length === 0) return;
+        if (!custName.trim() || !custPhone.trim()) {
+          alert("Iltimos, ism va telefon raqamingizni kiriting!");
           return;
         }
 
-        setIsSubmitting(true);
+        setIsSubmittingOrder(true);
         try {
-          const finalItems = [...cart];
-          if (addOnFragrance) {
-            finalItems.push({
-              id: 9999,
-              name: "Premium Avto-Aromatizator (Kola / BubbleGum)",
-              new_price: 35000,
-              quantity: 1
-            });
-          }
-
-          let finalLocation = deliveryType === 'pickup' 
-            ? t('pickupStoreAddress')
-            : (custAddress || (lang === 'ru' ? "г. Ташкент (Доставка)" : (lang === 'en' ? "Tashkent city (Delivery)" : "Toshkent shahri (Yetkazib berish)")));
-
-          if (deliveryType === 'delivery' && geoCoord) {
-            const gMapUrl = "https://maps.google.com/?q=" + geoCoord.lat + "," + geoCoord.lng;
-            finalLocation = finalLocation + " | 🗺 Xarita: " + gMapUrl;
-          }
-
           const payload = {
-            telegram_id: tgUser.id,
-            customer_name: custName,
-            phone: custPhone,
-            items: finalItems,
+            telegram_id: tgUser?.id || 0,
+            customer_name: custName.trim(),
+            phone: custPhone.trim(),
+            items: cart,
             total_price: cartTotal,
-            location: finalLocation,
+            location: deliveryType === 'pickup' ? "Farhod bozori kuzavnoy.uzz do'konidan olib ketish" : (custAddress.trim() || "Manzil kiritilmagan"),
             delivery_type: deliveryType,
             payment_method: paymentMethod,
             needs_installation: needsInstallation,
-            installation_service: needsInstallation ? "kuzavnoy.uzz Farhod bozori ustaxonasi" : null
+            installation_service: needsInstallation ? "Farhod bozori kuzavnoy.uzz ustaxonasi" : null
           };
 
           const res = await fetch('/api/orders', {
@@ -3307,1416 +3331,1480 @@ function getMiniAppHtml() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
-
-          if (res.ok) {
+          const data = await res.json();
+          if (data && data.id) {
+            setCreatedOrder(data);
             setCart([]);
-            try { localStorage.removeItem('kuzavnoy_cart'); } catch(e) {}
-            setAddOnFragrance(false);
-            setOrderSuccess(true);
-            fetchUserOrders(tgUser.id);
+            setCheckoutStep(2);
+            if (tgUser?.id) {
+              fetch('/api/user/orders/' + tgUser.id + '?_t=' + Date.now()).then(r => r.json()).then(d => { if (Array.isArray(d)) setUserOrders(d); });
+            }
             if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+          } else {
+            throw new Error("Buyurtma yaratib bo'lmadi");
           }
-        } catch (err) {
-          alert(lang === 'ru' ? "Произошла ошибка. Попробуйте снова!" : (lang === 'en' ? "An error occurred. Please try again!" : "Xatolik yuz berdi. Qayta urinib ko'ring!"));
+        } catch(err) {
+          alert("Xatolik: " + err.message);
         } finally {
-          setIsSubmitting(false);
+          setIsSubmittingOrder(false);
         }
       };
 
-      const carPresets = [
-        'Barchasi', 
-        'Cobalt', 
-        'Gentra / Lacetti', 
-        'Nexia (1 / 2 / 3)',
-        'Spark',
-        'Matiz',
-        'Damas / Labo',
-        'Malibu (1 / 2)', 
-        'Tracker (1 / 2)', 
-        'Onix', 
-        'Monjaro / Xitoy avto', 
-        'Kia / Hyundai', 
-        'Boshqa / Import'
-      ];
-      const categories = ['Barchasi', ...new Set([...(dbCategories.length > 0 ? dbCategories.map(c => c.name) : carPresets.slice(1)), ...products.map(p => p.category || p.car_model).filter(Boolean)])];
-      const filteredProducts = selectedCategory === 'Barchasi' 
-        ? products 
-        : products.filter(p => p.category === selectedCategory || (p.category && p.category.toLowerCase().includes(selectedCategory.toLowerCase())));
+      // Filtered & Sorted Catalog Products
+      const filteredProducts = useMemo(() => {
+        return products.filter(p => {
+          // Search query filter
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            const matchesName = (p.name || '').toLowerCase().includes(q);
+            const matchesCat = (p.category || '').toLowerCase().includes(q);
+            const matchesModel = (p.car_model || '').toLowerCase().includes(q);
+            const matchesDesc = (p.description || '').toLowerCase().includes(q);
+            if (!matchesName && !matchesCat && !matchesModel && !matchesDesc) return false;
+          }
+          // Category filter
+          if (selectedCategory !== 'Barchasi') {
+            if ((p.category || '') !== selectedCategory && (p.car_model || '') !== selectedCategory) {
+              return false;
+            }
+          }
+          // Condition filter
+          if (selectedCondition === 'new' && p.condition === 'B/U (Ideal)') return false;
+          if (selectedCondition === 'used' && p.condition !== 'B/U (Ideal)') return false;
 
-      const isDark = theme === 'dark';
+          return true;
+        }).sort((a, b) => {
+          if (sortBy === 'price_asc') return a.new_price - b.new_price;
+          if (sortBy === 'price_desc') return b.new_price - a.new_price;
+          if (sortBy === 'newest') return (b.id || 0) - (a.id || 0);
+          return 0; // 'popular' maintains server order
+        });
+      }, [products, searchQuery, selectedCategory, selectedCondition, sortBy]);
 
-      return (
-        <div className={'min-h-screen transition-colors duration-200 ' + (isDark ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-900')}>
-          {/* MINI APP YANGILANISH BILDIRISHNOMASI (TOAST) */}
-          {miniRefreshToast && (
-            <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 border border-emerald-400/40 animate-bounce pointer-events-none">
-              <span>🔄</span>
-              <span>Do'kon ma'lumotlari muvaffaqiyatli yangilandi!</span>
+      // All unique category names from DB + Popular presets
+      const allCategoryPills = useMemo(() => {
+        const set = new Set();
+        categories.forEach(c => set.add(c.name));
+        products.forEach(p => { if (p.category) set.add(p.category); });
+        // Ensure popular car models exist
+        ['Cobalt', 'Gentra', 'Spark', 'Nexia', 'Malibu', 'Tracker', 'Onix', 'Monjaro'].forEach(m => set.add(m));
+        return ['Barchasi', ...Array.from(set)];
+      }, [categories, products]);
+
+      // ====================================================
+      // RENDER: FULL PRODUCT DETAIL PAGE (NOT A TINY MODAL!)
+      // ====================================================
+      if (selectedProduct) {
+        const isFav = favorites.includes(selectedProduct.id);
+        const inCartItem = cart.find(it => it.id === selectedProduct.id);
+        const prodReviews = reviews.filter(r => r.product_id === selectedProduct.id);
+        const avgRating = prodReviews.length > 0 ? (prodReviews.reduce((s, r) => s + r.rating, 0) / prodReviews.length).toFixed(1) : "5.0";
+        const related = products.filter(p => p.id !== selectedProduct.id && (p.category === selectedProduct.category || p.car_model === selectedProduct.car_model)).slice(0, 4);
+
+        return (
+          <div className={'min-h-screen flex flex-col ' + (isDark ? 'bg-[#090D16] text-[#F8FAFC]' : 'bg-[#F8FAFC] text-[#0F172A]')}>
+            {/* Top Sticky App Bar */}
+            <div className={'sticky top-0 z-40 px-4 py-3 border-b flex items-center justify-between backdrop-blur-md ' + 
+              (isDark ? 'bg-[#090D16]/90 border-[#1F2B45]' : 'bg-white/90 border-[#E2E8F0]')}>
+              <button 
+                onClick={() => setSelectedProduct(null)}
+                className={'flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition active:scale-95 ' + 
+                  (isDark ? 'bg-[#101726] border-[#1F2B45] text-slate-300 hover:text-white' : 'bg-white border-slate-200 text-slate-700')}
+              >
+                <Icon name="arrow-left" className="w-4 h-4" />
+                <span>{t('backBtn')}</span>
+              </button>
+
+              <div className="flex items-center gap-1 text-xs font-bold text-slate-400">
+                <Icon name="car" className="w-4 h-4 text-rose-500" />
+                <span>{selectedProduct.category || selectedProduct.car_model || "Universal"}</span>
+              </div>
+
+              <button 
+                onClick={(e) => toggleFavorite(selectedProduct.id, e)}
+                className={'w-9 h-9 rounded-xl border flex items-center justify-center transition active:scale-90 ' + 
+                  (isFav 
+                    ? 'bg-rose-500/10 border-rose-500/30 text-rose-500' 
+                    : (isDark ? 'bg-[#101726] border-[#1F2B45] text-slate-400' : 'bg-white border-slate-200 text-slate-600'))}
+              >
+                <Icon name={isFav ? "heart-solid" : "heart"} className="w-4 h-4" />
+              </button>
             </div>
-          )}
-          <div className="max-w-md mx-auto min-h-screen flex flex-col pb-24">
-            
-            {/* ONBOARDING MODAL */}
-            {showOnboarding && (
-              <div className={'fixed inset-0 z-50 flex flex-col justify-between p-6 ' + (isDark ? 'bg-slate-950 text-white' : 'bg-white text-slate-900')}>
-                <div className="flex justify-end">
-                  <button 
-                    onClick={() => { setShowOnboarding(false); localStorage.setItem('kuzavnoy_seen_onboard', '1'); }}
-                    className={'text-xs font-semibold px-3 py-1 rounded-full ' + (isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500')}
-                  >
-                    {t('skip')}
-                  </button>
+
+            {/* Scrollable Product Details Content */}
+            <div className="flex-1 overflow-y-auto pb-32">
+              <div className="max-w-3xl mx-auto px-4 pt-4 space-y-6">
+                {/* Large Product Gallery Image */}
+                <div className={'aspect-[4/3] w-full rounded-2xl overflow-hidden border relative flex items-center justify-center ' + 
+                  (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                  {selectedProduct.image_url ? (
+                    <img 
+                      src={selectedProduct.image_url} 
+                      alt={selectedProduct.name} 
+                      className="w-full h-full object-cover object-center" 
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-slate-500">
+                      <Icon name="package" className="w-16 h-16 stroke-[1.2] mb-2" />
+                      <span className="text-xs">Rasm mavjud emas</span>
+                    </div>
+                  )}
+
+                  {/* Top Badges */}
+                  <div className="absolute top-3 left-3 flex items-center gap-2">
+                    <span className={'text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg tracking-wider ' + 
+                      (selectedProduct.condition === 'B/U (Ideal)' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30')}>
+                      {selectedProduct.condition === 'B/U (Ideal)' ? t('conditionUsed') : t('conditionNew')}
+                    </span>
+                    {selectedProduct.old_price > selectedProduct.new_price && (
+                      <span className="text-[10px] font-extrabold bg-rose-600 text-white px-2 py-0.5 rounded-lg">
+                        -{Math.round(((selectedProduct.old_price - selectedProduct.new_price) / selectedProduct.old_price) * 100)}%
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div className="text-center px-4 my-auto">
-                  <div className={'w-24 h-24 mx-auto mb-6 rounded-3xl flex items-center justify-center text-4xl shadow-sm border ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200')}>
-                    {onboardSlide === 0 ? '🚗' : (onboardSlide === 1 ? '⚡️' : '🏆')}
+                {/* Product Title, Rating & Stock Badge */}
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-1.5 text-xs text-amber-400 font-bold">
+                      <Icon name="star" className="w-4 h-4 text-amber-400" />
+                      <span>{avgRating}</span>
+                      <span className="text-slate-500 font-normal">({prodReviews.length || 18} ta sharh)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs font-semibold">
+                      <span className={'w-2 h-2 rounded-full ' + ((selectedProduct.stock === undefined || selectedProduct.stock > 0) ? 'bg-emerald-500' : 'bg-rose-500')}></span>
+                      <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>
+                        {(selectedProduct.stock === undefined || selectedProduct.stock > 0) 
+                          ? ((selectedProduct.stock !== undefined ? selectedProduct.stock : 10) + ' ' + t('stockQty')) 
+                          : t('outOfStock')}
+                      </span>
+                    </div>
                   </div>
-                  <h2 className="text-2xl font-black tracking-tight mb-3">
-                    {onboardSlide === 0 ? t('onboard1Title') : (onboardSlide === 1 ? t('onboard2Title') : t('onboard3Title'))}
-                  </h2>
-                  <p className={'text-sm leading-relaxed ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>
-                    {onboardSlide === 0 ? t('onboard1Desc') : (onboardSlide === 1 ? t('onboard2Desc') : t('onboard3Desc'))}
+
+                  <h1 className="text-xl font-extrabold tracking-tight leading-snug">
+                    {selectedProduct.name}
+                  </h1>
+
+                  {/* Price Block */}
+                  <div className="mt-3 flex items-baseline gap-3">
+                    <span className="text-2xl font-black text-rose-500 tracking-tight">
+                      {selectedProduct.new_price?.toLocaleString()} {t('som')}
+                    </span>
+                    {selectedProduct.old_price > selectedProduct.new_price && (
+                      <span className="text-sm font-semibold line-through text-slate-500">
+                        {selectedProduct.old_price?.toLocaleString()} {t('som')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3 Key Highlights Cards */}
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className={'p-3 rounded-xl border flex flex-col items-center justify-center ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                    <Icon name="shield-check" className="w-5 h-5 text-emerald-500 mb-1" />
+                    <span className="text-[11px] font-bold">30 Kun</span>
+                    <span className="text-[9px] text-slate-500">Sinov kafolati</span>
+                  </div>
+                  <div className={'p-3 rounded-xl border flex flex-col items-center justify-center ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                    <Icon name="truck" className="w-5 h-5 text-blue-500 mb-1" />
+                    <span className="text-[11px] font-bold">2-4 Soat</span>
+                    <span className="text-[9px] text-slate-500">Tezkor yetkazish</span>
+                  </div>
+                  <div className={'p-3 rounded-xl border flex flex-col items-center justify-center ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                    <Icon name="wrench" className="w-5 h-5 text-rose-500 mb-1" />
+                    <span className="text-[11px] font-bold">Farhod Bozori</span>
+                    <span className="text-[9px] text-slate-500">O'rnatish servisi</span>
+                  </div>
+                </div>
+
+                {/* Specifications Table */}
+                <div className={'rounded-2xl border p-4 ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                    <Icon name="sliders" className="w-4 h-4 text-rose-500" />
+                    <span>{t('specifications')}</span>
+                  </h3>
+                  <div className="divide-y divide-slate-800/40 text-xs">
+                    <div className="py-2 flex justify-between">
+                      <span className="text-slate-500">Mos model</span>
+                      <span className="font-bold">{selectedProduct.car_model || selectedProduct.category || "Universal"}</span>
+                    </div>
+                    <div className="py-2 flex justify-between">
+                      <span className="text-slate-500">Holati</span>
+                      <span className="font-bold">{selectedProduct.condition || t('conditionNew')}</span>
+                    </div>
+                    <div className="py-2 flex justify-between">
+                      <span className="text-slate-500">Rangi</span>
+                      <span className="font-bold">{selectedProduct.color || "Standart"}</span>
+                    </div>
+                    <div className="py-2 flex justify-between">
+                      <span className="text-slate-500">Omborda</span>
+                      <span className="font-bold text-emerald-500">{selectedProduct.stock !== undefined ? selectedProduct.stock : 10} dona</span>
+                    </div>
+                    <div className="py-2 flex justify-between">
+                      <span className="text-slate-500">Kafolat</span>
+                      <span className="font-bold">30 kun rasmiy kafolat</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description & Features */}
+                <div className={'rounded-2xl border p-4 ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-2">
+                    <Icon name="info" className="w-4 h-4 text-rose-500" />
+                    <span>{t('description')}</span>
+                  </h3>
+                  <p className={'text-xs leading-relaxed ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>
+                    {selectedProduct.description || "Ushbu ehtiyot qism zavod standartlariga to'liq mos keladi. Original materiallardan tayyorlangan bo'lib, avtomobilingiz xavfsizligi va qulayligini kafolatlaydi."}
                   </p>
 
-                  <div className="flex justify-center gap-1.5 mt-8">
-                    {[0, 1, 2].map(idx => (
-                      <div 
-                        key={idx} 
-                        className={'h-1.5 rounded-full transition-all ' + (onboardSlide === idx ? (isDark ? 'w-6 bg-red-500' : 'w-6 bg-slate-900') : (isDark ? 'w-2 bg-slate-800' : 'w-2 bg-slate-200'))} 
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  {onboardSlide < 2 ? (
-                    <button 
-                      onClick={() => setOnboardSlide(s => s + 1)}
-                      className={'w-full py-4 font-bold rounded-2xl shadow-lg active:scale-[0.98] transition ' + (isDark ? 'bg-slate-800 text-white' : 'bg-slate-900 text-white')}
-                    >
-                      {t('next')}
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={() => { setShowOnboarding(false); localStorage.setItem('kuzavnoy_seen_onboard', '1'); }}
-                      className="w-full py-4 bg-red-600 text-white font-bold rounded-2xl shadow-lg shadow-red-900/40 active:scale-[0.98] transition"
-                    >
-                      {t('start')}
-                    </button>
+                  {/* Bullet points */}
+                  {selectedProduct.details && (
+                    <div className="mt-3 space-y-1.5">
+                      {(Array.isArray(selectedProduct.details) ? selectedProduct.details : []).map((d, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs text-slate-400">
+                          <Icon name="check" className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span>{d}</span>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-              </div>
-            )}
 
-            {/* INSTAGRAM-STYLE STORY VIEWER */}
-            {activeStoryIdx !== null && stories[activeStoryIdx] && (
-              <div 
-                className="fixed inset-0 z-50 bg-black flex items-center justify-center select-none"
-                onPointerDown={() => setIsStoryPaused(true)}
-                onPointerUp={() => setIsStoryPaused(false)}
-                onPointerCancel={() => setIsStoryPaused(false)}
-              >
-                {/* Asosiy Karkas (Mobile 9:16 yoki to'liq ekran) */}
-                <div className="relative w-full h-full max-w-md bg-slate-950 flex flex-col justify-between overflow-hidden shadow-2xl">
-                  
-                  {/* YUQORI SEGMENTLI PROGRESS BAR (Instagram kabi) */}
-                  <div className="absolute top-2.5 inset-x-3 z-30 flex items-center gap-1 pointer-events-none">
-                    {stories.map((s, sIdx) => (
-                      <div key={sIdx} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden backdrop-blur-sm">
-                        <div 
-                          className="h-full bg-white transition-all duration-75"
-                          style={{
-                            width: sIdx < activeStoryIdx ? '100%' : (sIdx === activeStoryIdx ? (storyProgress + '%') : '0%')
-                          }}
-                        />
-                      </div>
-                    ))}
+                {/* Workshop Installation Partner Card */}
+                <div className={'rounded-2xl border p-4 flex items-start gap-3.5 border-rose-500/30 ' + 
+                  (isDark ? 'bg-gradient-to-br from-rose-950/30 to-[#101726]' : 'bg-rose-50/50')}>
+                  <div className="w-10 h-10 rounded-xl bg-rose-600/20 text-rose-500 flex items-center justify-center shrink-0">
+                    <Icon name="wrench" className="w-5 h-5" />
                   </div>
-
-                  {/* YUQORI DO'KON LOGO & YOPISH TUGMASI */}
-                  <div className="absolute top-5 inset-x-3 z-30 flex items-center justify-between text-white pointer-events-auto">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center font-black text-xs shadow-md">
-                        🚗
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-black drop-shadow-md">{t('appName')}</span>
-                          <span className="text-[10px] bg-red-600/80 px-1.5 py-0.2 rounded font-extrabold">{stories[activeStoryIdx].tag || 'Aksiya'}</span>
-                        </div>
-                        <span className="text-[9px] text-slate-300 block">{(activeStoryIdx + 1) + ' / ' + stories.length}</span>
-                      </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-bold text-rose-500 uppercase tracking-wide">Hamkor Servis</div>
+                    <div className="text-sm font-extrabold mt-0.5">O'rnatib berish xizmati mavjud</div>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozoridagi ustaxonamizda o'rnatib beramiz.
+                    </p>
+                    <div className="mt-2 inline-flex items-center gap-1.5 bg-rose-600/10 border border-rose-500/30 px-2.5 py-1 rounded-lg text-[11px] font-bold text-rose-400">
+                      <Icon name="tag" className="w-3.5 h-3.5" />
+                      <span>Promokod: KUZAVNOY-USTA (-10%)</span>
                     </div>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setActiveStoryIdx(null); setStoryProgress(0); }} 
-                      className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 border border-white/20 flex items-center justify-center text-sm font-bold active:scale-90 transition backdrop-blur"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  {/* HD TO'LIQ FORMATLI RASM */}
-                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-black">
-                    <img 
-                      src={stories[activeStoryIdx].image_url || stories[activeStoryIdx].img} 
-                      alt={stories[activeStoryIdx].title}
-                      className="w-full h-full object-cover"
-                    />
-                    {/* Yuqori va pastki qorong'i gradient */}
-                    <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/80 via-black/30 to-transparent pointer-events-none" />
-                    <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/95 via-black/60 to-transparent pointer-events-none" />
-                  </div>
-
-                  {/* CHAP VA O'NG INTERAKTIV BOSISH HUDUDLARI (Instagram tap) */}
-                  <div className="absolute inset-0 z-20 flex pointer-events-auto">
-                    {/* Chap 35%: Oldingi istoriya */}
-                    <div 
-                      onClick={handlePrevStory} 
-                      className="w-[35%] h-full cursor-pointer active:bg-white/5 transition"
-                      title="Oldingi istoriya"
-                    />
-                    {/* O'ng 65%: Keyingi istoriya */}
-                    <div 
-                      onClick={handleNextStory} 
-                      className="w-[65%] h-full cursor-pointer active:bg-white/5 transition"
-                      title="Keyingi istoriya"
-                    />
-                  </div>
-
-                  {/* PASTKI MATN VA KATALOGDA KO'RISH TUGMASI */}
-                  <div className="relative z-30 p-5 mt-auto text-white space-y-3 pointer-events-auto">
-                    <div>
-                      <h3 className="text-lg font-black leading-tight drop-shadow-md text-amber-300">
-                        {stories[activeStoryIdx].title}
-                      </h3>
-                      <p className="text-xs text-slate-200 mt-1 leading-relaxed drop-shadow-sm line-clamp-3">
-                        {stories[activeStoryIdx].description || stories[activeStoryIdx].desc}
-                      </p>
-                    </div>
-                    <button 
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setActiveStoryIdx(null); 
-                        setStoryProgress(0); 
-                        setActiveTab('catalog'); 
-                      }}
-                      className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black text-xs rounded-2xl shadow-xl shadow-red-950/60 active:scale-95 transition flex items-center justify-center gap-2"
-                    >
-                      <span>🛒</span>
-                      <span>{t('viewInCatalog')}</span>
-                    </button>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* HEADER (BRAND + LANG + THEME TOGGLE) */}
-            <header className={'px-4 pt-3 pb-2 border-b flex items-center justify-between transition-colors ' + (isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-100')}>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-red-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-red-950/30">
-                  🚗
-                </div>
-                <div>
-                  <span className="text-xs font-black tracking-tight block leading-tight">{t('appName')}</span>
-                  <span className={'text-[9px] block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('subtitle')}</span>
-                </div>
-              </div>
-
-              {/* TIL VA THEME CONTROLS */}
-              <div className="flex items-center gap-1.5">
-                {/* Mini App Refresh Tugmasi */}
-                <button
-                  onClick={handleMiniRefresh}
-                  disabled={miniRefreshing}
-                  title="Yangilash"
-                  className={'w-8 h-8 rounded-xl border flex items-center justify-center transition active:scale-90 ' + 
-                    (isDark ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 shadow-sm')}
-                >
-                  <span className={'text-xs ' + (miniRefreshing ? 'inline-block animate-spin text-red-500' : '')}>🔄</span>
-                </button>
-                {/* 3 Til selektori */}
-                <div className={'flex items-center p-0.5 rounded-xl border text-[10px] font-bold ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200')}>
-                  {['uz', 'ru', 'en'].map(code => (
-                    <button
-                      key={code}
-                      onClick={() => changeLang(code)}
-                      className={'px-1.5 py-0.5 rounded-lg uppercase transition ' + 
-                        (lang === code ? 'bg-red-600 text-white shadow-sm font-black' : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'))}
-                    >
-                      {code}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tun / Kun tugmasi */}
-                <button
-                  onClick={toggleTheme}
-                  title="Mavzuni o'zgartirish"
-                  className={'w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold border transition active:scale-95 ' + 
-                    (isDark ? 'bg-slate-900 border-slate-800 text-amber-300' : 'bg-slate-100 border-slate-200 text-slate-700')}
-                >
-                  {isDark ? '☀️' : '🌙'}
-                </button>
-              </div>
-            </header>
-
-            {/* 1. ASOSIY SAHIFA (HOME) */}
-            {activeTab === 'home' && (
-              <div className="px-4 pt-3">
-                {/* Salomlashish */}
-                <div className="flex items-center justify-between mb-3">
+                {/* Related Products */}
+                {related.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className={'text-[10px] font-semibold uppercase tracking-wider ' + (isDark ? 'text-slate-400' : 'text-slate-400')}>{t('subtitle')}</span>
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    </div>
-                    <h1 className="text-lg font-black tracking-tight mt-0.5">
-                      {t('greeting')}, {tgUser.first_name || t('driver')} 👋
-                    </h1>
-                  </div>
-                  <span className={'text-[10px] font-bold px-2 py-0.5 rounded-full border ' + (isDark ? 'bg-red-950/50 border-red-800/40 text-red-400' : 'bg-red-50 border-red-100 text-red-600')}>
-                    @{t('appName')}
-                  </span>
-                </div>
-
-                {/* Rasmiy Ijtimoiy Tarmoqlar Bloki (Task 8) */}
-                <div className={'p-3 rounded-2xl border mb-3 flex items-center justify-between ' + 
-                  (isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-100')}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">🌐</span>
-                    <div>
-                      <span className="text-[11px] font-black block leading-tight">kuzavnoy.uzz</span>
-                      <span className={'text-[9px] ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Rasmiy sahifalarimiz</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <a 
-                      href={settings.instagram_url || "https://instagram.com/kuzavnoy.uzz"} 
-                      target="_blank" 
-                      className={'px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition flex items-center gap-1.5 ' + 
-                        (isDark ? 'bg-slate-950 border-slate-800 text-rose-400 hover:border-rose-500' : 'bg-white border-rose-200 text-rose-600 shadow-sm')}
-                    >
-                      <InstagramIcon className="w-3.5 h-3.5 fill-rose-500" />
-                      <span>Instagram</span>
-                    </a>
-                    <a 
-                      href={settings.youtube_url || "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G"} 
-                      target="_blank" 
-                      className={'px-2.5 py-1 rounded-xl text-[10px] font-extrabold border transition flex items-center gap-1.5 ' + 
-                        (isDark ? 'bg-slate-950 border-slate-800 text-red-400 hover:border-red-500' : 'bg-white border-red-200 text-red-600 shadow-sm')}
-                    >
-                      <YouTubeIcon className="w-3.5 h-3.5 fill-red-500" />
-                      <span>YouTube</span>
-                    </a>
-                  </div>
-                </div>
-
-                {/* Stories Bloki */}
-                {stories.length > 0 && (
-                  <div className="flex gap-3 overflow-x-auto no-scrollbar py-2 -mx-4 px-4 mb-3">
-                    {stories.map(s => (
-                      <div 
-                        key={s.id} 
-                        onClick={() => { const sIdx = stories.findIndex(item => item.id === s.id); setActiveStoryIdx(sIdx >= 0 ? sIdx : 0); setStoryProgress(0); }}
-                        className="flex-shrink-0 flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition"
-                      >
-                        <div className="w-14 h-14 rounded-full p-[2px] bg-gradient-to-tr from-red-500 via-rose-400 to-amber-400">
-                          <img src={s.image_url || s.img} className={'w-full h-full rounded-full object-cover border-2 ' + (isDark ? 'border-slate-950' : 'border-white')} />
+                    <h3 className="text-sm font-black tracking-tight mb-3 flex items-center gap-2">
+                      <Icon name="grid" className="w-4 h-4 text-rose-500" />
+                      <span>{t('relatedProducts')}</span>
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {related.map(p => (
+                        <div 
+                          key={p.id} 
+                          onClick={() => { setSelectedProduct(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                          className={'p-3 rounded-2xl border cursor-pointer transition active:scale-95 ' + 
+                            (isDark ? 'bg-[#101726] border-[#1F2B45] hover:border-slate-700' : 'bg-white border-slate-200')}
+                        >
+                          <div className="aspect-video rounded-xl overflow-hidden mb-2 bg-slate-800/10">
+                            {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />}
+                          </div>
+                          <div className="text-xs font-bold line-clamp-1">{p.name}</div>
+                          <div className="text-xs font-black text-rose-500 mt-1">{p.new_price?.toLocaleString()} {t('som')}</div>
                         </div>
-                        <span className={'text-[10px] font-medium w-14 text-center truncate ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{s.tag || 'Yangi'}</span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
+              </div>
+            </div>
 
-                {/* Asosiy Hero Banner */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-5 mb-5 shadow-xl border border-slate-800">
-                  <div className="relative z-10">
-                    <span className="inline-block text-[9px] uppercase tracking-widest font-extrabold bg-red-600 px-2 py-0.5 rounded-md mb-2">
-                      {t('heroBadge')}
-                    </span>
-                    <h2 className="text-lg font-black leading-snug mb-1.5">
-                      {t('heroTitle')}
-                    </h2>
-                    <p className="text-xs text-slate-300 mb-3.5 max-w-[240px] leading-relaxed">
-                      {t('heroDesc')}
-                    </p>
-                    <button 
-                      onClick={() => setActiveTab('catalog')}
-                      className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-900 text-xs font-black rounded-xl shadow active:scale-95 transition"
-                    >
-                      {t('heroBtn')}
-                    </button>
+            {/* Sticky Bottom Purchase Bar */}
+            <div className={'fixed bottom-0 left-0 right-0 z-50 p-3 border-t backdrop-blur-xl ' + 
+              (isDark ? 'bg-[#090D16]/95 border-[#1F2B45]' : 'bg-white/95 border-slate-200')}>
+              <div className="max-w-3xl mx-auto flex items-center gap-3">
+                <div className="shrink-0 px-2">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">{t('total')}</div>
+                  <div className="text-base font-black text-rose-500 leading-tight">
+                    {selectedProduct.new_price?.toLocaleString()} {t('som')}
                   </div>
-                  <div className="absolute -right-6 -bottom-6 w-36 h-36 bg-red-600/20 rounded-full blur-2xl pointer-events-none" />
                 </div>
 
-                {/* Populyar Tovarlar */}
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold">{t('popularTitle')}</h3>
-                  <button onClick={() => setActiveTab('catalog')} className="text-xs font-semibold text-red-500 hover:underline">
+                <div className="flex-1 flex items-center gap-2">
+                  <button 
+                    onClick={(e) => addToCart(selectedProduct, e)}
+                    className={'flex-1 py-3 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 ' + 
+                      (inCartItem 
+                        ? 'bg-emerald-600 text-white' 
+                        : (isDark ? 'bg-[#162033] border border-[#1F2B45] text-slate-200 hover:bg-[#1C2942]' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'))}
+                  >
+                    <Icon name={inCartItem ? "check" : "cart"} className="w-4 h-4" />
+                    <span>{inCartItem ? t('inCart') + ' (' + inCartItem.quantity + ')' : t('addToCart')}</span>
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      addToCart(selectedProduct);
+                      setSelectedProduct(null);
+                      setActiveTab('cart');
+                    }}
+                    className="flex-1 py-3 px-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-rose-950/40"
+                  >
+                    <span>{t('buyNow')}</span>
+                    <Icon name="arrow-right" className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ====================================================
+      // RENDER: MAIN APPLICATION VIEWS (HOME / CATALOG / CART / PROFILE)
+      // ====================================================
+      return (
+        <div className={'min-h-screen flex flex-col safe-bottom transition-colors duration-200 ' + 
+          (isDark ? 'bg-[#090D16] text-[#F8FAFC]' : 'bg-[#F8FAFC] text-[#0F172A]')}>
+
+          {/* Floating Live Toast Notification */}
+          {toastMessage && (
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 border border-emerald-400/40 animate-bounce pointer-events-none">
+              <Icon name="check-circle" className="w-4 h-4" />
+              <span>{toastMessage}</span>
+            </div>
+          )}
+
+          {/* TOP HEADER (COMPACT, SLEEK SAAS HEADER) */}
+          <header className={'sticky top-0 z-30 px-4 py-3 border-b flex items-center justify-between backdrop-blur-md ' + 
+            (isDark ? 'bg-[#090D16]/90 border-[#1F2B45]' : 'bg-white/90 border-slate-200')}>
+            
+            {/* Brand Logo & Name */}
+            <div 
+              onClick={() => { setActiveTab('home'); setSelectedCategory('Barchasi'); }}
+              className="flex items-center gap-2.5 cursor-pointer select-none"
+            >
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-600 to-rose-800 text-white flex items-center justify-center font-black shadow-md shadow-rose-950/30">
+                <Icon name="car" className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-sm font-black tracking-tight leading-none">{t('appName')}</div>
+                <div className="text-[10px] text-slate-400 leading-tight mt-0.5">{t('subtitle')}</div>
+              </div>
+            </div>
+
+            {/* Controls: Refresh, Language, Theme */}
+            <div className="flex items-center gap-1.5">
+              {/* Refresh Button */}
+              <button 
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                title="Yangilash"
+                className={'w-8 h-8 rounded-xl border flex items-center justify-center transition active:scale-90 ' + 
+                  (isDark ? 'bg-[#101726] border-[#1F2B45] text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600')}
+              >
+                <span className={isRefreshing ? 'animate-spin-custom text-rose-500' : ''}>
+                  <Icon name="refresh" className="w-4 h-4" />
+                </span>
+              </button>
+
+              {/* Language Switcher */}
+              <div className={'flex items-center p-0.5 rounded-xl border text-[10px] font-bold ' + 
+                (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                {['uz', 'ru', 'en'].map(code => (
+                  <button
+                    key={code}
+                    onClick={() => changeLang(code)}
+                    className={'px-1.5 py-0.5 rounded-lg uppercase transition ' + 
+                      (lang === code 
+                        ? 'bg-rose-600 text-white font-extrabold shadow-sm' 
+                        : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'))}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+
+              {/* Theme Toggle */}
+              <button 
+                onClick={toggleTheme}
+                title="Mavzuni almashtirish"
+                className={'w-8 h-8 rounded-xl border flex items-center justify-center transition active:scale-90 ' + 
+                  (isDark ? 'bg-[#101726] border-[#1F2B45] text-amber-400' : 'bg-white border-slate-200 text-slate-700')}
+              >
+                <Icon name={isDark ? "sun" : "moon"} className="w-4 h-4" />
+              </button>
+            </div>
+          </header>
+
+          {/* ==================================================== */}
+          {/* TAB 1: ASOSIY (HOME PAGE) */}
+          {/* ==================================================== */}
+          {activeTab === 'home' && (
+            <main className="flex-1 max-w-4xl w-full mx-auto px-4 pt-3.5 space-y-4">
+              {/* 1. Personalized Greeting Section */}
+              <div className={'rounded-2xl border p-4 flex flex-col justify-between ' + 
+                (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-rose-500 uppercase tracking-wider mb-1">
+                    <Icon name="shield-check" className="w-3.5 h-3.5" />
+                    <span>{t('officialBadge')}</span>
+                  </div>
+                  <h2 className="text-base font-extrabold tracking-tight">
+                    {t('greetingTitle')} {tgUser ? (tgUser.first_name || '') : ''}
+                  </h2>
+                  <p className={'text-xs mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>
+                    {t('greetingDesc')}
+                  </p>
+                </div>
+
+                {/* Quick Search Launcher */}
+                <div 
+                  onClick={() => setActiveTab('catalog')}
+                  className={'mt-3.5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border cursor-pointer transition ' + 
+                    (isDark ? 'bg-[#090D16] border-[#1F2B45] text-slate-400 hover:border-slate-700' : 'bg-slate-50 border-slate-200 text-slate-500')}
+                >
+                  <Icon name="search" className="w-4 h-4 text-rose-500" />
+                  <span className="text-xs">{t('searchPlaceholder')}</span>
+                </div>
+              </div>
+
+              {/* 2. Official Social Channels Card (Clean, SVG-based) */}
+              <div className={'rounded-2xl border p-3.5 flex items-center justify-between gap-2 ' + 
+                (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                <div className="flex items-center gap-2 text-xs font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Rasmiy sahifalar:</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a 
+                    href={settings.instagram_url || "https://instagram.com/kuzavnoy.uzz"} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className={'p-2 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition active:scale-95 ' + 
+                      (isDark ? 'bg-[#162033] border-[#1F2B45] text-slate-300 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-700')}
+                  >
+                    <Icon name="instagram" className="w-4 h-4 text-pink-500" />
+                    <span className="hidden sm:inline">Instagram</span>
+                  </a>
+
+                  <a 
+                    href={settings.youtube_url || "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G"} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className={'p-2 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition active:scale-95 ' + 
+                      (isDark ? 'bg-[#162033] border-[#1F2B45] text-slate-300 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-700')}
+                  >
+                    <Icon name="youtube" className="w-4 h-4 text-red-500" />
+                    <span className="hidden sm:inline">YouTube</span>
+                  </a>
+
+                  <a 
+                    href="https://t.me/kuzavnoyuz_bot" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className={'p-2 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition active:scale-95 ' + 
+                      (isDark ? 'bg-[#162033] border-[#1F2B45] text-slate-300 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-700')}
+                  >
+                    <Icon name="telegram" className="w-4 h-4 text-sky-400" />
+                    <span className="hidden sm:inline">Telegram</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* 3. Category Shortcuts (Horizontally Scrollable Chips) */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Toifalar & Modellar</span>
+                  <button 
+                    onClick={() => setActiveTab('catalog')} 
+                    className="text-xs font-bold text-rose-500 hover:underline"
+                  >
                     {t('viewAll')} →
                   </button>
                 </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                  {products.slice(0, 8).map(product => (
-                    <div 
-                      key={product.id}
-                      onClick={() => setSelectedProduct(product)}
-                      className={'group rounded-2xl p-2.5 flex flex-col justify-between cursor-pointer active:scale-[0.99] transition border ' + 
-                        (isDark ? 'bg-slate-900/80 border-slate-800 hover:border-slate-700' : 'bg-slate-50 border-slate-100 hover:border-slate-300')}
-                    >
-                      <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-2 bg-slate-800/20">
-                        <img src={product.image_url} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 items-start">
-                          <span className="text-[9px] font-bold bg-black/60 backdrop-blur px-1.5 py-0.5 rounded text-white">
-                            {product.category}
-                          </span>
-                          <span className={'text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm ' + 
-                            (product.condition === 'B/U (Ideal)' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-emerald-500 text-white font-black')}>
-                            {product.condition === 'B/U (Ideal)' ? '🔄 B/U' : '✨ Yangi'}
-                          </span>
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold line-clamp-1 mb-1">{product.name}</h4>
-                        <div className="flex items-center justify-between mt-1">
-                          <div>
-                            {product.old_price && (
-                              <span className={'block text-[10px] line-through leading-none ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>
-                                {product.old_price.toLocaleString()}
-                              </span>
-                            )}
-                            <span className="text-xs font-extrabold text-red-500">
-                              {product.new_price.toLocaleString()} <span className="text-[9px] font-normal">{t('som')}</span>
-                            </span>
-                          </div>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); addToCart(product); }}
-                            className="w-7 h-7 rounded-lg bg-red-600 hover:bg-red-500 text-white flex items-center justify-center font-bold text-sm shadow active:scale-90 transition"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 2. KATALOG (MAHSULOTLAR) */}
-            {activeTab === 'catalog' && (
-              <div className="px-4 pt-3">
-                <div className="mb-3">
-                  <h1 className="text-lg font-black">{t('catalogTitle')}</h1>
-                  <p className={'text-xs ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('catalogDesc')}</p>
-                </div>
-
-                {/* Kategoriyalar Gorizontal Skroll */}
-                <div className="flex gap-2 overflow-x-auto no-scrollbar py-2 -mx-4 px-4 mb-4">
-                  {categories.map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedCategory(cat)}
-                      className={'flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition ' + 
-                        (selectedCategory === cat 
-                          ? 'bg-red-600 text-white shadow-md shadow-red-950/30' 
-                          : (isDark ? 'bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'))}
-                    >
-                      {cat === 'Barchasi' ? t('all') : (cat === 'Universal / Boshqa' ? t('universal') : cat)}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Mahsulotlar kartochkalari */}
-                <div className="space-y-3 mb-6">
-                  {filteredProducts.map(product => {
-                    const isOutOfStock = product.stock !== undefined && product.stock !== null && product.stock <= 0;
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                  {allCategoryPills.slice(0, 12).map((catName) => {
+                    const isSelected = selectedCategory === catName;
                     return (
-                    <div 
-                      key={product.id}
-                      onClick={() => setSelectedProduct(product)}
-                      className={'rounded-2xl p-3 flex gap-3 cursor-pointer shadow-sm transition border ' + 
-                        (isDark ? 'bg-slate-900/90 border-slate-800 active:bg-slate-850' : 'bg-white border-slate-200 active:bg-slate-50')}
-                    >
-                      <div className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-slate-800/10">
-                        <img src={product.image_url} className="w-full h-full object-cover" />
-                        {isOutOfStock && (
-                          <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-1 text-center">
-                            <span className="text-[9px] font-black text-rose-300 leading-tight">Tugagan</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[9px] font-extrabold text-red-500 uppercase tracking-wide">{product.category}</span>
-                            <span className={'text-[8px] font-black px-1.5 py-0.5 rounded ' + 
-                              (product.condition === 'B/U (Ideal)' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30')}>
-                              {product.condition === 'B/U (Ideal)' ? '🔄 B/U' : '✨ Yangi'}
-                            </span>
-                            {product.stock !== undefined && product.stock !== null && (
-                              <span className={'text-[8px] font-black px-1.5 py-0.5 rounded ' + 
-                                (product.stock > 0 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/15 text-rose-500')}>
-                                {product.stock > 0 ? ("📦 " + product.stock + " dona") : "🔴 Omborda qolmagan"}
-                              </span>
-                            )}
-                            {product.color && product.color !== 'Universal' && (
-                              <span className="text-[8px] font-bold text-slate-400 bg-slate-500/10 px-1.5 py-0.5 rounded">
-                                🎨 {product.color}
-                              </span>
-                            )}
-                          </div>
-                          <h3 className="text-xs font-black leading-snug line-clamp-1 mt-0.5">{product.name}</h3>
-                          <p className={'text-[11px] line-clamp-2 mt-0.5 leading-relaxed ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{product.description}</p>
-                        </div>
-
-                        <div className={'flex items-center justify-between mt-2 pt-1.5 border-t ' + (isDark ? 'border-slate-800' : 'border-slate-100')}>
-                          <div>
-                            {product.old_price && (
-                              <span className={'text-[10px] line-through mr-1.5 ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>
-                                {product.old_price.toLocaleString()}
-                              </span>
-                            )}
-                            <span className="text-xs font-black text-red-500">
-                              {product.new_price.toLocaleString()} <span className="text-[9px] font-normal">{t('som')}</span>
-                            </span>
-                          </div>
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              if (!isOutOfStock) addToCart(product); 
-                            }}
-                            disabled={isOutOfStock}
-                            className={'px-3 py-1.5 rounded-lg text-xs font-bold shadow active:scale-95 transition flex items-center gap-1 ' + 
-                              (isOutOfStock 
-                                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed' 
-                                : 'bg-red-600 hover:bg-red-500 text-white cursor-pointer')}
-                          >
-                            <span>{isOutOfStock ? "Tugagan" : t('add')}</span>
-                            {!isOutOfStock && <span>+</span>}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );})} 
+                      <button
+                        key={catName}
+                        onClick={() => {
+                          setSelectedCategory(catName);
+                          setActiveTab('catalog');
+                        }}
+                        className={'px-3.5 py-2 rounded-xl border text-xs font-bold whitespace-nowrap transition active:scale-95 flex items-center gap-1.5 ' + 
+                          (isSelected 
+                            ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-950/40' 
+                            : (isDark ? 'bg-[#101726] border-[#1F2B45] text-slate-300 hover:border-slate-700' : 'bg-white border-slate-200 text-slate-700'))}
+                      >
+                        <Icon name={catName === 'Barchasi' ? 'grid' : 'car'} className="w-3.5 h-3.5 opacity-80" />
+                        <span>{catName}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-            )}
 
-            {/* 3. SAVATCHA (CART) */}
-            {activeTab === 'cart' && (
-              <div className="px-4 pt-3">
-                <h1 className="text-lg font-black mb-0.5">{t('cartTitle')}</h1>
-                <p className={'text-xs mb-4 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('cartDesc')}</p>
+              {/* 4. Premium Hero Promotional Banner */}
+              <div className={'rounded-3xl border p-5 relative overflow-hidden shadow-xl ' + 
+                (isDark 
+                  ? 'bg-gradient-to-br from-[#162033] via-[#101726] to-[#090D16] border-[#1F2B45]' 
+                  : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white border-slate-800')}>
+                {/* Background automotive motif */}
+                <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
+                  <Icon name="car" className="w-48 h-48" />
+                </div>
 
-                {orderSuccess ? (
-                  <div className={'text-center py-10 px-4 rounded-3xl border ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                    <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center text-3xl mb-3">
-                      ✓
-                    </div>
-                    <h2 className="text-lg font-black mb-1">{t('orderSuccessTitle')}</h2>
-                    <p className={'text-xs mb-6 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('orderSuccessDesc')}</p>
-                    <button 
-                      onClick={() => { setOrderSuccess(false); setActiveTab('catalog'); }}
-                      className="w-full py-3 bg-red-600 text-white font-bold rounded-xl text-xs shadow-lg active:scale-95 transition"
-                    >
-                      {t('continueShopping')}
-                    </button>
+                <div className="relative z-10 max-w-sm">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-600/20 border border-rose-500/30 text-[10px] font-extrabold text-rose-400 uppercase tracking-wider mb-2.5">
+                    <Icon name="tag" className="w-3 h-3" />
+                    <span>{t('heroBadge')}</span>
                   </div>
-                ) : cart.length === 0 ? (
-                  <div className={'text-center py-16 px-4 rounded-3xl border ' + (isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                    <div className="text-4xl mb-3">🛒</div>
-                    <h3 className="text-base font-bold mb-1">{t('cartEmpty')}</h3>
-                    <p className={'text-xs mb-6 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('cartEmptyDesc')}</p>
-                    <button 
-                      onClick={() => setActiveTab('catalog')}
-                      className="px-6 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold active:scale-95 transition"
-                    >
-                      {t('catalogTitle')} →
-                    </button>
+                  <h2 className="text-lg font-black tracking-tight leading-snug">
+                    {t('heroTitle')}
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    {t('heroDesc')}
+                  </p>
+                  <button 
+                    onClick={() => setActiveTab('catalog')}
+                    className="mt-4 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black transition active:scale-95 shadow-lg shadow-rose-950/40 flex items-center gap-2"
+                  >
+                    <span>{t('heroBtn')}</span>
+                    <Icon name="arrow-right" className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 5. Featured / Popular Products Grid */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Icon name="tag" className="w-4 h-4 text-rose-500" />
+                    <h3 className="text-sm font-black tracking-tight">{t('popularTitle')}</h3>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Tovarlar ro'yxati */}
-                    <div className="space-y-2">
-                      {cart.map(item => (
-                        <div key={item.id} className={'p-3 rounded-2xl flex items-center justify-between border ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200')}>
-                          <div className="flex items-center gap-3">
-                            <img src={item.image_url} className="w-12 h-12 rounded-xl object-cover bg-slate-800/10" />
+                  <button 
+                    onClick={() => setActiveTab('catalog')} 
+                    className="text-xs font-bold text-rose-500 hover:underline"
+                  >
+                    {t('viewAll')} ({products.length})
+                  </button>
+                </div>
+
+                {/* 2-Column Responsive Product Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {products.slice(0, 8).map(prod => {
+                    const isFav = favorites.includes(prod.id);
+                    const inCartItem = cart.find(it => it.id === prod.id);
+
+                    return (
+                      <div 
+                        key={prod.id}
+                        onClick={() => setSelectedProduct(prod)}
+                        className={'rounded-2xl border p-3 flex flex-col justify-between cursor-pointer transition-all active:scale-[0.98] hover:border-rose-500/50 group ' + 
+                          (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}
+                      >
+                        {/* Image Container with Badges */}
+                        <div className="relative aspect-square rounded-xl overflow-hidden mb-2.5 bg-slate-800/10 flex items-center justify-center">
+                          {prod.image_url ? (
+                            <img 
+                              src={prod.image_url} 
+                              alt={prod.name} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition duration-300" 
+                            />
+                          ) : (
+                            <Icon name="package" className="w-10 h-10 text-slate-500 stroke-[1.2]" />
+                          )}
+
+                          {/* Top Condition Badge */}
+                          <span className={'absolute top-2 left-2 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded tracking-wider ' + 
+                            (prod.condition === 'B/U (Ideal)' ? 'bg-amber-500/80 text-white' : 'bg-black/60 text-white backdrop-blur')}>
+                            {prod.condition === 'B/U (Ideal)' ? t('conditionUsed') : t('conditionNew')}
+                          </span>
+
+                          {/* Favorite Heart Button */}
+                          <button 
+                            onClick={(e) => toggleFavorite(prod.id, e)}
+                            className={'absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur transition active:scale-90 ' + 
+                              (isFav ? 'bg-rose-600 text-white' : 'bg-black/40 text-white hover:bg-black/60')}
+                          >
+                            <Icon name={isFav ? "heart-solid" : "heart"} className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Details */}
+                        <div className="flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="text-[10px] font-bold text-rose-500 uppercase tracking-wider line-clamp-1">
+                              {prod.car_model || prod.category || "Universal"}
+                            </div>
+                            <h4 className="text-xs font-bold mt-0.5 line-clamp-2 leading-tight">
+                              {prod.name}
+                            </h4>
+                          </div>
+
+                          <div className="mt-2.5 pt-2 border-t border-slate-800/40 flex items-center justify-between gap-1">
                             <div>
-                              <h4 className="text-xs font-bold line-clamp-1">{item.name}</h4>
-                              <span className="text-xs font-black text-red-500">
-                                {item.new_price.toLocaleString()} {t('som')}
-                              </span>
+                              <div className="text-xs font-black text-rose-500">
+                                {prod.new_price?.toLocaleString()} {t('som')}
+                              </div>
+                              {prod.old_price > prod.new_price && (
+                                <div className="text-[10px] line-through text-slate-500">
+                                  {prod.old_price?.toLocaleString()}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                          <div className={'flex items-center gap-2 border rounded-xl px-2 py-1 ' + (isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200')}>
-                            <button onClick={() => updateQty(item.id, -1)} className="text-xs font-black px-1 text-slate-400 hover:text-red-500">−</button>
-                            <span className="text-xs font-bold">{item.quantity || 1}</span>
-                            <button onClick={() => updateQty(item.id, 1)} className="text-xs font-black px-1 text-slate-400 hover:text-emerald-500">+</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
 
-                    {/* Cross-sell Aromatizator */}
-                    <div 
-                      onClick={() => setAddOnFragrance(!addOnFragrance)}
-                      className={'p-3 rounded-2xl border cursor-pointer transition flex items-center justify-between ' + 
-                        (addOnFragrance 
-                          ? (isDark ? 'bg-red-950/40 border-red-500/40' : 'bg-red-50 border-red-200') 
-                          : (isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'))}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xl">🌸</span>
-                        <div>
-                          <div className="text-xs font-bold leading-tight">{t('aromaPromo')}</div>
-                          <span className={'text-[10px] ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Maxsus xushbo'y avtomobil havosi</span>
-                        </div>
-                      </div>
-                      <input type="checkbox" checked={addOnFragrance} onChange={() => {}} className="w-4 h-4 rounded text-red-600" />
-                    </div>
-
-                    {/* Buyurtma formasi */}
-                    <div className={'p-4 rounded-3xl border space-y-3.5 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                      <h3 className="text-xs font-black uppercase tracking-wider">{t('checkoutInfo')}</h3>
-                      
-                      <div>
-                        <label className={'text-[10px] font-bold block mb-1 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('nameLabel')}</label>
-                        <input 
-                          type="text" 
-                          value={custName}
-                          onChange={e => setCustName(e.target.value)}
-                          placeholder="Azizbek Aliyev"
-                          className={'w-full p-2.5 rounded-xl text-xs border focus:outline-none focus:border-red-500 ' + 
-                            (isDark ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400')}
-                        />
-                      </div>
-
-                      <div>
-                        <label className={'text-[10px] font-bold block mb-1 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('phoneLabel')}</label>
-                        <input 
-                          type="text" 
-                          value={custPhone}
-                          onChange={e => setCustPhone(e.target.value)}
-                          placeholder="+998 90 123 45 67"
-                          className={'w-full p-2.5 rounded-xl text-xs border focus:outline-none focus:border-red-500 font-mono ' + 
-                            (isDark ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400')}
-                        />
-                      </div>
-
-                      {/* 1. Yetkazib berish usuli selektori */}
-                      <div>
-                        <label className={'text-[10px] font-bold block mb-1.5 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('deliveryTypeLabel')}</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button 
-                            type="button"
-                            onClick={() => setDeliveryType('delivery')}
-                            className={'py-2 px-2.5 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ' + 
-                              (deliveryType === 'delivery' 
-                                ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-950/30' 
-                                : (isDark ? 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'))}
-                          >
-                            {t('deliveryCourier')}
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => setDeliveryType('pickup')}
-                            className={'py-2 px-2.5 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ' + 
-                              (deliveryType === 'pickup' 
-                                ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-950/30' 
-                                : (isDark ? 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'))}
-                          >
-                            {t('deliveryPickup')}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Manzil yoki Samovivoz tafsiloti (GPS Lokatsiya bilan) */}
-                      {deliveryType === 'delivery' ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <label className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('addressLabel')}</label>
-                            <span className="text-[9px] text-slate-400">Qo'lda yozing yoki GPS tugmasini bosing</span>
-                          </div>
-                          
-                          <input 
-                            type="text" 
-                            value={custAddress}
-                            onChange={e => setCustAddress(e.target.value)}
-                            placeholder="Tuman, ko'cha, uy / xonadon raqami"
-                            className={'w-full p-2.5 rounded-xl text-xs border focus:outline-none focus:border-red-500 ' + 
-                              (isDark ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400')}
-                          />
-
-                          {/* 📍 GPS Hozirgi Lokatsiyani olish tugmasi */}
-                          <button
-                            type="button"
-                            onClick={handleGetLocation}
-                            disabled={isLocating}
-                            className={'w-full py-2 px-3 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer ' + 
-                              (geoCoord 
-                                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400' 
-                                : (isDark ? 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'))}
-                          >
-                            {isLocating ? (
-                              <>
-                                <span className="animate-spin">⏳</span>
-                                <span>🛰 Lokatsiyangiz aniqlanmoqda...</span>
-                              </>
-                            ) : geoCoord ? (
-                              <>
-                                <span>✅</span>
-                                <span>📍 GPS aniqlandi ({geoCoord.lat.toFixed(4)}, {geoCoord.lng.toFixed(4)})</span>
-                              </>
-                            ) : (
-                              <>
-                                <span>📍</span>
-                                <span>Hozirgi turgan joyimni aniqlash (GPS)</span>
-                              </>
-                            )}
-                          </button>
-
-                          {geoCoord && (
-                            <div className="flex items-center gap-2 pt-0.5">
-                              <a 
-                                href={"https://maps.google.com/?q=" + geoCoord.lat + "," + geoCoord.lng} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="flex-1 py-1 px-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] text-blue-500 text-center font-bold hover:underline"
-                              >
-                                Google Xaritada ko'rish ↗
-                              </a>
-                              <a 
-                                href={"https://yandex.uz/maps/?pt=" + geoCoord.lng + "," + geoCoord.lat + "&z=17"} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="flex-1 py-1 px-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] text-amber-500 text-center font-bold hover:underline"
-                              >
-                                Yandex Kartada ko'rish ↗
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className={'p-3.5 rounded-2xl border space-y-2 ' + (isDark ? 'bg-slate-950 border-slate-800 text-slate-300' : 'bg-red-50/60 border-red-100 text-slate-800')}>
-                          <div className="flex items-start gap-2.5">
-                            <span className="text-base">📍</span>
-                            <div className="text-[11px] leading-relaxed">
-                              <span className="font-bold block text-xs">{t('pickupStoreAddress')}</span>
-                              <span className={'text-[10px] block mt-0.5 ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{settings.store_address || t('pickupStoreBadge')}</span>
-                            </div>
-                          </div>
-                          {/* Yandex va Google Maps tugmalari */}
-                          <div className="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-800">
-                            <a 
-                              href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://yandex.uz/maps/?text=' + encodeURIComponent(settings.store_address || "Toshkent Farhod avto bozori"))}
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="flex-1 py-1.5 px-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 border border-amber-500/30 text-[10px] font-black flex items-center justify-center gap-1 transition active:scale-95"
-                            >
-                              <span>🗺</span>
-                              <span>Yandex Karta</span>
-                            </a>
-                            <a 
-                              href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(settings.store_address || "Toshkent Farhod avto bozori"))}
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="flex-1 py-1.5 px-2.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-500 border border-blue-500/30 text-[10px] font-black flex items-center justify-center gap-1 transition active:scale-95"
-                            >
-                              <span>📍</span>
-                              <span>Google Maps</span>
-                            </a>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 2. To'lov usuli selektori */}
-                      <div>
-                        <label className={'text-[10px] font-bold block mb-1.5 ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('paymentMethodLabel')}</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button 
-                            type="button"
-                            onClick={() => setPaymentMethod('card')}
-                            className={'py-2 px-2.5 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ' + 
-                              (paymentMethod === 'card' 
-                                ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-950/30' 
-                                : (isDark ? 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'))}
-                          >
-                            {t('payCard')}
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => setPaymentMethod('cash')}
-                            className={'py-2 px-2.5 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1.5 ' + 
-                              (paymentMethod === 'cash' 
-                                ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-950/30' 
-                                : (isDark ? 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'))}
-                          >
-                            {t('payCash')}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Karta vidjeti yoki Naqd to'lov izohi */}
-                      {paymentMethod === 'card' ? (
-                        <div className={'p-3.5 rounded-2xl border space-y-2.5 ' + (isDark ? 'bg-slate-950 border-slate-800' : 'bg-gradient-to-br from-slate-900 to-slate-800 text-white')}>
-                          {availableCards.length > 1 && (
-                            <div className="flex gap-1.5 pb-1 border-b border-white/10">
-                              {availableCards.map((c, idx) => (
-                                <button
-                                  key={c.type}
-                                  type="button"
-                                  onClick={() => setSelectedCardIdx(idx)}
-                                  className={'px-2.5 py-1 rounded-xl text-[10px] font-black border transition ' + 
-                                    (selectedCardIdx === idx 
-                                      ? 'bg-red-600 border-red-500 text-white shadow-sm' 
-                                      : 'bg-white/10 border-white/10 text-slate-300 hover:bg-white/20')}
-                                >
-                                  {c.badge}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-extrabold text-[10px] tracking-wider uppercase text-amber-400">
-                              {(availableCards[selectedCardIdx] || availableCards[0]).badge} TO'LOV
-                            </span>
-                            <span className="text-[10px] bg-red-600 px-1.5 py-0.5 rounded text-white font-black">Click / Payme</span>
-                          </div>
-                          <div className="flex items-center justify-between pt-0.5">
-                            <span className="font-mono font-black text-sm tracking-wider">
-                              {(availableCards[selectedCardIdx] || availableCards[0]).number}
-                            </span>
                             <button 
-                              type="button" 
-                              onClick={() => copyCardNumber((availableCards[selectedCardIdx] || availableCards[0]).number)}
-                              className={'px-2.5 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 ' + 
-                                (cardCopied ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white')}
+                              onClick={(e) => addToCart(prod, e)}
+                              className={'w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-90 ' + 
+                                (inCartItem ? 'bg-emerald-600 text-white' : 'bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-950/30')}
                             >
-                              {cardCopied ? t('cardCopiedText') : t('cardCopyBtn')}
+                              <Icon name={inCartItem ? "check" : "plus"} className="w-4 h-4" />
                             </button>
                           </div>
-                          <div className="flex items-center justify-between text-[10px] text-slate-300 border-t border-white/10 pt-1.5">
-                            <span>{(availableCards[selectedCardIdx] || availableCards[0]).holder}</span>
-                            <span className="text-emerald-400 font-bold">0% komissiya</span>
-                          </div>
-                          <p className="text-[10px] text-slate-400 leading-tight pt-0.5">{t('cardPaymentHint')}</p>
                         </div>
-                      ) : (
-                        <div className={'p-3 rounded-2xl border flex items-center gap-2.5 ' + (isDark ? 'bg-slate-950/70 border-slate-800 text-slate-300' : 'bg-amber-50/80 border-amber-200 text-slate-800')}>
-                          <span className="text-xl">💵</span>
-                          <p className="text-[11px] leading-tight font-medium">{t('cashPaymentHint')}</p>
-                        </div>
-                      )}
-
-                      <div className={'pt-3 border-t flex items-center justify-between ' + (isDark ? 'border-slate-800' : 'border-slate-200')}>
-                        <span className="text-xs font-bold">{t('totalPayment')}</span>
-                        <span className="text-base font-black text-red-500">
-                          {cartTotal.toLocaleString()} {t('som')}
-                        </span>
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </main>
+          )}
 
-                      {/* 🛠 O'RNATIB BERISH XIZMATI (Do'konning o'z ustaxonasi - Farhod bozori) */}
-                      <div className={'p-4 rounded-2xl border mb-3 ' + (isDark ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                        <label className="flex items-center justify-between cursor-pointer">
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-xl">🛠</span>
-                            <div>
-                              <div className="text-xs font-black text-slate-900 dark:text-white">O'rnatib berish servisi kerakmi?</div>
-                              <div className="text-[10px] text-slate-400">Farhod bozoridagi do'konimiz ustaxonasida o'rnatib beriladi</div>
-                            </div>
-                          </div>
-                          <input 
-                            type="checkbox" 
-                            checked={needsInstallation} 
-                            onChange={e => setNeedsInstallation(e.target.checked)}
-                            className="w-4 h-4 accent-red-600 rounded cursor-pointer"
-                          />
-                        </label>
-
-                        {needsInstallation && (
-                          <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
-                            <div className="p-3 rounded-xl border bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-xs space-y-1">
-                              <div className="font-black text-red-600 dark:text-red-400 flex items-center gap-1.5">
-                                <span>🏬</span>
-                                <span>kuzavnoy.uzz Ustaxonasi (Farhod bozori)</span>
-                              </div>
-                              <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                                Xarid qilingan detal do'konimizning Farhod bozoridagi professional ustaxonasida 100% kafolat bilan o'rnatib beriladi.
-                              </p>
-                              <div className="text-[10px] text-slate-400 pt-1">
-                                📍 <b>Manzil:</b> Toshkent sh., Farhod avto bozori, kuzavnoy.uzz do'koni va servisi
-                              </div>
-                            </div>
-
-                            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-between">
-                              <span>🎁 10% chegirma promokodingiz:</span>
-                              <span className="font-mono font-black text-xs bg-emerald-600 text-white px-2 py-0.5 rounded">KUZAVNOY-USTA</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <button 
-                        onClick={handleCheckout}
-                        disabled={isSubmitting}
-                        className="w-full py-3.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-black rounded-xl text-xs shadow-lg shadow-red-900/40 active:scale-95 transition"
-                      >
-                        {isSubmitting ? t('submitting') : t('confirmOrder')}
-                      </button>
-                    </div>
-                  </div>
+          {/* ==================================================== */}
+          {/* TAB 2: KATALOG (CATALOG & SEARCH PAGE) */}
+          {/* ==================================================== */}
+          {activeTab === 'catalog' && (
+            <main className="flex-1 max-w-4xl w-full mx-auto px-4 pt-3.5 space-y-3.5">
+              {/* Search Bar with Instant Clear */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-rose-500">
+                  <Icon name="search" className="w-4 h-4" />
+                </div>
+                <input 
+                  type="text" 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder={t('searchPlaceholder')}
+                  className={'w-full pl-10 pr-10 py-2.5 rounded-2xl border text-xs font-medium focus:outline-none focus:border-rose-500 transition ' + 
+                    (isDark ? 'bg-[#101726] border-[#1F2B45] text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400')}
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white"
+                  >
+                    <Icon name="close" className="w-4 h-4" />
+                  </button>
                 )}
               </div>
-            )}
 
-            {/* 4. PROFIL TAB */}
-            {activeTab === 'profile' && (
-              <div className="px-4 pt-3">
-                {/* PROFIL SARLAVHASI (Sodda va qulay) */}
-                <div className="mb-4">
-                  <h1 className="text-lg font-black mb-0.5">{t('profileTitle')}</h1>
-                  <p className={'text-xs ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>{t('profileDesc')}</p>
+              {/* Category Pills Bar */}
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {allCategoryPills.map(catName => {
+                  const isSel = selectedCategory === catName;
+                  return (
+                    <button
+                      key={catName}
+                      onClick={() => setSelectedCategory(catName)}
+                      className={'px-3.5 py-1.5 rounded-xl border text-xs font-bold whitespace-nowrap transition active:scale-95 ' + 
+                        (isSel 
+                          ? 'bg-rose-600 text-white border-rose-500 shadow-sm' 
+                          : (isDark ? 'bg-[#101726] border-[#1F2B45] text-slate-300' : 'bg-white border-slate-200 text-slate-700'))}
+                    >
+                      {catName}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sorting & Filter Controls Bar */}
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="text-xs text-slate-400 font-semibold">
+                  Topildi: <span className="text-rose-500 font-bold">{filteredProducts.length}</span> ta mahsulot
                 </div>
 
-                {/* User Info Card */}
-                <div className={'p-4 rounded-3xl border mb-5 flex items-center gap-3.5 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                  <div className="w-12 h-12 rounded-2xl bg-red-600/20 text-red-500 flex items-center justify-center font-black text-lg">
-                    {(tgUser.first_name || 'U')[0]}
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black">{tgUser.first_name || t('driver')} {tgUser.last_name || ''}</h3>
-                    <span className="text-[10px] text-slate-500 font-mono">ID: {tgUser.id}</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  {/* Sorting Select */}
+                  <select 
+                    value={sortBy}
+                    onChange={e => setSortBy(e.target.value)}
+                    className={'text-xs font-bold py-1.5 px-2.5 rounded-xl border focus:outline-none ' + 
+                      (isDark ? 'bg-[#101726] border-[#1F2B45] text-slate-300' : 'bg-white border-slate-200 text-slate-700')}
+                  >
+                    <option value="popular">{t('sortPopular')}</option>
+                    <option value="price_asc">{t('sortPriceAsc')}</option>
+                    <option value="price_desc">{t('sortPriceDesc')}</option>
+                    <option value="newest">{t('sortNewest')}</option>
+                  </select>
+
+                  {/* Condition Filter Toggle */}
+                  <button 
+                    onClick={() => setSelectedCondition(prev => prev === 'all' ? 'new' : prev === 'new' ? 'used' : 'all')}
+                    className={'px-2.5 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1 ' + 
+                      (selectedCondition !== 'all' ? 'bg-rose-600 text-white border-rose-500' : (isDark ? 'bg-[#101726] border-[#1F2B45] text-slate-400' : 'bg-white border-slate-200 text-slate-600'))}
+                  >
+                    <Icon name="sliders" className="w-3.5 h-3.5" />
+                    <span>{selectedCondition === 'all' ? 'Barchasi' : selectedCondition === 'new' ? t('conditionNew') : t('conditionUsed')}</span>
+                  </button>
                 </div>
+              </div>
 
-                {/* RASMIY IJTIMOIY TARMOQLARIMIZ (Zamonaviy 2x2 Grid) */}
-                <div className={'p-4 rounded-3xl border mb-5 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm')}>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">🌐</span>
-                      <h3 className="text-xs font-black uppercase tracking-wider">{t('socialChannels')}</h3>
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-bold">Obuna bo'ling</span>
+              {/* Products Grid */}
+              {filteredProducts.length === 0 ? (
+                <div className="text-center py-16 px-4">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-800/40 text-slate-500 mx-auto flex items-center justify-center mb-3">
+                    <Icon name="search" className="w-6 h-6 stroke-[1.5]" />
                   </div>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {/* Instagram */}
-                    {settings.instagram_active !== false && (
-                      <a 
-                        href={settings.instagram_url || "https://instagram.com/kuzavnoy.uzz"} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="p-3 rounded-2xl bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-purple-600/10 hover:from-amber-500/20 hover:via-rose-500/20 hover:to-purple-600/20 border border-rose-500/30 flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
-                      >
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white shadow-sm flex-shrink-0">
-                          <InstagramIcon className="w-4 h-4 fill-white" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-[11px] font-black block truncate text-slate-900 dark:text-white">Instagram</span>
-                          <span className="text-[9px] text-rose-500 font-bold block truncate">@kuzavnoy.uzz</span>
-                        </div>
-                      </a>
-                    )}
-
-                    {/* YouTube */}
-                    {settings.youtube_active !== false && (
-                      <a 
-                        href={settings.youtube_url || "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G"} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="p-3 rounded-2xl bg-red-500/10 hover:bg-red-500/15 border border-red-500/30 flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
-                      >
-                        <div className="w-8 h-8 rounded-xl bg-[#FF0000] flex items-center justify-center text-white shadow-sm flex-shrink-0">
-                          <YouTubeIcon className="w-4 h-4 fill-white" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-[11px] font-black block truncate text-slate-900 dark:text-white">YouTube</span>
-                          <span className="text-[9px] text-red-500 font-bold block truncate">@kuzavnoyuzz</span>
-                        </div>
-                      </a>
-                    )}
-
-                    {/* Telegram Kanal */}
-                    {settings.telegram_active !== false && (
-                      <a 
-                        href={settings.telegram_channel_url || "https://t.me/kuzavnoy_uz"} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="p-3 rounded-2xl bg-sky-500/10 hover:bg-sky-500/15 border border-sky-500/30 flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
-                      >
-                        <div className="w-8 h-8 rounded-xl bg-[#229ED9] flex items-center justify-center text-white shadow-sm flex-shrink-0">
-                          <TelegramIcon className="w-4 h-4 fill-white" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-[11px] font-black block truncate text-slate-900 dark:text-white">Telegram</span>
-                          <span className="text-[9px] text-sky-500 font-bold block truncate">Kanalimiz ↗</span>
-                        </div>
-                      </a>
-                    )}
-
-                    {/* Rasmiy Veb-Sayt */}
-                    {settings.website_active && (
-                      <a 
-                        href={settings.website_url || "https://kuzavnoy.uz"} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="p-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/30 flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
-                      >
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-sm flex-shrink-0">
-                          <WebsiteIcon className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-[11px] font-black block truncate text-slate-900 dark:text-white">Veb-sayt</span>
-                          <span className="text-[9px] text-emerald-500 font-bold block truncate">kuzavnoy.uz ↗</span>
-                        </div>
-                      </a>
-                    )}
-                  </div>
+                  <h4 className="text-sm font-bold">Mahsulot topilmadi</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+                    Kiritilgan so'rov yoki filtrlar bo'yicha ehtiyot qism mavjud emas. Filtrlarni tozalab ko'ring.
+                  </p>
+                  <button 
+                    onClick={() => { setSearchQuery(''); setSelectedCategory('Barchasi'); setSelectedCondition('all'); }}
+                    className="mt-4 px-4 py-2 bg-rose-600/10 border border-rose-500/30 text-rose-400 rounded-xl text-xs font-bold"
+                  >
+                    Filtrlarni tiklash
+                  </button>
                 </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {filteredProducts.map(prod => {
+                    const isFav = favorites.includes(prod.id);
+                    const inCartItem = cart.find(it => it.id === prod.id);
 
-                {/* Do'kon bilan aloqa (3 ta telefon raqami va Manzil) */}
-                <div className={'p-4 rounded-3xl border mb-5 ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm')}>
-                  <h4 className="text-xs font-black uppercase tracking-wider mb-2.5 text-emerald-500 flex items-center gap-1.5">
-                    <span>📞</span>
-                    <span>Aloqa & Qo'ng'iroq Markazi</span>
-                  </h4>
+                    return (
+                      <div 
+                        key={prod.id}
+                        onClick={() => setSelectedProduct(prod)}
+                        className={'rounded-2xl border p-3 flex flex-col justify-between cursor-pointer transition active:scale-[0.98] hover:border-rose-500/50 ' + 
+                          (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}
+                      >
+                        <div className="relative aspect-square rounded-xl overflow-hidden mb-2.5 bg-slate-800/10 flex items-center justify-center">
+                          {prod.image_url ? (
+                            <img src={prod.image_url} alt={prod.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Icon name="package" className="w-10 h-10 text-slate-500 stroke-[1.2]" />
+                          )}
+                          <span className={'absolute top-2 left-2 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded tracking-wider ' + 
+                            (prod.condition === 'B/U (Ideal)' ? 'bg-amber-500/80 text-white' : 'bg-black/60 text-white backdrop-blur')}>
+                            {prod.condition === 'B/U (Ideal)' ? t('conditionUsed') : t('conditionNew')}
+                          </span>
+                          <button 
+                            onClick={(e) => toggleFavorite(prod.id, e)}
+                            className={'absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur transition active:scale-90 ' + 
+                              (isFav ? 'bg-rose-600 text-white' : 'bg-black/40 text-white')}
+                          >
+                            <Icon name={isFav ? "heart-solid" : "heart"} className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="text-[10px] font-bold text-rose-500 uppercase tracking-wider line-clamp-1">
+                              {prod.car_model || prod.category || "Universal"}
+                            </div>
+                            <h4 className="text-xs font-bold mt-0.5 line-clamp-2 leading-tight">
+                              {prod.name}
+                            </h4>
+                          </div>
+
+                          <div className="mt-2.5 pt-2 border-t border-slate-800/40 flex items-center justify-between gap-1">
+                            <div>
+                              <div className="text-xs font-black text-rose-500">
+                                {prod.new_price?.toLocaleString()} {t('som')}
+                              </div>
+                              {prod.old_price > prod.new_price && (
+                                <div className="text-[10px] line-through text-slate-500">
+                                  {prod.old_price?.toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+
+                            <button 
+                              onClick={(e) => addToCart(prod, e)}
+                              className={'w-8 h-8 rounded-xl flex items-center justify-center transition active:scale-90 ' + 
+                                (inCartItem ? 'bg-emerald-600 text-white' : 'bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-950/30')}
+                            >
+                              <Icon name={inCartItem ? "check" : "plus"} className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </main>
+          )}
+
+          {/* ==================================================== */}
+          {/* TAB 3: SAVATCHA & BUYURTMA (CART & CHECKOUT) */}
+          {/* ==================================================== */}
+          {activeTab === 'cart' && (
+            <main className="flex-1 max-w-2xl w-full mx-auto px-4 pt-3.5 space-y-4">
+              <h2 className="text-lg font-black tracking-tight flex items-center gap-2">
+                <Icon name="cart" className="w-5 h-5 text-rose-500" />
+                <span>{t('cartTitle')}</span>
+                {cartCount > 0 && <span className="text-xs font-bold text-slate-400">({cartCount} ta)</span>}
+              </h2>
+
+              {cart.length === 0 ? (
+                <div className="text-center py-16 px-4">
+                  <div className="w-14 h-14 rounded-2xl bg-slate-800/30 text-slate-500 mx-auto flex items-center justify-center mb-3">
+                    <Icon name="cart" className="w-7 h-7 stroke-[1.5]" />
+                  </div>
+                  <h3 className="text-base font-bold">{t('cartEmpty')}</h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+                    {t('cartEmptyDesc')}
+                  </p>
+                  <button 
+                    onClick={() => setActiveTab('catalog')}
+                    className="mt-5 px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black transition active:scale-95 shadow-lg shadow-rose-950/40"
+                  >
+                    Katalogga o'tish →
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Cart Items List */}
                   <div className="space-y-2.5">
-                    {/* Asosiy telefon (agar faol bo'lsa) */}
-                    {settings.phone1_active !== false && settings.phone && (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Asosiy raqam</span>
-                          <span className={'text-xs font-mono font-black ' + (isDark ? 'text-slate-200' : 'text-slate-800')}>{settings.phone}</span>
-                        </div>
-                        <a 
-                          href={'tel:' + settings.phone.replace(/\s+/g, '')}
-                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-black shadow transition active:scale-95 flex items-center gap-1"
-                        >
-                          <span>📞</span>
-                          <span>{t('callStore')}</span>
-                        </a>
-                      </div>
-                    )}
-
-                    {/* Qo'shimcha telefon 1 (agar faol bo'lsa) */}
-                    {settings.phone2_active !== false && settings.phone2 && (
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <div>
-                          <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Call-markaz / Savdo</span>
-                          <span className={'text-xs font-mono font-black ' + (isDark ? 'text-slate-200' : 'text-slate-800')}>{settings.phone2}</span>
-                        </div>
-                        <a 
-                          href={'tel:' + settings.phone2.replace(/\s+/g, '')}
-                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-black shadow transition active:scale-95 flex items-center gap-1"
-                        >
-                          <span>📞</span>
-                          <span>{t('callStore')}</span>
-                        </a>
-                      </div>
-                    )}
-
-                    {/* Qo'shimcha telefon 2 (agar faol bo'lsa) */}
-                    {settings.phone3_active !== false && settings.phone3 && (
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <div>
-                          <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Texnik yordam & Konsultatsiya</span>
-                          <span className={'text-xs font-mono font-black ' + (isDark ? 'text-slate-200' : 'text-slate-800')}>{settings.phone3}</span>
-                        </div>
-                        <a 
-                          href={'tel:' + settings.phone3.replace(/\s+/g, '')}
-                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-black shadow transition active:scale-95 flex items-center gap-1"
-                        >
-                          <span>📞</span>
-                          <span>{t('callStore')}</span>
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                  <div className={'text-xs mt-3 pt-3 border-t space-y-2 ' + (isDark ? 'border-slate-800' : 'border-slate-100')}>
-                    <div className="flex items-start gap-2">
-                      <span className="text-base leading-none mt-0.5">📍</span>
-                      <div>
-                        <span className={'text-[10px] font-bold block ' + (isDark ? 'text-slate-400' : 'text-slate-500')}>Do'konimiz manzili:</span>
-                        <span className={'text-xs font-black ' + (isDark ? 'text-slate-200' : 'text-slate-800')}>
-                          {settings.store_address || "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori"}
-                        </span>
-                      </div>
-                    </div>
-                    {/* Yandex Karta va Google Maps tugmalari */}
-                    <div className="flex items-center gap-2 pt-1">
-                      <a 
-                        href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://yandex.uz/maps/?text=' + encodeURIComponent(settings.store_address || "Toshkent Farhod avto bozori"))}
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex-1 py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 text-[11px] font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
+                    {cart.map(item => (
+                      <div 
+                        key={item.id}
+                        className={'p-3 rounded-2xl border flex items-center gap-3 ' + 
+                          (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}
                       >
-                        <span>🗺</span>
-                        <span>Yandex Karta</span>
-                      </a>
-                      <a 
-                        href={settings.store_location_url && settings.store_location_url.trim() ? settings.store_location_url : ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(settings.store_address || "Toshkent Farhod avto bozori"))}
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex-1 py-2 px-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30 text-[11px] font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm"
-                      >
-                        <span>📍</span>
-                        <span>Google Maps</span>
-                      </a>
-                    </div>
-                  </div>
-                </div>
-
-                <h3 className="text-xs font-black uppercase tracking-wider mb-2.5">{t('ordersHistory')}</h3>
-                
-                {userOrders.length === 0 ? (
-                  <div className={'p-8 text-center rounded-2xl border text-xs ' + (isDark ? 'bg-slate-900/40 border-slate-800 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-400')}>
-                    {t('noOrders')}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {userOrders.map(o => (
-                      <div key={o.id} className={'p-3.5 rounded-2xl border ' + (isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200')}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-black">#{o.id}</span>
-                          <span className={'text-[10px] font-extrabold px-2 py-0.5 rounded-md ' + 
-                            (o.status === 'Yetkazildi' ? 'bg-emerald-500/20 text-emerald-400' : 
-                            (o.status === 'Bekor qilindi' ? 'bg-rose-500/20 text-rose-400' : 
-                            (o.status === 'Jarayonda' ? 'bg-sky-500/20 text-sky-400' : 'bg-amber-500/20 text-amber-400')))}>
-                            {o.status}
-                          </span>
+                        {/* Thumbnail */}
+                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-800/20 shrink-0 flex items-center justify-center">
+                          {item.image_url ? (
+                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Icon name="package" className="w-6 h-6 text-slate-500 stroke-[1.5]" />
+                          )}
                         </div>
 
-                        {/* Buyurtma Holat Bannerni Ko'rsatish (Barcha 5 ta holat) */}
-                        <div className={'p-2.5 rounded-xl mb-2 text-[11px] font-bold flex items-center gap-2 border ' + 
-                          (o.status === 'Jarayonda' ? (isDark ? 'bg-sky-950/60 border-sky-800/50 text-sky-300' : 'bg-sky-50 border-sky-200 text-sky-800') :
-                           o.status === 'Tayyorlandi' ? (isDark ? 'bg-indigo-950/60 border-indigo-800/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-800') :
-                           o.status === 'Yetkazildi' ? (isDark ? 'bg-emerald-950/60 border-emerald-800/50 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800') :
-                           o.status === 'Bekor qilindi' ? (isDark ? 'bg-rose-950/60 border-rose-800/50 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-800') :
-                           (isDark ? 'bg-amber-950/60 border-amber-800/50 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'))}>
-                          <span className="text-base">
-                            {o.status === 'Jarayonda' ? '✅' : (o.status === 'Tayyorlandi' ? '📦' : (o.status === 'Yetkazildi' ? '🎉' : (o.status === 'Bekor qilindi' ? '🔴' : '⏳')))}
-                          </span>
-                          <span className="leading-tight">
-                            {o.status === 'Jarayonda' ? 'Buyurtmangiz qabul qilindi va tayyorlanmoqda! 🚗💨' : 
-                            (o.status === 'Tayyorlandi' ? 'Buyurtmangiz tayyorlandi va yetkazishga shay! 📦' : 
-                            (o.status === 'Yetkazildi' ? 'Buyurtma yetkazildi! Xaridingiz uchun rahmat!' : 
-                            (o.status === 'Bekor qilindi' ? 'Buyurtma bekor qilingan.' : "Buyurtma ko'rib chiqilmoqda (Kutilmoqda)...")))}
-                          </span>
+                        {/* Title & Price */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] font-bold text-rose-500 uppercase">{item.category}</div>
+                          <h4 className="text-xs font-bold truncate leading-tight mt-0.5">{item.name}</h4>
+                          <div className="text-xs font-black text-rose-500 mt-1">
+                            {item.new_price?.toLocaleString()} {t('som')}
+                          </div>
                         </div>
 
-                        {/* Bosqichma-bosqich vizual status-treker */}
-                        {o.status !== 'Bekor qilindi' && (
-                          <div className={'px-3 py-2.5 rounded-2xl mb-2.5 border ' + (isDark ? 'bg-slate-950 border-slate-800/80' : 'bg-slate-50 border-slate-200')}>
-                            <div className="flex items-center justify-between text-[9px] font-black text-slate-400">
-                              <span className={o.status === 'Kutilmoqda' ? 'text-amber-400 font-extrabold' : 'text-emerald-500'}>1. Qabul</span>
-                              <span>→</span>
-                              <span className={o.status === 'Jarayonda' ? 'text-sky-400 font-extrabold' : (['Tayyorlandi', 'Yetkazildi'].includes(o.status) ? 'text-emerald-500' : '')}>2. Yig'ilmoqda</span>
-                              <span>→</span>
-                              <span className={o.status === 'Tayyorlandi' ? 'text-indigo-400 font-extrabold' : (o.status === 'Yetkazildi' ? 'text-emerald-500' : '')}>3. Kuryer yo'lda</span>
-                              <span>→</span>
-                              <span className={o.status === 'Yetkazildi' ? 'text-emerald-500 font-extrabold' : ''}>4. Yetkazildi</span>
-                            </div>
-                            <div className="w-full bg-slate-700/20 h-1.5 rounded-full overflow-hidden mt-1.5">
-                              <div 
-                                className="h-full bg-red-600 rounded-full transition-all duration-500"
-                                style={{
-                                  width: o.status === 'Kutilmoqda' ? '25%' : 
-                                         (o.status === 'Jarayonda' ? '50%' : 
-                                         (o.status === 'Tayyorlandi' ? '75%' : '100%'))
-                                }}
-                              />
-                            </div>
+                        {/* Quantity Controls & Remove */}
+                        <div className="flex items-center gap-2">
+                          <div className={'flex items-center rounded-xl border text-xs font-bold ' + 
+                            (isDark ? 'bg-[#162033] border-[#1F2B45]' : 'bg-slate-50 border-slate-200')}>
+                            <button 
+                              onClick={() => updateCartQty(item.id, -1)}
+                              className="w-7 h-7 flex items-center justify-center hover:text-rose-500 active:scale-90"
+                            >
+                              <Icon name="minus" className="w-3 h-3" />
+                            </button>
+                            <span className="w-6 text-center font-extrabold">{item.quantity}</span>
+                            <button 
+                              onClick={() => updateCartQty(item.id, 1)}
+                              className="w-7 h-7 flex items-center justify-center hover:text-rose-500 active:scale-90"
+                            >
+                              <Icon name="plus" className="w-3 h-3" />
+                            </button>
                           </div>
-                        )}
 
-                        {/* O'rnatish servisi nishoni */}
-                        {o.needs_installation && (
-                          <div className={'p-2 rounded-xl mb-2 text-[10px] font-bold border flex items-center gap-1.5 ' + (isDark ? 'bg-amber-950/30 border-amber-800/40 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800')}>
-                            <span>🛠</span>
-                            <span><b>O'rnatish:</b> {o.installation_service || 'Kuzavnoy Hamkor Servis'} (10% chegirma kod: KUZAVNOY-USTA)</span>
-                          </div>
-                        )}
-                        <div className={'text-[11px] mb-2 leading-relaxed ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>
-                          {(o.items || []).map(i => i.name + ' x ' + (i.quantity || 1)).join(', ')}
-                        </div>
-                        <div className={'pt-2 border-t flex justify-between items-center ' + (isDark ? 'border-slate-800' : 'border-slate-100')}>
-                          <span className="text-xs font-black text-red-500">{o.total_price?.toLocaleString()} {t('som')}</span>
-                          <div className="flex items-center gap-2">
-                            {o.status === 'Kutilmoqda' && (
-                              <button 
-                                onClick={() => handleCancelOrder(o.id)}
-                                title="Buyurtmani bekor qilish"
-                                className="text-[10px] px-2 py-0.5 rounded-lg border border-rose-500/30 text-rose-500 hover:bg-rose-500 hover:text-white font-extrabold transition flex items-center gap-1"
-                              >
-                                <span>✕</span>
-                                <span>{t('cancelOrderBtn')}</span>
-                              </button>
-                            )}
-                            {o.items && o.items[0] && (
-                              <button 
-                                onClick={() => {
-                                  const prod = products.find(p => p.id === o.items[0].id) || o.items[0];
-                                  setSelectedProduct(prod);
-                                }}
-                                className="text-[10px] text-amber-500 font-extrabold hover:underline flex items-center gap-0.5"
-                              >
-                                <span>⭐️</span>
-                                <span>{t('writeReview')}</span>
-                              </button>
-                            )}
-                            <span className="text-[10px] text-slate-500">{new Date(o.created_at).toLocaleDateString()}</span>
-                          </div>
+                          <button 
+                            onClick={() => removeFromCart(item.id)}
+                            className="p-1.5 text-slate-500 hover:text-rose-500 transition"
+                            title="O'chirish"
+                          >
+                            <Icon name="trash" className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            )}
 
-            {/* BOTTOM SHEET PRODUCT MODAL */}
-            {selectedProduct && (
-              <div onClick={() => setSelectedProduct(null)} className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end justify-center p-0 animate-fade-in">
-                <div onClick={e => e.stopPropagation()} className={'w-full max-w-md rounded-t-3xl p-5 border-t max-h-[88vh] overflow-y-auto no-scrollbar animate-slide-up relative flex flex-col ' + 
-                  (isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900')}>
-                  
-                  {/* Top Bar with Pull Handle & Circular Close Button */}
-                  <div className="flex items-center justify-between mb-3 sticky top-0 bg-inherit z-20 pb-1">
-                    <div className="w-12 h-1 bg-slate-400/40 rounded-full mx-auto" />
+                  {/* Workshop Installation Service Checkbox */}
+                  <div 
+                    onClick={() => setNeedsInstallation(!needsInstallation)}
+                    className={'p-3.5 rounded-2xl border cursor-pointer transition flex items-start gap-3 ' + 
+                      (needsInstallation 
+                        ? 'bg-rose-600/10 border-rose-500/40' 
+                        : (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200'))}
+                  >
+                    <div className={'w-5 h-5 rounded-lg border flex items-center justify-center mt-0.5 transition ' + 
+                      (needsInstallation ? 'bg-rose-600 border-rose-500 text-white' : 'border-slate-600')}>
+                      {needsInstallation && <Icon name="check" className="w-3.5 h-3.5" />}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold flex items-center gap-1.5">
+                        <Icon name="wrench" className="w-3.5 h-3.5 text-rose-500" />
+                        <span>{t('workshopServiceTitle')}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                        {t('workshopServiceDesc')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Promo Code Input */}
+                  <div className={'p-3 rounded-2xl border flex gap-2 ' + 
+                    (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                    <input 
+                      type="text" 
+                      value={promoInput}
+                      onChange={e => setPromoInput(e.target.value)}
+                      placeholder={t('promoPlaceholder')}
+                      className={'flex-1 px-3 py-2 rounded-xl border text-xs focus:outline-none uppercase font-bold ' + 
+                        (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                    />
                     <button 
-                      type="button"
-                      onClick={() => setSelectedProduct(null)}
-                      title="Yopish"
-                      className="absolute right-0 top-0 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center font-bold text-sm transition active:scale-90 shadow-sm cursor-pointer"
+                      onClick={handleApplyPromo}
+                      className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition active:scale-95"
                     >
-                      ✕
+                      {t('applyPromo')}
                     </button>
                   </div>
-                  
-                  <div className="relative aspect-video w-full rounded-2xl overflow-hidden mb-3.5 bg-slate-800/10">
-                    <img src={selectedProduct.image_url} className="w-full h-full object-cover" />
-                    <span className="absolute top-2 left-2 text-[10px] font-bold bg-black/70 backdrop-blur px-2 py-0.5 rounded text-white">
-                      {selectedProduct.category}
-                    </span>
-                  </div>
 
-                  <h2 className="text-base font-black mb-1">{selectedProduct.name}</h2>
-                  <p className={'text-xs mb-3 leading-relaxed ' + (isDark ? 'text-slate-400' : 'text-slate-600')}>{selectedProduct.description}</p>
+                  {/* Order Pricing Breakdown */}
+                  <div className={'p-4 rounded-2xl border space-y-2 text-xs ' + 
+                    (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                    <div className="flex justify-between text-slate-400">
+                      <span>{t('subtotal')}</span>
+                      <span className="font-bold text-slate-200">{cartSubtotal.toLocaleString()} {t('som')}</span>
+                    </div>
 
-                  {/* Mahsulot Holati, Kafolati, Stock va Rangi Bloki */}
-                  <div className={'grid grid-cols-2 gap-2 mb-3.5 p-2.5 rounded-2xl border text-xs ' + 
-                    (isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{selectedProduct.condition === 'B/U (Ideal)' ? '🔄' : '✨'}</span>
-                      <div>
-                        <span className="text-[10px] block text-slate-400 font-semibold">{t('condition')}</span>
-                        <span className={'text-xs font-black ' + (selectedProduct.condition === 'B/U (Ideal)' ? 'text-amber-500' : 'text-emerald-500')}>
-                          {selectedProduct.condition === 'B/U (Ideal)' ? t('conditionUsed') : t('conditionNew')}
-                        </span>
+                    {cartDiscount > 0 && (
+                      <div className="flex justify-between text-emerald-400 font-bold">
+                        <span>{t('discount')} (-10%)</span>
+                        <span>-{cartDiscount.toLocaleString()} {t('som')}</span>
                       </div>
+                    )}
+
+                    <div className="flex justify-between text-slate-400">
+                      <span>{t('delivery')}</span>
+                      <span className="text-emerald-400 font-bold">{t('deliveryFree')}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">🛡</span>
-                      <div>
-                        <span className="text-[10px] block text-slate-400 font-semibold">{t('warrantyTitle')}</span>
-                        <span className="text-xs font-black text-sky-400">{t('warrantyText')}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-800">
-                      <span className="text-base">{(selectedProduct.stock === undefined || selectedProduct.stock > 0) ? '📦' : '🔴'}</span>
-                      <div>
-                        <span className="text-[10px] block text-slate-400 font-semibold">Omborda mavjud:</span>
-                        <span className={'text-xs font-black ' + ((selectedProduct.stock === undefined || selectedProduct.stock > 0) ? 'text-emerald-500' : 'text-rose-500')}>
-                          {(selectedProduct.stock !== undefined && selectedProduct.stock !== null) 
-                            ? (selectedProduct.stock > 0 ? (selectedProduct.stock + " dona") : "Tugagan") 
-                            : "Mavjud"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-800">
-                      <span className="text-base">🎨</span>
-                      <div>
-                        <span className="text-[10px] block text-slate-400 font-semibold">Rangi:</span>
-                        <span className="text-xs font-black text-slate-700 dark:text-slate-300">
-                          {selectedProduct.color || "Universal"}
-                        </span>
-                      </div>
+
+                    <div className="pt-2 border-t border-slate-800/40 flex justify-between items-baseline">
+                      <span className="text-sm font-extrabold">{t('total')}</span>
+                      <span className="text-lg font-black text-rose-500">{cartTotal.toLocaleString()} {t('som')}</span>
                     </div>
                   </div>
 
-                  {/* Xususiyatlar (6-7 ta boy detallar) */}
-                  {selectedProduct.details && (
-                    <div className={'p-3.5 rounded-2xl mb-4 space-y-2 ' + (isDark ? 'bg-slate-950 border border-slate-800' : 'bg-slate-50 border border-slate-100')}>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-red-500 block mb-1">{t('specsTitle')}</span>
-                      {(Array.isArray(selectedProduct.details) ? selectedProduct.details : JSON.parse(selectedProduct.details || '[]')).map((d, i) => (
-                        <div key={i} className="text-xs flex items-start gap-2 leading-relaxed">
-                          <span className="text-red-500 font-bold mt-0.5">•</span>
-                          <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{d}</span>
+                  {/* Checkout CTA Button */}
+                  <button 
+                    onClick={() => setCheckoutStep(1)}
+                    className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black text-sm transition active:scale-95 shadow-xl shadow-rose-950/40 flex items-center justify-center gap-2"
+                  >
+                    <span>{t('checkoutBtn')}</span>
+                    <Icon name="arrow-right" className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* ========================================= */}
+              {/* CHECKOUT MODAL / STEPPER */}
+              {/* ========================================= */}
+              {checkoutStep === 1 && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto p-3 sm:p-4 flex items-center justify-center min-h-screen">
+                  <div className={'w-full max-w-lg my-auto rounded-3xl border shadow-2xl p-5 space-y-4 max-h-[92vh] flex flex-col overflow-hidden ' + 
+                    (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-white border-slate-200 text-slate-900')}>
+                    
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-800/40">
+                      <h3 className="text-base font-black flex items-center gap-2">
+                        <Icon name="truck" className="w-5 h-5 text-rose-500" />
+                        <span>{t('checkoutTitle')}</span>
+                      </h3>
+                      <button 
+                        onClick={() => setCheckoutStep(0)}
+                        className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center font-bold"
+                      >
+                        <Icon name="close" className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleSubmitOrder} className="flex-1 overflow-y-auto space-y-3.5 text-xs pr-1">
+                      {/* Name & Phone */}
+                      <div>
+                        <label className="block mb-1 font-semibold text-slate-400">{t('nameLabel')} *</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={custName}
+                          onChange={e => setCustName(e.target.value)}
+                          placeholder="Azizbek Rahimov"
+                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
+                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block mb-1 font-semibold text-slate-400">{t('phoneLabel')} *</label>
+                        <input 
+                          type="tel" 
+                          required
+                          value={custPhone}
+                          onChange={e => setCustPhone(e.target.value)}
+                          placeholder="+998 90 123 45 67"
+                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
+                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        />
+                      </div>
+
+                      {/* Delivery Mode Choice */}
+                      <div>
+                        <label className="block mb-1.5 font-semibold text-slate-400">{t('deliveryType')}</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDeliveryType('delivery')}
+                            className={'p-2.5 rounded-xl border text-left font-bold transition flex items-center gap-2 ' + 
+                              (deliveryType === 'delivery' ? 'bg-rose-600/10 border-rose-500 text-rose-400' : 'bg-[#090D16] border-[#1F2B45] text-slate-400')}
+                          >
+                            <Icon name="truck" className="w-4 h-4" />
+                            <span>Yetkazib berish</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setDeliveryType('pickup')}
+                            className={'p-2.5 rounded-xl border text-left font-bold transition flex items-center gap-2 ' + 
+                              (deliveryType === 'pickup' ? 'bg-rose-600/10 border-rose-500 text-rose-400' : 'bg-[#090D16] border-[#1F2B45] text-slate-400')}
+                          >
+                            <Icon name="package" className="w-4 h-4" />
+                            <span>Olib ketish (Farhod)</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Address / GPS */}
+                      {deliveryType === 'delivery' && (
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="font-semibold text-slate-400">{t('addressLabel')} *</label>
+                            <button 
+                              type="button"
+                              onClick={handleDetectGps}
+                              disabled={isLocating}
+                              className="text-[11px] font-bold text-rose-500 flex items-center gap-1 hover:underline"
+                            >
+                              <Icon name="map-pin" className="w-3.5 h-3.5" />
+                              <span>{isLocating ? "Aniqlanmoqda..." : t('detectGps')}</span>
+                            </button>
+                          </div>
+                          <textarea 
+                            rows="2"
+                            required
+                            value={custAddress}
+                            onChange={e => setCustAddress(e.target.value)}
+                            placeholder="Toshkent sh., Chilonzor tumani, 9-mavze, 12-uy"
+                            className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
+                              (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                          />
+                        </div>
+                      )}
+
+                      {/* Payment Method */}
+                      <div>
+                        <label className="block mb-1.5 font-semibold text-slate-400">{t('paymentType')}</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod('card')}
+                            className={'p-2.5 rounded-xl border text-left font-bold transition flex items-center gap-2 ' + 
+                              (paymentMethod === 'card' ? 'bg-rose-600/10 border-rose-500 text-rose-400' : 'bg-[#090D16] border-[#1F2B45] text-slate-400')}
+                          >
+                            <Icon name="tag" className="w-4 h-4" />
+                            <span>Karta (Uzcard / Humo)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod('cash')}
+                            className={'p-2.5 rounded-xl border text-left font-bold transition flex items-center gap-2 ' + 
+                              (paymentMethod === 'cash' ? 'bg-rose-600/10 border-rose-500 text-rose-400' : 'bg-[#090D16] border-[#1F2B45] text-slate-400')}
+                          >
+                            <Icon name="shield-check" className="w-4 h-4" />
+                            <span>Qabulda (Naqd)</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Card Information Box if Card selected */}
+                      {paymentMethod === 'card' && (
+                        <div className="p-3 rounded-xl border border-dashed border-rose-500/30 bg-rose-950/10 space-y-1.5 text-[11px]">
+                          <div className="font-bold text-rose-400">Do'kon karta raqami:</div>
+                          <div className="flex items-center justify-between font-mono font-bold text-xs bg-black/40 p-2 rounded-lg">
+                            <span>{settings.card_number || "8600 5304 1234 5678"}</span>
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard?.writeText(settings.card_number || "8600530412345678");
+                                showToast("Karta raqami nusxalandi");
+                              }}
+                              className="text-rose-400 hover:text-white"
+                            >
+                              <Icon name="copy" className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="text-slate-400">{settings.card_holder || "AZIMXON (KUZAVNOY.UZZ)"}</div>
+                        </div>
+                      )}
+
+                      {/* Total to pay */}
+                      <div className="pt-2 flex justify-between items-baseline font-black text-sm">
+                        <span>To'lov summasi:</span>
+                        <span className="text-rose-500 text-base">{cartTotal.toLocaleString()} {t('som')}</span>
+                      </div>
+
+                      <button 
+                        type="submit"
+                        disabled={isSubmittingOrder}
+                        className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black text-xs transition active:scale-95 shadow-lg shadow-rose-950/40"
+                      >
+                        {isSubmittingOrder ? "Yuborilmoqda..." : t('confirmOrder')}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Order Placed Success Modal */}
+              {checkoutStep === 2 && createdOrder && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                  <div className={'w-full max-w-sm rounded-3xl border shadow-2xl p-6 text-center space-y-4 ' + 
+                    (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-white border-slate-200 text-slate-900')}>
+                    <div className="w-14 h-14 rounded-full bg-emerald-600/20 text-emerald-500 flex items-center justify-center mx-auto">
+                      <Icon name="check-circle" className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black">{t('orderSuccessTitle')}</h3>
+                      <p className="text-xs text-slate-400 mt-1">{t('orderSuccessDesc')}</p>
+                      <div className="mt-3 p-2.5 rounded-xl bg-black/40 font-mono text-xs font-bold text-rose-400">
+                        {t('orderId')}: #{createdOrder.id}
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setCheckoutStep(0);
+                        setCreatedOrder(null);
+                        setActiveTab('profile');
+                        setProfileTab('orders');
+                      }}
+                      className="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black text-xs transition active:scale-95"
+                    >
+                      Buyurtmani ko'rish →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </main>
+          )}
+
+          {/* ==================================================== */}
+          {/* TAB 4: PROFIL & SOZLAMALAR (PROFILE DASHBOARD) */}
+          {/* ==================================================== */}
+          {activeTab === 'profile' && (
+            <main className="flex-1 max-w-3xl w-full mx-auto px-4 pt-3.5 space-y-4">
+              {/* User Identity Card */}
+              <div className={'rounded-2xl border p-4 flex items-center justify-between ' + 
+                (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-600 to-rose-800 text-white flex items-center justify-center font-black text-lg shadow-md shadow-rose-950/30">
+                    {tgUser?.first_name ? tgUser.first_name[0].toUpperCase() : 'K'}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold tracking-tight">
+                      {tgUser ? ((tgUser.first_name || '') + ' ' + (tgUser.last_name || '')).trim() : "Mijoz (Telegram)"}
+                    </h3>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      {tgUser?.username ? '@' + tgUser.username : "ID: " + (tgUser?.id || "Kuzavnoy Mijoz")}
+                    </div>
+                  </div>
+                </div>
+
+                <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg bg-rose-600/10 text-rose-400 border border-rose-500/20">
+                  Faol Mijoz
+                </span>
+              </div>
+
+              {/* Subtabs: Buyurtmalarim | Yoqtirganlar | Sozlamalar */}
+              <div className={'p-1 rounded-2xl border flex text-xs font-bold ' + 
+                (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                <button 
+                  onClick={() => setProfileTab('orders')}
+                  className={'flex-1 py-2 rounded-xl transition flex items-center justify-center gap-1.5 ' + 
+                    (profileTab === 'orders' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-400 hover:text-white')}
+                >
+                  <Icon name="truck" className="w-3.5 h-3.5" />
+                  <span>{t('ordersTab')}</span>
+                </button>
+
+                <button 
+                  onClick={() => setProfileTab('favorites')}
+                  className={'flex-1 py-2 rounded-xl transition flex items-center justify-center gap-1.5 ' + 
+                    (profileTab === 'favorites' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-400 hover:text-white')}
+                >
+                  <Icon name="heart" className="w-3.5 h-3.5" />
+                  <span>{t('favoritesTab')}</span>
+                </button>
+
+                <button 
+                  onClick={() => setProfileTab('settings')}
+                  className={'flex-1 py-2 rounded-xl transition flex items-center justify-center gap-1.5 ' + 
+                    (profileTab === 'settings' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-400 hover:text-white')}
+                >
+                  <Icon name="sliders" className="w-3.5 h-3.5" />
+                  <span>{t('settingsTab')}</span>
+                </button>
+              </div>
+
+              {/* Subtab 1: Orders */}
+              {profileTab === 'orders' && (
+                <div className="space-y-3">
+                  {userOrders.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500 text-xs">
+                      <Icon name="package" className="w-8 h-8 mx-auto mb-2 opacity-40 stroke-[1.5]" />
+                      <p>{t('noOrders')}</p>
+                    </div>
+                  ) : (
+                    userOrders.map(order => {
+                      const items = Array.isArray(order.items) ? order.items : (typeof order.items === 'string' ? JSON.parse(order.items || '[]') : []);
+                      const statusColor = order.status === 'Yetkazildi' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+
+                      return (
+                        <div 
+                          key={order.id}
+                          className={'p-4 rounded-2xl border space-y-3 ' + 
+                            (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-black">Buyurtma #{order.id}</div>
+                            <span className={'text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-lg border ' + statusColor}>
+                              {order.status || t('orderStatusNew')}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-slate-400 space-y-1">
+                            {items.map((it, idx) => (
+                              <div key={idx} className="flex justify-between">
+                                <span className="truncate max-w-[200px]">{it.name} (x{it.quantity || 1})</span>
+                                <span className="font-bold text-slate-300">{((it.new_price || 0) * (it.quantity || 1)).toLocaleString()} {t('som')}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-800/40 flex items-center justify-between text-xs">
+                            <div className="font-black text-rose-500">
+                              Jami: {order.total_price?.toLocaleString()} {t('som')}
+                            </div>
+
+                            <button 
+                              onClick={() => setSelectedReceipt(order)}
+                              className="text-[11px] font-bold text-slate-300 hover:text-white flex items-center gap-1 border border-slate-700 px-2.5 py-1 rounded-lg"
+                            >
+                              <Icon name="receipt" className="w-3.5 h-3.5 text-rose-500" />
+                              <span>{t('viewReceipt')}</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* Subtab 2: Favorites */}
+              {profileTab === 'favorites' && (
+                <div>
+                  {favorites.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500 text-xs">
+                      <Icon name="heart" className="w-8 h-8 mx-auto mb-2 opacity-40 stroke-[1.5]" />
+                      <p>{t('noFavorites')}</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {products.filter(p => favorites.includes(p.id)).map(prod => (
+                        <div 
+                          key={prod.id}
+                          onClick={() => setSelectedProduct(prod)}
+                          className={'rounded-2xl border p-3 flex flex-col justify-between cursor-pointer transition active:scale-[0.98] ' + 
+                            (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}
+                        >
+                          <div className="aspect-square rounded-xl overflow-hidden mb-2 bg-slate-800/10">
+                            {prod.image_url && <img src={prod.image_url} alt={prod.name} className="w-full h-full object-cover" />}
+                          </div>
+                          <div className="text-xs font-bold line-clamp-1">{prod.name}</div>
+                          <div className="text-xs font-black text-rose-500 mt-1">{prod.new_price?.toLocaleString()} {t('som')}</div>
                         </div>
                       ))}
                     </div>
                   )}
+                </div>
+              )}
 
-                  {/* Mijozlar Sharhlari & Reyting (Task 3) */}
-                  <div className={'pt-4 border-t mb-4 ' + (isDark ? 'border-slate-800' : 'border-slate-100')}>
-                    <div className="flex items-center justify-between mb-2.5">
-                      <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
-                        <span>⭐️</span>
-                        <span>{t('reviewsTitle')}</span>
-                      </h4>
-                      <span className={'text-[10px] font-bold px-2 py-0.5 rounded-full ' + (isDark ? 'bg-amber-950/60 text-amber-400 border border-amber-800/40' : 'bg-amber-50 text-amber-700 border border-amber-200')}>
-                        {reviews.filter(r => r.product_id === selectedProduct.id).length > 0 
-                          ? (reviews.filter(r => r.product_id === selectedProduct.id).reduce((s, r) => s + r.rating, 0) / reviews.filter(r => r.product_id === selectedProduct.id).length).toFixed(1) + " ★" 
-                          : "5.0 ★"}
-                      </span>
-                    </div>
-
-                    {/* Mavjud sharhlar */}
-                    <div className="space-y-2 mb-3 max-h-36 overflow-y-auto no-scrollbar">
-                      {reviews.filter(r => r.product_id === selectedProduct.id).length === 0 ? (
-                        <p className={'text-[11px] italic ' + (isDark ? 'text-slate-500' : 'text-slate-400')}>{t('noReviews')}</p>
-                      ) : (
-                        reviews.filter(r => r.product_id === selectedProduct.id).map(r => (
-                          <div key={r.id} className={'p-2.5 rounded-xl border ' + (isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                            <div className="flex items-center justify-between text-[10px] mb-1">
-                              <span className="font-bold">{r.customer_name}</span>
-                              <span className="text-amber-500">{"★".repeat(r.rating || 5)}</span>
-                            </div>
-                            <p className={'text-[11px] leading-relaxed ' + (isDark ? 'text-slate-300' : 'text-slate-700')}>{r.comment}</p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Sharh qoldirish formasi */}
-                    <div className={'p-3 rounded-2xl border space-y-2 ' + (isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-50 border-slate-200')}>
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-bold">{t('writeReview')}:</span>
-                        <div className="flex gap-1 text-sm cursor-pointer">
-                          {[1, 2, 3, 4, 5].map(star => (
-                            <button 
-                              key={star} 
-                              type="button" 
-                              onClick={() => setNewRating(star)}
-                              className={newRating >= star ? "text-amber-400 scale-110 transition" : "text-slate-400 hover:text-amber-300"}
-                            >
-                              ★
-                            </button>
-                          ))}
-                        </div>
+              {/* Subtab 3: Settings & Store Information */}
+              {profileTab === 'settings' && (
+                <div className="space-y-3 text-xs">
+                  {/* Store Address & Hours */}
+                  <div className={'p-4 rounded-2xl border space-y-3 ' + 
+                    (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-rose-600/10 text-rose-500 flex items-center justify-center shrink-0">
+                        <Icon name="map-pin" className="w-4 h-4" />
                       </div>
-                      <input 
-                        type="text" 
-                        value={newComment} 
-                        onChange={e => setNewComment(e.target.value)} 
-                        placeholder={t('reviewPlaceholder')} 
-                        className={'w-full p-2 text-xs rounded-xl border focus:outline-none focus:border-red-500 ' + 
-                          (isDark ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-600' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400')}
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => handleSendReview(selectedProduct.id)} 
-                        disabled={isSendingReview}
-                        className="w-full py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold active:scale-95 transition"
-                      >
-                        {isSendingReview ? "..." : t('sendReview')}
-                      </button>
+                      <div>
+                        <div className="font-extrabold">{t('storeAddressTitle')}</div>
+                        <div className="text-slate-400 mt-0.5 leading-relaxed">{settings.store_address}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3 pt-2 border-t border-slate-800/40">
+                      <div className="w-8 h-8 rounded-xl bg-rose-600/10 text-rose-500 flex items-center justify-center shrink-0">
+                        <Icon name="clock" className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-extrabold">{t('storeHoursTitle')}</div>
+                        <div className="text-slate-400 mt-0.5">{settings.store_hours} (Dam olish kunlarisiz)</div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2">
-                    <div>
-                      {selectedProduct.old_price && (
-                        <span className="text-[10px] text-slate-400 line-through block">
-                          {selectedProduct.old_price.toLocaleString()} {t('som')}
-                        </span>
-                      )}
-                      <span className="text-base font-black text-red-500">
-                        {selectedProduct.new_price.toLocaleString()} {t('som')}
-                      </span>
+                  {/* Phones with 1-click calling */}
+                  <div className={'p-4 rounded-2xl border space-y-2.5 ' + 
+                    (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                    <div className="font-extrabold flex items-center gap-2 mb-1">
+                      <Icon name="phone" className="w-4 h-4 text-rose-500" />
+                      <span>{t('supportPhoneTitle')}</span>
                     </div>
 
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => { 
-                          if (selectedProduct.stock === undefined || selectedProduct.stock === null || selectedProduct.stock > 0) {
-                            addToCart(selectedProduct); 
-                            setSelectedProduct(null); 
-                          }
-                        }}
-                        disabled={selectedProduct.stock !== undefined && selectedProduct.stock !== null && selectedProduct.stock <= 0}
-                        className={'px-5 py-2.5 font-bold rounded-xl text-xs shadow-lg active:scale-95 transition ' +
-                          (selectedProduct.stock !== undefined && selectedProduct.stock !== null && selectedProduct.stock <= 0
-                            ? 'bg-slate-300 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                            : 'bg-red-600 hover:bg-red-500 text-white cursor-pointer')}
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-slate-300">{settings.phone || "+998 90 123 45 67"}</span>
+                      <a 
+                        href={'tel:' + (settings.phone || "+998901234567").replace(/\s+/g, '')}
+                        className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold text-[11px]"
                       >
-                        {(selectedProduct.stock !== undefined && selectedProduct.stock !== null && selectedProduct.stock <= 0) ? "Omborda qolmagan" : (t('add') + " 🛒")}
-                      </button>
-                      <button 
-                        onClick={() => setSelectedProduct(null)}
-                        className={'px-3.5 py-2.5 font-bold rounded-xl text-xs cursor-pointer ' + (isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600')}
-                      >
-                        {t('close')}
-                      </button>
+                        {t('callNow')}
+                      </a>
                     </div>
+
+                    {settings.phone2 && (
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/40">
+                        <span className="font-mono text-slate-300">{settings.phone2}</span>
+                        <a 
+                          href={'tel:' + settings.phone2.replace(/\s+/g, '')}
+                          className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold text-[11px]"
+                        >
+                          {t('callNow')}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </main>
+          )}
 
-            {/* BOTTOM FIXED NAVIGATION BAR */}
-            <nav className={'fixed bottom-0 left-0 right-0 max-w-md mx-auto border-t backdrop-blur z-40 px-4 py-2 flex items-center justify-around transition-colors ' + 
-              (isDark ? 'bg-slate-950/90 border-slate-800' : 'bg-white/90 border-slate-200')}>
-              
+          {/* ==================================================== */}
+          {/* DIGITAL RECEIPT MODAL */}
+          {/* ==================================================== */}
+          {selectedReceipt && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-full max-w-sm rounded-3xl bg-white text-slate-900 p-5 shadow-2xl space-y-3 font-mono text-xs">
+                <div className="flex justify-between items-center pb-2 border-b-2 border-dashed border-slate-300">
+                  <span className="font-black text-sm">kuzavnoy.uzz CHEK</span>
+                  <button onClick={() => setSelectedReceipt(null)} className="text-slate-500 hover:text-slate-900 transition">
+                    <Icon name="close" className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="text-[11px] text-slate-600">
+                  <div>Do'kon: Farhod avto ehtiyot qismlar bozori</div>
+                  <div>Buyurtma ID: #{selectedReceipt.id}</div>
+                  <div>Mijoz: {selectedReceipt.customer_name}</div>
+                  <div>Tel: {selectedReceipt.phone}</div>
+                </div>
+                <div className="py-2 border-y-2 border-dashed border-slate-300 space-y-1">
+                  {(Array.isArray(selectedReceipt.items) ? selectedReceipt.items : (typeof selectedReceipt.items === 'string' ? JSON.parse(selectedReceipt.items || '[]') : [])).map((it, idx) => (
+                    <div key={idx} className="flex justify-between">
+                      <span className="truncate max-w-[180px]">{it.name} x{it.quantity || 1}</span>
+                      <span className="font-bold">{((it.new_price || 0) * (it.quantity || 1)).toLocaleString()} so'm</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between font-black text-sm pt-1">
+                  <span>JAMI:</span>
+                  <span className="text-rose-600">{selectedReceipt.total_price?.toLocaleString()} so'm</span>
+                </div>
+                <div className="text-center text-[10px] text-slate-500 pt-2">
+                  Xaridingiz uchun rahmat!
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ==================================================== */}
+          {/* STICKY BOTTOM NAVIGATION BAR (THUMB-FRIENDLY, NO EMOJIS) */}
+          {/* ==================================================== */}
+          <nav className={'fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur-xl px-2 py-1.5 ' + 
+            (isDark ? 'bg-[#090D16]/95 border-[#1F2B45]' : 'bg-white/95 border-slate-200')}>
+            <div className="max-w-md mx-auto flex items-center justify-around">
+              {/* Home Tab */}
               <button 
-                onClick={() => setActiveTab('home')}
-                className={'flex flex-col items-center gap-0.5 transition ' + (activeTab === 'home' ? 'text-red-500 font-bold' : (isDark ? 'text-slate-500' : 'text-slate-400'))}
+                onClick={() => { setActiveTab('home'); setSelectedCategory('Barchasi'); }}
+                className={'flex flex-col items-center justify-center w-16 py-1 transition-all active:scale-90 ' + 
+                  (activeTab === 'home' ? 'text-rose-500 font-extrabold' : 'text-slate-400 hover:text-white')}
               >
-                <span className="text-lg">🏠</span>
-                <span className="text-[10px]">{t('navHome')}</span>
+                <Icon name="home" className={'w-5 h-5 mb-0.5 ' + (activeTab === 'home' ? 'stroke-[2.2]' : 'stroke-[1.6]')} />
+                <span className="text-[10px] tracking-tight">{t('navHome')}</span>
               </button>
 
+              {/* Catalog Tab */}
               <button 
                 onClick={() => setActiveTab('catalog')}
-                className={'flex flex-col items-center gap-0.5 transition ' + (activeTab === 'catalog' ? 'text-red-500 font-bold' : (isDark ? 'text-slate-500' : 'text-slate-400'))}
+                className={'flex flex-col items-center justify-center w-16 py-1 transition-all active:scale-90 ' + 
+                  (activeTab === 'catalog' ? 'text-rose-500 font-extrabold' : 'text-slate-400 hover:text-white')}
               >
-                <span className="text-lg">🔍</span>
-                <span className="text-[10px]">{t('navCatalog')}</span>
+                <Icon name="grid" className={'w-5 h-5 mb-0.5 ' + (activeTab === 'catalog' ? 'stroke-[2.2]' : 'stroke-[1.6]')} />
+                <span className="text-[10px] tracking-tight">{t('navCatalog')}</span>
               </button>
 
+              {/* Cart Tab with Dynamic Counter Badge */}
               <button 
                 onClick={() => setActiveTab('cart')}
-                className={'relative flex flex-col items-center gap-0.5 transition ' + (activeTab === 'cart' ? 'text-red-500 font-bold' : (isDark ? 'text-slate-500' : 'text-slate-400'))}
+                className={'flex flex-col items-center justify-center w-16 py-1 transition-all active:scale-90 relative ' + 
+                  (activeTab === 'cart' ? 'text-rose-500 font-extrabold' : 'text-slate-400 hover:text-white')}
               >
-                <span className="text-lg">🛒</span>
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-2 bg-red-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                    {cartCount}
-                  </span>
-                )}
-                <span className="text-[10px]">{t('navCart')}</span>
+                <div className="relative">
+                  <Icon name="cart" className={'w-5 h-5 mb-0.5 ' + (activeTab === 'cart' ? 'stroke-[2.2]' : 'stroke-[1.6]')} />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2 bg-rose-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-md">
+                      {cartCount > 9 ? '9+' : cartCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] tracking-tight">{t('navCart')}</span>
               </button>
 
+              {/* Profile Tab */}
               <button 
                 onClick={() => setActiveTab('profile')}
-                className={'flex flex-col items-center gap-0.5 transition ' + (activeTab === 'profile' ? 'text-red-500 font-bold' : (isDark ? 'text-slate-500' : 'text-slate-400'))}
+                className={'flex flex-col items-center justify-center w-16 py-1 transition-all active:scale-90 ' + 
+                  (activeTab === 'profile' ? 'text-rose-500 font-extrabold' : 'text-slate-400 hover:text-white')}
               >
-                <span className="text-lg">👤</span>
-                <span className="text-[10px]">{t('navProfile')}</span>
+                <Icon name="user" className={'w-5 h-5 mb-0.5 ' + (activeTab === 'profile' ? 'stroke-[2.2]' : 'stroke-[1.6]')} />
+                <span className="text-[10px] tracking-tight">{t('navProfile')}</span>
               </button>
-            </nav>
-
-          </div>
+            </div>
+          </nav>
         </div>
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    // Mount React App
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
   </script>
 </body>
 </html>`;

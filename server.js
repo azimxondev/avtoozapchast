@@ -4174,6 +4174,7 @@ function getMiniAppHtml() {
       const [returnOrderId, setReturnOrderId] = useState(null);
       const [showReviewModal, setShowReviewModal] = useState(false);
       const [showMapModal, setShowMapModal] = useState(false);
+      const [showSupportModal, setShowSupportModal] = useState(false);
 
       // Wallet, VIP & Mechanic Mode
       const [wallet, setWallet] = useState({ balance: 0, total_spent: 0, vip_tier: "Kumush" });
@@ -5431,18 +5432,103 @@ function getMiniAppHtml() {
             )}
           </main>
 
-          {/* Floating Telegram Support Button */}
+          {/* Floating Support Button */}
           <div className="fixed bottom-20 right-4 z-40">
-            <a
-              href="https://t.me/kuzavnoy_admin"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center space-x-2 px-3 py-2.5 bg-slate-900/90 hover:bg-slate-800 border border-[#1F2B45] hover:border-slate-500 rounded-full shadow-2xl backdrop-blur-md text-xs font-semibold text-white active:scale-95 transition-all"
+            <button
+              type="button"
+              onClick={() => setShowSupportModal(true)}
+              className="flex items-center space-x-2 px-3.5 py-2.5 bg-[#101726]/95 hover:bg-[#162033] border border-[#1F2B45] hover:border-slate-500 rounded-full shadow-2xl backdrop-blur-md text-xs font-semibold text-white active:scale-95 transition-all"
             >
               <Icon name="telegram" className="w-4 h-4 text-sky-400" />
               <span>Yordam</span>
-            </a>
+            </button>
           </div>
+
+          {/* Support / Yordam Modal */}
+          {showSupportModal && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+              <div className="bg-[#101726] border border-[#1F2B45] w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl animate-slideUp space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[#1F2B45]">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="p-2 bg-sky-950/50 rounded-xl text-sky-400 border border-sky-800/40">
+                      <Icon name="chat" className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white text-sm">Yordam va Qo'llab-quvvatlash</h3>
+                      <p className="text-[11px] text-slate-400">Biz har doim aloqadamiz</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowSupportModal(false)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800/50"
+                  >
+                    <Icon name="close" className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-3 bg-[#090D16] border border-[#1F2B45] rounded-xl text-xs space-y-1">
+                  <div className="text-slate-400">Do'konimiz operatorlari:</div>
+                  <div className="text-slate-200 font-semibold">Har kuni 08:00 dan 19:00 gacha xizmatingizda</div>
+                </div>
+
+                {/* Phone Numbers with 1-click call */}
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Telefon orqali bog'lanish:</div>
+                  <a
+                    href="tel:+998901234567"
+                    onClick={() => showToast("Qo'ng'iroq amalga oshirilmoqda...")}
+                    className="w-full p-3 bg-slate-800/80 hover:bg-slate-700/80 border border-[#1F2B45] hover:border-slate-500 rounded-xl flex items-center justify-between transition-all active:scale-[0.98]"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <div className="p-1.5 bg-emerald-950/60 rounded-lg text-emerald-400 border border-emerald-800/40">
+                        <Icon name="phone" className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-white">+998 90 123 45 67</div>
+                        <div className="text-[10px] text-slate-400">Asosiy operator (Farhod bozori)</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">Qo'ng'iroq</span>
+                  </a>
+
+                  <a
+                    href="tel:+998977654321"
+                    onClick={() => showToast("Qo'ng'iroq amalga oshirilmoqda...")}
+                    className="w-full p-3 bg-slate-800/80 hover:bg-slate-700/80 border border-[#1F2B45] hover:border-slate-500 rounded-xl flex items-center justify-between transition-all active:scale-[0.98]"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <div className="p-1.5 bg-emerald-950/60 rounded-lg text-emerald-400 border border-emerald-800/40">
+                        <Icon name="phone" className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-white">+998 97 765 43 21</div>
+                        <div className="text-[10px] text-slate-400">Omborxona & Kuryerlik</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">Qo'ng'iroq</span>
+                  </a>
+                </div>
+
+                {/* Telegram Chat Button */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      showToast("Xabaringiz operatorga yuborildi! Telegram ochilmoqda...");
+                      setTimeout(() => {
+                        window.open("https://t.me/kuzavnoy_admin", "_blank");
+                        setShowSupportModal(false);
+                      }, 900);
+                    }}
+                    className="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-lg active:scale-[0.98] transition-all flex items-center justify-center space-x-2"
+                  >
+                    <Icon name="telegram" className="w-4 h-4 text-white" />
+                    <span>Telegramda Xabar Qoldirish</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Bottom Fixed Navigation Bar */}
           <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#090D16]/95 border-t border-[#1F2B45] backdrop-blur-lg">

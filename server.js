@@ -2223,6 +2223,26 @@ app.get('/api/categories', async (req, res) => {
 });
 
 // API: Yangi bo'lim/model qo'shish (Admin)
+
+// API: Standart modellarni tiklash (Admin)
+app.post('/api/categories/seed', async (req, res) => {
+  try {
+    const defaults = [
+      ['Cobalt', 'car', 1], ['Gentra / Lacetti', 'car', 2], ['Nexia (1 / 2 / 3)', 'car', 3],
+      ['Spark', 'car', 4], ['Matiz', 'car', 5], ['Damas / Labo', 'van', 6],
+      ['Malibu (1 / 2)', 'car', 7], ['Tracker (1 / 2)', 'car', 8], ['Onix', 'car', 9],
+      ['Monjaro / Xitoy avto', 'zap', 10], ['Kia / Hyundai', 'car', 11], ['Boshqa / Import', 'globe', 12]
+    ];
+    for (const d of defaults) {
+      await pool.query('INSERT INTO categories (name, icon, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING', d);
+    }
+    const refreshed = await pool.query('SELECT * FROM categories ORDER BY display_order ASC, id ASC');
+    res.json(refreshed.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/categories', async (req, res) => {
   try {
     const { name, icon } = req.body;
@@ -3192,7 +3212,9 @@ function getMiniAppHtml() {
       const [isLocating, setIsLocating] = useState(false);
 
       // Profile Subtab & Receipts
-      const [profileTab, setProfileTab] = useState('orders'); // 'orders' | 'favorites' | 'settings'
+      const [profileTab, setProfileTab] = useState('orders');
+      const [activeStory, setActiveStory] = useState(null);
+      const [selectedCardType, setSelectedCardType] = useState('uzcard'); // 'orders' | 'favorites' | 'settings'
       const [selectedReceipt, setSelectedReceipt] = useState(null);
 
       // Refresh & Feedback
@@ -3783,6 +3805,28 @@ function getMiniAppHtml() {
           {/* ==================================================== */}
           {activeTab === 'home' && (
             <main className="flex-1 max-w-4xl w-full mx-auto px-4 pt-3.5 space-y-4">
+              {/* Stories Carousel */}
+              {stories.length > 0 && (
+                <div className="overflow-x-auto no-scrollbar py-1 flex items-center gap-3">
+                  {stories.map(s => (
+                    <div 
+                      key={s.id}
+                      onClick={() => setActiveStory(s)}
+                      className="flex flex-col items-center gap-1.5 cursor-pointer shrink-0 group active:scale-95 transition"
+                    >
+                      <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-amber-500 via-rose-500 to-red-600 shadow-md">
+                        <div className="w-full h-full rounded-full overflow-hidden border-2 border-[#090D16]">
+                          <img src={s.image_url} alt={s.title} className="w-full h-full object-cover group-hover:scale-110 transition duration-300" />
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-center max-w-[68px] truncate text-slate-300">
+                        {s.title}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* 1. Personalized Greeting Section */}
               <div className={'rounded-2xl border p-4 flex flex-col justify-between ' + 
                 (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
@@ -4459,7 +4503,7 @@ function getMiniAppHtml() {
                               (paymentMethod === 'card' ? 'bg-rose-600/10 border-rose-500 text-rose-400' : 'bg-[#090D16] border-[#1F2B45] text-slate-400')}
                           >
                             <Icon name="tag" className="w-4 h-4" />
-                            <span>Karta (Uzcard / Humo)</span>
+                            <span>Karta (Uzcard / Humo / Visa)</span>
                           </button>
 
                           <button
@@ -4474,24 +4518,75 @@ function getMiniAppHtml() {
                         </div>
                       </div>
 
-                      {/* Card Information Box if Card selected */}
-                      {paymentMethod === 'card' && (
-                        <div className="p-3 rounded-xl border border-dashed border-rose-500/30 bg-rose-950/10 space-y-1.5 text-[11px]">
-                          <div className="font-bold text-rose-400">Do'kon karta raqami:</div>
-                          <div className="flex items-center justify-between font-mono font-bold text-xs bg-black/40 p-2 rounded-lg">
-                            <span>{settings.card_number || "8600 5304 1234 5678"}</span>
-                            <button 
-                              type="button"
-                              onClick={() => {
-                                navigator.clipboard?.writeText(settings.card_number || "8600530412345678");
-                                showToast("Karta raqami nusxalandi");
-                              }}
-                              className="text-rose-400 hover:text-white"
-                            >
-                              <Icon name="copy" className="w-3.5 h-3.5" />
-                            </button>
+                      {/* Multi-card Selection Box (Uzcard, Humo, Visa) */}
+                      {paymentMethod === "card" && (
+                        <div className="p-3 rounded-xl border border-dashed border-rose-500/30 bg-rose-950/10 space-y-2.5 text-[11px]">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-rose-400">Karta turini tanlang:</span>
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCardType("uzcard")}
+                                className={"px-2 py-0.5 rounded text-[10px] font-bold border transition " + 
+                                  (selectedCardType === "uzcard" ? "bg-rose-600 border-rose-500 text-white" : "bg-[#101726] border-[#1F2B45] text-slate-400")}
+                              >
+                                Uzcard
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCardType("humo")}
+                                className={"px-2 py-0.5 rounded text-[10px] font-bold border transition " + 
+                                  (selectedCardType === "humo" ? "bg-rose-600 border-rose-500 text-white" : "bg-[#101726] border-[#1F2B45] text-slate-400")}
+                              >
+                                Humo
+                              </button>
+                              {(settings.visa_number || settings.visa_active) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedCardType("visa")}
+                                  className={"px-2 py-0.5 rounded text-[10px] font-bold border transition " + 
+                                    (selectedCardType === "visa" ? "bg-rose-600 border-rose-500 text-white" : "bg-[#101726] border-[#1F2B45] text-slate-400")}
+                                >
+                                  Visa
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-slate-400">{settings.card_holder || "AZIMXON (KUZAVNOY.UZZ)"}</div>
+
+                          {(() => {
+                            const curNum = selectedCardType === "visa"
+                              ? (settings.visa_number || "4000 1234 5678 9010")
+                              : selectedCardType === "humo"
+                                ? (settings.humo_number || "9860 1201 5678 4321")
+                                : (settings.uzcard_number || settings.card_number || "8600 5304 1234 5678");
+
+                            const curHolder = selectedCardType === "visa"
+                              ? (settings.visa_holder || settings.card_holder || "AZIMXON (KUZAVNOY.UZZ)")
+                              : selectedCardType === "humo"
+                                ? (settings.humo_holder || settings.card_holder || "AZIMXON (KUZAVNOY.UZZ)")
+                                : (settings.uzcard_holder || settings.card_holder || "AZIMXON (KUZAVNOY.UZZ)");
+
+                            return (
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between font-mono font-bold text-xs bg-black/40 p-2 rounded-lg">
+                                  <span>{curNum}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard?.writeText(curNum.replace(/\s+/g, ""));
+                                      showToast(selectedCardType.toUpperCase() + " karta raqami nusxalandi!");
+                                    }}
+                                    className="text-rose-400 hover:text-white px-1.5 py-0.5 rounded bg-rose-600/20 text-[10px] font-bold"
+                                  >
+                                    Nusxalash
+                                  </button>
+                                </div>
+                                <div className="text-slate-400 text-[10px]">
+                                  Egasi: <span className="text-slate-200">{curHolder}</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
 
@@ -4945,12 +5040,12 @@ function getAdminPanelHtml() {
         ),
         folder: (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
+            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
           </svg>
         ),
         stories: (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="12" cy="12" r="4"/><line x1="12" x2="12" y1="2" y2="4"/>
+            <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" x2="12.01" y1="3" y2="3"/><line x1="12" x2="12.01" y1="21" y2="21"/>
           </svg>
         ),
         users: (
@@ -4960,23 +5055,62 @@ function getAdminPanelHtml() {
         ),
         broadcast: (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="m3 11 18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
+            <path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
           </svg>
         ),
         settings: (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-            <circle cx="12" cy="12" r="3"/>
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
           </svg>
         ),
-        search: (
+        menu: (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/>
+            <line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>
+          </svg>
+        ),
+        close: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/>
           </svg>
         ),
         refresh: (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>
+            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+          </svg>
+        ),
+        plus: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>
+          </svg>
+        ),
+        edit: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        ),
+        trash: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        ),
+        eye: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+        ),
+        check: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        ),
+        alert: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>
+          </svg>
+        ),
+        dollar: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
           </svg>
         ),
         sun: (
@@ -4989,11 +5123,6 @@ function getAdminPanelHtml() {
             <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
           </svg>
         ),
-        globe: (
-          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
-          </svg>
-        ),
         volume: (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
@@ -5001,52 +5130,17 @@ function getAdminPanelHtml() {
         ),
         'volume-x': (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" x2="17" y1="9" y2="15"/><line x1="17" x2="23" y1="9" y2="15"/>
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>
           </svg>
         ),
         car: (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 10.7 2 11 2 11.3V16c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>
           </svg>
         ),
-        plus: (
+        search: (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14"/><path d="M12 5v14"/>
-          </svg>
-        ),
-        minus: (
-          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14"/>
-          </svg>
-        ),
-        edit: (
-          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-          </svg>
-        ),
-        trash: (
-          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>
-          </svg>
-        ),
-        close: (
-          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-          </svg>
-        ),
-        check: (
-          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        ),
-        receipt: (
-          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-8"/><path d="M16 12h-8"/><path d="M10 16h-2"/>
-          </svg>
-        ),
-        menu: (
-          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="18" y2="18"/>
+            <circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/>
           </svg>
         ),
         tag: (
@@ -5054,49 +5148,50 @@ function getAdminPanelHtml() {
             <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><circle cx="7" cy="7" r=".5" fill="currentColor"/>
           </svg>
         ),
-        shield: (
-          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          </svg>
-        ),
         phone: (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
           </svg>
         ),
-        mapPin: (
+        'credit-card': (
           <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>
+            <rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>
+          </svg>
+        ),
+        shield: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        ),
+        zap: (
+          <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
           </svg>
         )
       };
       return icons[name] || icons.package;
     };
 
-    // Sound chime helper
-    function playChime() {
+    // Audio chime helper
+    const playChime = () => {
       try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
+        osc.type = 'sine';
         osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.5);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
       } catch(e) {}
-    }
+    };
 
-    // ==========================================
-    // 2. MAIN ADMIN APP COMPONENT
-    // ==========================================
-    function AdminApp() {
-      const [lang, setLang] = useState(localStorage.getItem('kuzavnoy_admin_lang') || 'uz');
+    function AdminDashboard() {
+      // Theme State
       const [theme, setTheme] = useState(localStorage.getItem('kuzavnoy_admin_theme') || 'dark');
       const isDark = theme === 'dark';
 
@@ -5118,60 +5213,50 @@ function getAdminPanelHtml() {
         card_number: "8600 5304 1234 5678",
         card_holder: "AZIMXON (KUZAVNOY.UZZ)",
         uzcard_number: "8600 5304 1234 5678",
+        uzcard_holder: "AZIMXON (KUZAVNOY.UZZ)",
+        uzcard_active: true,
         humo_number: "9860 1201 5678 4321",
+        humo_holder: "AZIMXON (KUZAVNOY.UZZ)",
+        humo_active: true,
+        visa_number: "",
+        visa_holder: "AZIMXON (KUZAVNOY.UZZ)",
+        visa_active: true,
         phone: "+998 90 123 45 67",
         phone2: "+998 97 765 43 21",
+        phone3: "",
         instagram_url: "https://instagram.com/kuzavnoy.uzz",
         youtube_url: "https://youtube.com/@kuzavnoyuzz?si=dSHr1EF4AXNE7k6G",
+        telegram_channel_url: "https://t.me/kuzavnoy_uz",
         store_address: "Toshkent sh., Uchtepa tumani, Farhod avto ehtiyot qismlar bozori",
         store_hours: "09:00 - 19:00"
       });
 
       // Filters
       const [orderSearch, setOrderSearch] = useState("");
-      const [orderStatusFilter, setOrderStatusFilter] = useState("Barchasi");
-      const [selectedReceiptOrder, setSelectedReceiptOrder] = useState(null);
-
+      const [orderStatusFilter, setOrderStatusFilter] = useState("all");
       const [productSearch, setProductSearch] = useState("");
       const [productCategoryFilter, setProductCategoryFilter] = useState("Barchasi");
 
-      // Modals
-      const [showProductModal, setShowProductModal] = useState(false);
+      // Modals & Forms
+      const [selectedOrder, setSelectedOrder] = useState(null);
       const [editingProduct, setEditingProduct] = useState(null);
-      const [initialFormData, setInitialFormData] = useState(null);
-      const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
       const [productSaving, setProductSaving] = useState(false);
-      const [productImagePreview, setProductImagePreview] = useState("");
-      const [formData, setFormData] = useState({
-        name: "", category: "Cobalt", new_price: "", old_price: "",
-        image_url: "", description: "", detailsText: "", condition: "Yangi",
-        stock: "10", color: "Universal", car_model: "Cobalt"
-      });
-
-      // Categories Modal / Management
       const [newCategoryName, setNewCategoryName] = useState("");
-      const [newCategoryIcon, setNewCategoryIcon] = useState("car");
-
-      // Stories Modal
-      const [showStoryModal, setShowStoryModal] = useState(false);
-      const [storyFormData, setStoryFormData] = useState({ title: "", tag: "Yangi", description: "", image_url: "" });
-
-      // Broadcast form
-      const [broadcastMsg, setBroadcastMsg] = useState("");
-      const [broadcastPhoto, setBroadcastPhoto] = useState("");
-      const [broadcastSending, setBroadcastSending] = useState(false);
-      const [broadcastResult, setBroadcastResult] = useState(null);
-
-      // Settings saving
       const [settingsSaving, setSettingsSaving] = useState(false);
       const [settingsMessage, setSettingsMessage] = useState("");
 
-      // Apply Dark class to root
-      useEffect(() => {
-        const root = document.documentElement;
-        if (isDark) root.classList.add('dark');
-        else root.classList.remove('dark');
-      }, [isDark]);
+      // Stories State & Form
+      const [storyTitle, setStoryTitle] = useState("");
+      const [storyDescription, setStoryDescription] = useState("");
+      const [storyTag, setStoryTag] = useState("Yangi");
+      const [storyImageUrl, setStoryImageUrl] = useState("");
+      const [storySaving, setStorySaving] = useState(false);
+
+      // Broadcast State
+      const [broadcastText, setBroadcastText] = useState("");
+      const [broadcastImage, setBroadcastImage] = useState("");
+      const [broadcastSending, setBroadcastSending] = useState(false);
+      const [broadcastStatus, setBroadcastStatus] = useState("");
 
       const toggleTheme = () => {
         const next = theme === 'dark' ? 'light' : 'dark';
@@ -5224,7 +5309,9 @@ function getAdminPanelHtml() {
         try {
           const res = await fetch("/api/settings" + (force ? "?_t=" + Date.now() : ""), { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
           const data = await res.json();
-          if (data && data.card_number) setSettings(data);
+          if (data && (data.card_number || data.uzcard_number)) {
+            setSettings(prev => ({ ...prev, ...data }));
+          }
         } catch(e) {}
       };
 
@@ -5279,115 +5366,51 @@ function getAdminPanelHtml() {
           });
           if (res.ok) {
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+            if (selectedOrder && selectedOrder.id === orderId) {
+              setSelectedOrder(prev => ({ ...prev, status: newStatus }));
+            }
           }
         } catch(e) {
-          alert("Holatni yangilashda xatolik");
+          alert("Statusni o'zgartirishda xatolik");
         }
       };
 
-      // Quick Stock Stepper
-      const handleQuickStock = async (prodId, delta) => {
+      // Quick Stock Adjust (+1 / -1)
+      const handleQuickStock = async (prodId, change) => {
+        const prod = products.find(p => p.id === prodId);
+        if (!prod) return;
+        const newStock = Math.max(0, (prod.stock || 0) + change);
         try {
-          const res = await fetch("/api/products/" + prodId + "/quick-stock", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ delta })
+          const res = await fetch('/api/products/' + prodId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stock: newStock })
           });
-          const updated = await res.json();
-          if (updated && updated.id) {
-            setProducts(prev => prev.map(p => p.id === updated.id ? { ...p, stock: updated.stock } : p));
+          if (res.ok) {
+            setProducts(prev => prev.map(p => p.id === prodId ? { ...p, stock: newStock } : p));
           }
-        } catch(e) {
-          alert("Qoldiqni yangilashda xatolik");
-        }
-      };
-
-      // Quick Price Change
-      const handleQuickPrice = async (prod, newPrice) => {
-        const val = parseInt(newPrice);
-        if (isNaN(val) || val <= 0) return;
-        try {
-          await fetch("/api/products/" + prod.id + "/quick-price", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ new_price: val, old_price: prod.old_price })
-          });
-          fetchProducts(true);
         } catch(e) {}
       };
 
-      // Delete Product
-      const handleDeleteProduct = async (id) => {
-        if (!confirm("Haqiqatdan ham ushbu ehtiyot qismni o'chirmoqchimisiz?")) return;
-        try {
-          await fetch("/api/products/" + id, { method: "DELETE" });
-          fetchProducts(true);
-        } catch(e) {
-          alert("O'chirishda xatolik");
-        }
-      };
-
-      // Unsaved Form Detection & Close
-      const hasProductFormChanged = () => {
-        if (!initialFormData) return false;
-        return JSON.stringify(formData) !== JSON.stringify(initialFormData) || 
-               (productImagePreview && productImagePreview !== initialFormData.image_url);
-      };
-
-      const handleAttemptCloseProductModal = () => {
-        if (hasProductFormChanged()) {
-          setShowUnsavedConfirm(true);
-        } else {
-          setShowProductModal(false);
-          setEditingProduct(null);
-          setInitialFormData(null);
-          setProductImagePreview("");
-        }
-      };
-
-      // Save Product
-      const executeSaveProduct = async () => {
-        if (!formData.name || !formData.new_price) {
-          alert("Iltimos, mahsulot nomi va yangi narxini kiriting!");
-          return false;
-        }
+      // Save Edited Product
+      const handleSaveProduct = async (e) => {
+        e.preventDefault();
+        if (!editingProduct) return;
         setProductSaving(true);
         try {
-          const payload = {
-            name: formData.name,
-            category: formData.category || formData.car_model || "Cobalt",
-            new_price: parseInt(formData.new_price) || 0,
-            old_price: formData.old_price ? parseInt(formData.old_price) : 0,
-            image_url: formData.image_url || "",
-            description: formData.description || "",
-            condition: formData.condition || "Yangi",
-            details: (formData.detailsText || "").split("\\n").map(s => s.trim()).filter(Boolean),
-            stock: (formData.stock !== undefined && formData.stock !== null && formData.stock !== '') ? parseInt(formData.stock) : 10,
-            color: formData.color || "Universal",
-            car_model: formData.car_model || formData.category || "Cobalt"
-          };
-
-          const url = editingProduct ? "/api/products/" + editingProduct.id : "/api/products";
-          const method = editingProduct ? "PUT" : "POST";
-
-          const res = await fetch(url, {
-            method,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+          const res = await fetch('/api/products/' + editingProduct.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(editingProduct)
           });
-          const saved = await res.json();
-          if (!res.ok) throw new Error(saved.error || "Saqlashda xatolik");
-
-          setShowUnsavedConfirm(false);
-          setShowProductModal(false);
-          setEditingProduct(null);
-          setInitialFormData(null);
-          setProductImagePreview("");
-          await fetchProducts(true);
-          return true;
+          if (res.ok) {
+            setProducts(prev => prev.map(p => p.id === editingProduct.id ? editingProduct : p));
+            setEditingProduct(null);
+          } else {
+            alert("Mahsulotni saqlashda xatolik");
+          }
         } catch(e) {
-          alert("Saqlashda xatolik: " + e.message);
-          return false;
+          alert("Server bilan aloqada xatolik");
         } finally {
           setProductSaving(false);
         }
@@ -5401,7 +5424,7 @@ function getAdminPanelHtml() {
           const res = await fetch("/api/categories", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: newCategoryName.trim(), icon: newCategoryIcon || "car" })
+            body: JSON.stringify({ name: newCategoryName.trim(), icon: "car" })
           });
           const saved = await res.json();
           if (saved && saved.id) {
@@ -5423,73 +5446,145 @@ function getAdminPanelHtml() {
         }
       };
 
-      // Save Settings
+      const handleSeedCategories = async () => {
+        try {
+          const res = await fetch("/api/categories/seed", { method: "POST" });
+          const seeded = await res.json();
+          if (Array.isArray(seeded)) {
+            setCategories(seeded);
+            alert("12 ta standart avto modellar muvaffaqiyatli tiklandi!");
+          }
+        } catch(e) {
+          alert("Tiklashda xatolik yuz berdi");
+        }
+      };
+
+      // Story Add & Delete
+      const handleAddStory = async (e) => {
+        e.preventDefault();
+        if (!storyTitle.trim() || !storyImageUrl.trim()) {
+          alert("Sarlavha va rasm havolasini kiriting!");
+          return;
+        }
+        setStorySaving(true);
+        try {
+          const res = await fetch("/api/stories", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: storyTitle.trim(),
+              description: storyDescription.trim(),
+              tag: storyTag || "Yangi",
+              image_url: storyImageUrl.trim()
+            })
+          });
+          const newStory = await res.json();
+          if (newStory && newStory.id) {
+            setStories(prev => [newStory, ...prev]);
+            setStoryTitle("");
+            setStoryDescription("");
+            setStoryImageUrl("");
+            setRefreshToast(true);
+            setTimeout(() => setRefreshToast(false), 2000);
+          } else {
+            alert(newStory?.error || "Istoriya qo'shishda xatolik yuz berdi");
+          }
+        } catch(err) {
+          alert("Server bilan aloqada xatolik");
+        } finally {
+          setStorySaving(false);
+        }
+      };
+
+      const handleDeleteStory = async (id, title) => {
+        if (!confirm("Haqiqatan ham «" + (title || "ushbu") + "» storiyani o'chirmoqchimisiz?")) return;
+        try {
+          const res = await fetch("/api/stories/" + id, { method: "DELETE" });
+          if (res.ok) {
+            setStories(prev => prev.filter(s => s.id !== id));
+          } else {
+            alert("O'chirishda xatolik yuz berdi");
+          }
+        } catch(err) {
+          alert("Server bilan aloqada xatolik");
+        }
+      };
+
+      // Settings Save
       const handleSaveSettings = async (e) => {
         e.preventDefault();
         setSettingsSaving(true);
-        setSettingsMessage("");
         try {
+          // Keep card_number synced with uzcard_number for backward compatibility
+          const payload = {
+            ...settings,
+            card_number: settings.uzcard_number || settings.card_number,
+            card_holder: settings.uzcard_holder || settings.card_holder
+          };
           const res = await fetch("/api/settings", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(settings)
+            body: JSON.stringify(payload)
           });
-          const data = await res.json();
-          if (data && data.card_number) {
-            setSettings(data);
-            setSettingsMessage("Sozlamalar saqlandi!");
-            setTimeout(() => setSettingsMessage(""), 3000);
+          const saved = await res.json();
+          if (saved) {
+            setSettings(prev => ({ ...prev, ...saved }));
+            setSettingsMessage("Sozlamalar (Uzcard, Humo, Visa va do'kon ma'lumotlari) muvaffaqiyatli saqlandi!");
+            setTimeout(() => setSettingsMessage(""), 3500);
           }
         } catch(e) {
-          alert("Sozlamalarni saqlashda xatolik");
+          alert("Saqlashda xatolik yuz berdi");
         } finally {
           setSettingsSaving(false);
         }
       };
 
-      // Send Broadcast
+      // Broadcast Send
       const handleSendBroadcast = async (e) => {
         e.preventDefault();
-        if (!broadcastMsg.trim()) return alert("Xabar matnini kiriting!");
-        if (!confirm("Barcha Telegram foydalanuvchilariga xabar yuborilsinmi?")) return;
+        if (!broadcastText.trim()) return;
+        if (!confirm("Barcha " + users.length + " ta ro'yxatdan o'tgan foydalanuvchiga xabar yuborilsinmi?")) return;
         setBroadcastSending(true);
-        setBroadcastResult(null);
+        setBroadcastStatus("Xabarlar yuborilmoqda...");
         try {
           const res = await fetch("/api/broadcast", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: broadcastMsg, photo_url: broadcastPhoto })
+            body: JSON.stringify({ message: broadcastText, image_url: broadcastImage })
           });
           const data = await res.json();
-          if (data.success) {
-            setBroadcastResult("Xabar " + data.sentCount + " ta mijozga muvaffaqiyatli yuborildi!");
-            setBroadcastMsg("");
-            setBroadcastPhoto("");
+          if (data && data.success) {
+            setBroadcastStatus("Xabar muvaffaqiyatli yuborildi! Yetkazildi: " + (data.delivered || users.length) + " ta");
+            setBroadcastText("");
+            setBroadcastImage("");
+          } else {
+            setBroadcastStatus("Yuborishda xatolik: " + (data.error || "Noma'lum xato"));
           }
         } catch(e) {
-          setBroadcastResult("Xabar yuborishda xatolik");
+          setBroadcastStatus("Aloqa xatosi yuz berdi");
         } finally {
           setBroadcastSending(false);
         }
       };
 
-      // Calculations for Dashboard KPIs
+      // Metrics & Analytics
       const totalRevenue = useMemo(() => {
-        return orders.reduce((sum, o) => sum + (parseInt(o.total_price) || 0), 0);
+        return orders.filter(o => o.status === 'Yetkazildi' || o.status === 'Tasdiqlandi')
+          .reduce((acc, o) => acc + (parseInt(o.total_price) || 0), 0);
       }, [orders]);
 
       const activeOrdersCount = useMemo(() => {
         return orders.filter(o => o.status !== 'Yetkazildi' && o.status !== 'Bekor qilindi').length;
       }, [orders]);
 
-      const lowStockProducts = useMemo(() => {
-        return products.filter(p => p.stock !== undefined && p.stock !== null && p.stock <= 3);
+      const outOfStockCount = useMemo(() => {
+        return products.filter(p => (p.stock || 0) <= 2).length;
       }, [products]);
 
       // Filtered Orders
       const filteredOrders = useMemo(() => {
         return orders.filter(o => {
-          if (orderStatusFilter !== 'Barchasi' && (o.status || 'Kutilmoqda') !== orderStatusFilter) return false;
+          if (orderStatusFilter !== 'all' && o.status !== orderStatusFilter) return false;
           if (orderSearch.trim()) {
             const q = orderSearch.toLowerCase();
             const idMatch = String(o.id).includes(q);
@@ -5521,16 +5616,24 @@ function getAdminPanelHtml() {
 
           {/* Toast Notification */}
           {refreshToast && (
-            <div className="fixed top-4 right-4 z-50 bg-emerald-600 text-white font-black text-xs px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 border border-emerald-400/40 animate-bounce">
+            <div className="fixed top-4 right-4 z-50 bg-emerald-600 text-white font-black text-xs px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 border border-emerald-400/40">
               <Icon name="check" className="w-4 h-4" />
               <span>Barcha ma'lumotlar yangilandi!</span>
             </div>
           )}
 
-          {/* SIDEBAR NAVIGATION (COLLAPSIBLE ON MOBILE, FIXED ON DESKTOP) */}
-          <aside className={'w-full md:w-64 border-r shrink-0 flex flex-col justify-between ' + 
+          {/* BACKDROP FOR MOBILE SIDEBAR */}
+          {sidebarOpen && (
+            <div 
+              onClick={() => setSidebarOpen(false)}
+              className="fixed inset-0 bg-black/75 backdrop-blur-sm z-40 md:hidden"
+            />
+          )}
+
+          {/* SIDEBAR NAVIGATION (FIXED SLIDE-OVER DRAWER ON MOBILE, STATIC ON DESKTOP) */}
+          <aside className={'fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] md:static md:w-64 md:z-auto border-r shrink-0 flex flex-col justify-between transition-transform duration-300 ease-in-out ' + 
             (isDark ? 'bg-[#0C1220] border-[#1F2B45]' : 'bg-white border-slate-200') + 
-            (sidebarOpen ? ' block' : ' hidden md:flex')}>
+            (sidebarOpen ? ' translate-x-0 shadow-2xl' : ' -translate-x-full md:translate-x-0')}>
             
             <div>
               {/* Brand Header in Sidebar */}
@@ -5544,7 +5647,10 @@ function getAdminPanelHtml() {
                     <div className="text-[10px] text-slate-400 mt-1">Admin Boshqaruv</div>
                   </div>
                 </div>
-                <button onClick={() => setSidebarOpen(false)} className="md:hidden text-slate-400">
+                <button 
+                  onClick={() => setSidebarOpen(false)} 
+                  className="md:hidden p-1.5 rounded-xl border border-slate-700/60 text-slate-400 hover:text-white"
+                >
                   <Icon name="close" className="w-5 h-5" />
                 </button>
               </div>
@@ -5555,8 +5661,8 @@ function getAdminPanelHtml() {
                   { id: 'dashboard', label: 'Boshqaruv Paneli', icon: 'chart' },
                   { id: 'orders', label: 'Buyurtmalar', icon: 'truck', badge: activeOrdersCount },
                   { id: 'products', label: 'Ehtiyot Qismlar', icon: 'package', badge: products.length },
-                  { id: 'categories', label: \"Bo\'limlar & Modellar\", icon: 'folder' },
-                  { id: 'stories', label: 'Istoriyalar (Stories)', icon: 'stories' },
+                  { id: 'categories', label: "Bo'limlar & Modellar", icon: 'folder' },
+                  { id: 'stories', label: 'Istoriyalar (Stories)', icon: 'stories', badge: stories.length },
                   { id: 'crm', label: 'Mijozlar Bazasi', icon: 'users', badge: users.length },
                   { id: 'broadcast', label: 'Ommaviy Xabar', icon: 'broadcast' },
                   { id: 'settings', label: 'Sozlamalar', icon: 'settings' }
@@ -5605,13 +5711,22 @@ function getAdminPanelHtml() {
               
               <div className="flex items-center gap-3">
                 <button 
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="md:hidden w-8 h-8 rounded-xl border flex items-center justify-center text-slate-300"
+                  onClick={() => setSidebarOpen(prev => !prev)}
+                  className={'md:hidden w-9 h-9 rounded-xl border flex items-center justify-center transition active:scale-90 ' + 
+                    (isDark ? 'border-[#1F2B45] text-slate-200 bg-[#101726]' : 'border-slate-200 text-slate-700 bg-slate-100')}
+                  aria-label="Menyu"
                 >
                   <Icon name="menu" className="w-4 h-4" />
                 </button>
                 <div className="text-sm font-black capitalize">
-                  {tab === 'dashboard' ? 'Boshqaruv Paneli & Analitika' : tab === 'orders' ? 'Buyurtmalar Jurnali' : tab === 'products' ? 'Ombor & Ehtiyot Qismlar' : tab}
+                  {tab === 'dashboard' ? "Boshqaruv Paneli & Analitika" : 
+                   tab === 'orders' ? "Buyurtmalar Jurnali" : 
+                   tab === 'products' ? "Ombor & Ehtiyot Qismlar" : 
+                   tab === 'categories' ? "Bo'limlar & Modellar" :
+                   tab === 'stories' ? "Istoriyalar (Stories)" :
+                   tab === 'crm' ? "Mijozlar Bazasi" :
+                   tab === 'broadcast' ? "Ommaviy Xabar" :
+                   tab === 'settings' ? "Sozlamalar (To'lov & Do'kon)" : tab}
                 </div>
               </div>
 
@@ -5633,242 +5748,227 @@ function getAdminPanelHtml() {
                   disabled={isRefreshing}
                   title="Yangilash"
                   className={'w-8 h-8 rounded-xl border flex items-center justify-center transition active:scale-90 ' + 
-                    (isDark ? 'bg-[#101726] border-[#1F2B45] text-slate-300' : 'bg-white border-slate-200 text-slate-700')}
+                    (isDark ? 'border-[#1F2B45] text-slate-300 hover:bg-[#162033]' : 'border-slate-200 text-slate-600 hover:bg-slate-100')}
                 >
-                  <span className={isRefreshing ? 'animate-spin-custom text-rose-500' : ''}>
-                    <Icon name="refresh" className="w-4 h-4" />
-                  </span>
+                  <Icon name="refresh" className={'w-4 h-4 ' + (isRefreshing ? 'animate-spin' : '')} />
                 </button>
 
-                {/* Theme Switcher */}
+                {/* Theme Toggle */}
                 <button 
                   onClick={toggleTheme}
-                  title="Mavzuni almashtirish"
+                  title="Mavzu"
                   className={'w-8 h-8 rounded-xl border flex items-center justify-center transition active:scale-90 ' + 
-                    (isDark ? 'bg-[#101726] border-[#1F2B45] text-amber-400' : 'bg-white border-slate-200 text-slate-700')}
+                    (isDark ? 'border-[#1F2B45] text-amber-400 bg-amber-500/10' : 'border-slate-200 text-slate-700 bg-slate-100')}
                 >
                   <Icon name={isDark ? "sun" : "moon"} className="w-4 h-4" />
                 </button>
               </div>
             </header>
 
-            {/* MAIN TAB CONTENT */}
-            <main className="flex-1 p-4 md:p-6 overflow-y-auto space-y-6">
-
+            {/* TAB CONTENTS */}
+            <main className="flex-1 p-4 md:p-6 overflow-y-auto max-w-7xl w-full mx-auto">
               {/* ========================================= */}
-              {/* TAB 1: OVERVIEW DASHBOARD */}
+              {/* TAB 1: DASHBOARD & METRICS */}
               {/* ========================================= */}
               {tab === 'dashboard' && (
                 <div className="space-y-6">
-                  {/* 4 KPI Widgets */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div className={'p-4 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
-                      <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
+                  {/* KPI Cards Grid */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    <div className={'p-4 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200 shadow-sm')}>
+                      <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
                         <span>Jami Tushum</span>
-                        <Icon name="chart" className="w-4 h-4 text-emerald-500" />
+                        <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                          <Icon name="dollar" className="w-4 h-4" />
+                        </div>
                       </div>
-                      <div className="text-xl font-black text-rose-500">
-                        {totalRevenue.toLocaleString()} so'm
+                      <div className="text-xl md:text-2xl font-black text-emerald-400">
+                        {totalRevenue.toLocaleString()} <span className="text-xs font-bold text-slate-400">UZS</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-1">Barcha muvaffaqiyatli xaridlar</div>
+                      <div className="text-[10px] text-slate-500 mt-1">Muvaffaqiyatli buyurtmalar bo'yicha</div>
                     </div>
 
-                    <div className={'p-4 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
-                      <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
+                    <div className={'p-4 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200 shadow-sm')}>
+                      <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
                         <span>Faol Buyurtmalar</span>
-                        <Icon name="truck" className="w-4 h-4 text-amber-500" />
+                        <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400">
+                          <Icon name="truck" className="w-4 h-4" />
+                        </div>
                       </div>
-                      <div className="text-xl font-black text-amber-400">
-                        {activeOrdersCount} ta
+                      <div className="text-xl md:text-2xl font-black text-rose-400">
+                        {activeOrdersCount} <span className="text-xs font-bold text-slate-400">ta</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-1">Tayyorlanmoqda va yo'lda</div>
+                      <div className="text-[10px] text-slate-500 mt-1">Yetkazilishi kerak bo'lganlar</div>
                     </div>
 
-                    <div className={'p-4 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
-                      <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
-                        <span>Barcha Buyurtmalar</span>
-                        <Icon name="package" className="w-4 h-4 text-blue-500" />
+                    <div className={'p-4 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200 shadow-sm')}>
+                      <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+                        <span>Ehtiyot Qismlar</span>
+                        <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400">
+                          <Icon name="package" className="w-4 h-4" />
+                        </div>
                       </div>
-                      <div className="text-xl font-black text-slate-200">
-                        {orders.length} ta
+                      <div className="text-xl md:text-2xl font-black text-blue-400">
+                        {products.length} <span className="text-xs font-bold text-slate-400">turda</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-1">Umumiy buyurtmalar soni</div>
+                      <div className="text-[10px] text-slate-500 mt-1">Barcha mavjud modellar bo'yicha</div>
                     </div>
 
-                    <div className={'p-4 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
-                      <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
-                        <span>Mijozlar Bazasi</span>
-                        <Icon name="users" className="w-4 h-4 text-purple-500" />
+                    <div className={'p-4 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200 shadow-sm')}>
+                      <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+                        <span>Kam Qolganlar</span>
+                        <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+                          <Icon name="alert" className="w-4 h-4" />
+                        </div>
                       </div>
-                      <div className="text-xl font-black text-purple-400">
-                        {users.length} nafar
+                      <div className="text-xl md:text-2xl font-black text-amber-400">
+                        {outOfStockCount} <span className="text-xs font-bold text-slate-400">detal</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-1">Botdan ro'yxatdan o'tgan</div>
+                      <div className="text-[10px] text-slate-500 mt-1">Omborda soni 2 yoki undan kam</div>
                     </div>
                   </div>
 
-                  {/* Low Stock Warning Alert if any */}
-                  {lowStockProducts.length > 0 && (
-                    <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-950/20 text-xs flex items-start gap-3">
-                      <Icon name="shield" className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <div className="font-black text-amber-400">Ombor zaxirasi kam qolgan ehtiyot qismlar ({lowStockProducts.length} ta):</div>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {lowStockProducts.map(p => (
-                            <span key={p.id} className="px-2.5 py-1 rounded-lg bg-black/40 border border-amber-500/30 text-[11px] font-bold">
-                              {p.name} — <b className="text-rose-400">{p.stock} dona</b>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recent Orders Feed */}
-                  <div className={'p-5 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                  {/* Recent Orders Overview */}
+                  <div className={'p-5 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200 shadow-sm')}>
                     <div className="flex items-center justify-between mb-4">
-                      <div className="text-sm font-black tracking-tight">So'nggi Buyurtmalar</div>
-                      <button onClick={() => setTab('orders')} className="text-xs font-bold text-rose-500 hover:underline">
+                      <div>
+                        <h3 className="text-sm font-black tracking-tight">So'nggi Buyurtmalar</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">Real vaqt rejimida qabul qilingan yangi buyurtmalar</p>
+                      </div>
+                      <button 
+                        onClick={() => setTab('orders')} 
+                        className="text-xs font-bold text-rose-500 hover:text-rose-400 transition"
+                      >
                         Barchasini ko'rish →
                       </button>
                     </div>
 
                     <div className="divide-y divide-slate-800/40 text-xs">
                       {orders.slice(0, 5).map(o => (
-                        <div key={o.id} className="py-3 flex items-center justify-between gap-3">
-                          <div>
-                            <div className="font-extrabold flex items-center gap-2">
+                        <div key={o.id} className="py-3 flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <div className="font-bold flex items-center gap-2">
                               <span>#{o.id}</span>
-                              <span>•</span>
-                              <span>{o.customer_name}</span>
+                              <span className="text-slate-300">{o.customer_name}</span>
                             </div>
-                            <div className="text-[11px] text-slate-400 mt-0.5">{o.phone} | {o.delivery_type === 'pickup' ? "Olib ketish" : "Yetkazib berish"}</div>
+                            <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                              <span>{o.phone}</span>
+                              <span>•</span>
+                              <span>{o.created_at ? new Date(o.created_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <div className="font-black text-rose-500">{o.total_price?.toLocaleString()} so'm</div>
-                            <span className="text-[10px] font-bold text-amber-400">{o.status || 'Kutilmoqda'}</span>
+                          <div className="text-right space-y-1">
+                            <div className="font-mono font-bold text-rose-400">
+                              {parseInt(o.total_price || 0).toLocaleString()} UZS
+                            </div>
+                            <span className={'inline-block text-[10px] font-bold px-2 py-0.5 rounded-md ' + 
+                              (o.status === 'Yetkazildi' ? 'bg-emerald-500/15 text-emerald-400' : 
+                               o.status === 'Bekor qilindi' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400')}>
+                              {o.status}
+                            </span>
                           </div>
                         </div>
                       ))}
+                      {orders.length === 0 && (
+                        <div className="py-8 text-center text-slate-500 text-xs">Hozircha buyurtmalar yo'q</div>
+                      )}
                     </div>
                   </div>
                 </div>
               )}
 
               {/* ========================================= */}
-              {/* TAB 2: ORDER MANAGEMENT */}
+              {/* TAB 2: ORDERS MANAGEMENT */}
               {/* ========================================= */}
               {tab === 'orders' && (
                 <div className="space-y-4">
-                  {/* Search and Filters */}
-                  <div className="flex flex-col sm:flex-row gap-2.5 justify-between">
-                    <div className="relative flex-1 max-w-md">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                        <Icon name="search" className="w-4 h-4" />
-                      </div>
+                  {/* Filters Bar */}
+                  <div className={'p-4 rounded-2xl border flex flex-col md:flex-row gap-3 items-center justify-between ' + 
+                    (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                    
+                    {/* Search */}
+                    <div className="relative w-full md:w-72">
+                      <Icon name="search" className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
                       <input 
-                        type="text" 
+                        type="text"
                         value={orderSearch}
                         onChange={e => setOrderSearch(e.target.value)}
-                        placeholder="ID, mijoz ismi yoki telefon raqami..."
-                        className={'w-full pl-9 pr-3 py-2 rounded-xl border text-xs focus:outline-none ' + 
-                          (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-white border-slate-200 text-slate-900')}
+                        placeholder="Mijoz ismi yoki telefoni..."
+                        className={'w-full pl-9 pr-3 py-2 text-xs rounded-xl border focus:outline-none ' + 
+                          (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
                       />
                     </div>
 
                     {/* Status Filter Tabs */}
-                    <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-                      {['Barchasi', 'Kutilmoqda', 'Tayyorlanmoqda', 'Yetkazilmoqda', 'Yetkazildi', 'Bekor qilindi'].map(st => (
+                    <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto no-scrollbar text-xs font-bold">
+                      {['all', 'Yangi', 'Tasdiqlandi', 'Tayyorlanmoqda', 'Yetkazilmoqda', 'Yetkazildi', 'Bekor qilindi'].map(st => (
                         <button
                           key={st}
                           onClick={() => setOrderStatusFilter(st)}
-                          className={'px-3 py-1.5 rounded-xl border text-xs font-bold whitespace-nowrap transition ' + 
+                          className={'px-3 py-1.5 rounded-xl transition whitespace-nowrap ' + 
                             (orderStatusFilter === st 
-                              ? 'bg-rose-600 text-white border-rose-500' 
-                              : (isDark ? 'bg-[#101726] border-[#1F2B45] text-slate-400' : 'bg-white border-slate-200 text-slate-600'))}
+                              ? 'bg-rose-600 text-white' 
+                              : (isDark ? 'text-slate-400 hover:bg-[#162033]' : 'text-slate-600 hover:bg-slate-100'))}
                         >
-                          {st}
+                          {st === 'all' ? "Barchasi" : st}
                         </button>
                       ))}
                     </div>
                   </div>
 
                   {/* Orders Data Table */}
-                  <div className={'rounded-2xl border overflow-hidden ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                  <div className={'rounded-2xl border overflow-hidden ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200 shadow-sm')}>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className={'border-b uppercase text-[10px] font-black tracking-wider ' + 
+                        <thead className={'border-b font-bold uppercase tracking-wider text-[10px] ' + 
                           (isDark ? 'bg-[#090D16] border-[#1F2B45] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500')}>
                           <tr>
-                            <th className="p-3">ID</th>
-                            <th className="p-3">Mijoz</th>
-                            <th className="p-3">Yetkazish & Manzil</th>
-                            <th className="p-3">Detallar</th>
-                            <th className="p-3">Summa</th>
-                            <th className="p-3">Holat</th>
-                            <th className="p-3 text-right">Amallar</th>
+                            <th className="p-3.5">ID</th>
+                            <th className="p-3.5">Mijoz & Aloqa</th>
+                            <th className="p-3.5">Yetkazish Turi</th>
+                            <th className="p-3.5">Summa</th>
+                            <th className="p-3.5">Holat</th>
+                            <th className="p-3.5 text-right">Amallar</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/40">
-                          {filteredOrders.length === 0 ? (
-                            <tr>
-                              <td colSpan="7" className="p-8 text-center text-slate-500">
-                                Buyurtma topilmadi
+                          {filteredOrders.map(o => (
+                            <tr key={o.id} className="hover:bg-slate-800/20 transition">
+                              <td className="p-3.5 font-bold font-mono">#{o.id}</td>
+                              <td className="p-3.5">
+                                <div className="font-bold text-slate-200">{o.customer_name}</div>
+                                <div className="text-[11px] text-slate-400">{o.phone}</div>
+                              </td>
+                              <td className="p-3.5">
+                                <span className={'inline-block text-[10px] font-bold px-2 py-0.5 rounded-lg ' + 
+                                  (o.delivery_type === 'pickup' ? 'bg-blue-500/15 text-blue-400' : 'bg-purple-500/15 text-purple-400')}>
+                                  {o.delivery_type === 'pickup' ? "Farhod bozoridan olib ketish" : "Kuryer orqali yetkazish"}
+                                </span>
+                              </td>
+                              <td className="p-3.5 font-mono font-bold text-rose-400">
+                                {parseInt(o.total_price || 0).toLocaleString()} UZS
+                              </td>
+                              <td className="p-3.5">
+                                <select
+                                  value={o.status}
+                                  onChange={e => handleUpdateOrderStatus(o.id, e.target.value)}
+                                  className={'px-2.5 py-1 rounded-lg text-xs font-bold border focus:outline-none ' + 
+                                    (isDark ? 'bg-[#090D16] border-[#1F2B45] text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800')}
+                                >
+                                  {['Yangi', 'Tasdiqlandi', 'Tayyorlanmoqda', 'Yetkazilmoqda', 'Yetkazildi', 'Bekor qilindi'].map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="p-3.5 text-right">
+                                <button 
+                                  onClick={() => setSelectedOrder(o)}
+                                  className="px-2.5 py-1 rounded-lg bg-rose-600/15 text-rose-400 hover:bg-rose-600/25 font-bold text-xs"
+                                >
+                                  Ko'rish
+                                </button>
                               </td>
                             </tr>
-                          ) : (
-                            filteredOrders.map(o => {
-                              const items = Array.isArray(o.items) ? o.items : (typeof o.items === 'string' ? JSON.parse(o.items || '[]') : []);
-
-                              return (
-                                <tr key={o.id} className={isDark ? 'hover:bg-[#162033]/50' : 'hover:bg-slate-50'}>
-                                  <td className="p-3 font-black">#{o.id}</td>
-                                  <td className="p-3">
-                                    <div className="font-bold">{o.customer_name}</div>
-                                    <div className="text-[11px] text-slate-400">{o.phone}</div>
-                                  </td>
-                                  <td className="p-3 max-w-[200px]">
-                                    <span className="font-bold">{o.delivery_type === 'pickup' ? "Olib ketish" : "Yetkazish"}</span>
-                                    <div className="text-[10px] text-slate-400 truncate">{o.location || "Ko'rsatilmagan"}</div>
-                                  </td>
-                                  <td className="p-3 max-w-[200px]">
-                                    <div className="text-[11px] font-medium truncate">
-                                      {items.map(it => it.name + ' (x' + (it.quantity || 1) + ')').join(', ')}
-                                    </div>
-                                  </td>
-                                  <td className="p-3 font-black text-rose-500 whitespace-nowrap">
-                                    {o.total_price?.toLocaleString()} so'm
-                                  </td>
-                                  <td className="p-3">
-                                    <select 
-                                      value={o.status || 'Kutilmoqda'}
-                                      onChange={e => handleUpdateOrderStatus(o.id, e.target.value)}
-                                      className={'text-[11px] font-bold py-1 px-2 rounded-lg border focus:outline-none ' + 
-                                        (o.status === 'Yetkazildi' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 
-                                         o.status === 'Bekor qilindi' ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 
-                                         'bg-amber-500/10 text-amber-400 border-amber-500/30')}
-                                    >
-                                      <option value="Kutilmoqda">Kutilmoqda</option>
-                                      <option value="Tayyorlanmoqda">Tayyorlanmoqda</option>
-                                      <option value="Yetkazilmoqda">Yetkazilmoqda</option>
-                                      <option value="Yetkazildi">Yetkazildi</option>
-                                      <option value="Bekor qilindi">Bekor qilindi</option>
-                                    </select>
-                                  </td>
-                                  <td className="p-3 text-right">
-                                    <button 
-                                      onClick={() => setSelectedReceiptOrder(o)}
-                                      className="px-2.5 py-1 rounded-lg border border-slate-700 text-slate-300 hover:text-white transition inline-flex items-center gap-1"
-                                      title="Chekni ko'rish"
-                                    >
-                                      <Icon name="receipt" className="w-3.5 h-3.5 text-rose-500" />
-                                      <span>Chek</span>
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
+                          ))}
                         </tbody>
                       </table>
                     </div>
@@ -5877,164 +5977,108 @@ function getAdminPanelHtml() {
               )}
 
               {/* ========================================= */}
-              {/* TAB 3: PRODUCTS & INVENTORY MANAGEMENT */}
+              {/* TAB 3: PRODUCTS & INVENTORY */}
               {/* ========================================= */}
               {tab === 'products' && (
                 <div className="space-y-4">
-                  {/* Top action bar */}
-                  <div className="flex flex-col sm:flex-row gap-2.5 justify-between">
-                    <div className="flex gap-2 flex-1 max-w-md">
-                      <div className="relative flex-1">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                          <Icon name="search" className="w-4 h-4" />
-                        </div>
-                        <input 
-                          type="text" 
-                          value={productSearch}
-                          onChange={e => setProductSearch(e.target.value)}
-                          placeholder="Zapchast nomi yoki modeli..."
-                          className={'w-full pl-9 pr-3 py-2 rounded-xl border text-xs focus:outline-none ' + 
-                            (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-white border-slate-200 text-slate-900')}
-                        />
-                      </div>
+                  {/* Product Filters */}
+                  <div className={'p-4 rounded-2xl border flex flex-col md:flex-row gap-3 items-center justify-between ' + 
+                    (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                    
+                    <div className="relative w-full md:w-72">
+                      <Icon name="search" className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                      <input 
+                        type="text"
+                        value={productSearch}
+                        onChange={e => setProductSearch(e.target.value)}
+                        placeholder="Ehtiyot qism nomi yoki modeli..."
+                        className={'w-full pl-9 pr-3 py-2 text-xs rounded-xl border focus:outline-none ' + 
+                          (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                      />
+                    </div>
 
+                    <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto no-scrollbar text-xs">
                       <select 
                         value={productCategoryFilter}
                         onChange={e => setProductCategoryFilter(e.target.value)}
-                        className={'px-3 py-2 rounded-xl border text-xs font-bold focus:outline-none ' + 
-                          (isDark ? 'bg-[#101726] border-[#1F2B45] text-slate-300' : 'bg-white border-slate-200 text-slate-700')}
+                        className={'px-3 py-2 rounded-xl border font-bold text-xs focus:outline-none ' + 
+                          (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
                       >
-                        <option value="Barchasi">Barcha toifalar</option>
-                        {categories.map(c => <option key={c.id || c.name} value={c.name}>{c.name}</option>)}
+                        <option value="Barchasi">Barcha Avto Modellar</option>
+                        {categories.map(c => (
+                          <option key={c.id || c.name} value={c.name}>{c.name}</option>
+                        ))}
                       </select>
                     </div>
-
-                    <button 
-                      onClick={() => {
-                        const initial = {
-                          name: "", category: categories.length > 0 ? categories[0].name : "Cobalt", new_price: "", old_price: "",
-                          image_url: "", description: "", detailsText: "Original sifat\\nKafolat beriladi",
-                          condition: "Yangi", stock: "10", color: "Universal", car_model: categories.length > 0 ? categories[0].name : "Cobalt"
-                        };
-                        setEditingProduct(null);
-                        setProductImagePreview("");
-                        setFormData(initial);
-                        setInitialFormData(JSON.parse(JSON.stringify(initial)));
-                        setShowProductModal(true);
-                      }}
-                      className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-rose-950/40 shrink-0"
-                    >
-                      <Icon name="plus" className="w-4 h-4" />
-                      <span>+ Yangi Zapchast</span>
-                    </button>
                   </div>
 
-                  {/* Products Data Table */}
-                  <div className={'rounded-2xl border overflow-hidden ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                  {/* Products Table */}
+                  <div className={'rounded-2xl border overflow-hidden ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200 shadow-sm')}>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className={'border-b uppercase text-[10px] font-black tracking-wider ' + 
+                        <thead className={'border-b font-bold uppercase tracking-wider text-[10px] ' + 
                           (isDark ? 'bg-[#090D16] border-[#1F2B45] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500')}>
                           <tr>
-                            <th className="p-3">Rasm</th>
-                            <th className="p-3">Nomi & Toifasi</th>
-                            <th className="p-3">Model & Holat</th>
-                            <th className="p-3">Ombor (Stock) Stepper</th>
-                            <th className="p-3">Narxi</th>
-                            <th className="p-3 text-right">Amallar</th>
+                            <th className="p-3.5">Mahsulot</th>
+                            <th className="p-3.5">Model & Kategoriya</th>
+                            <th className="p-3.5">Narx</th>
+                            <th className="p-3.5">Ombor Qoldig'i (Dinamik)</th>
+                            <th className="p-3.5 text-right">Tahrirlash</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/40">
-                          {filteredProducts.map(prod => (
-                            <tr key={prod.id} className={isDark ? 'hover:bg-[#162033]/50' : 'hover:bg-slate-50'}>
-                              <td className="p-3">
-                                <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-800/20 shrink-0 flex items-center justify-center">
-                                  {prod.image_url ? (
-                                    <img src={prod.image_url} alt={prod.name} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <Icon name="package" className="w-6 h-6 text-slate-500" />
-                                  )}
+                          {filteredProducts.map(p => (
+                            <tr key={p.id} className="hover:bg-slate-800/20 transition">
+                              <td className="p-3.5">
+                                <div className="flex items-center gap-3">
+                                  <img 
+                                    src={p.image_url || "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=150&q=80"} 
+                                    alt={p.name} 
+                                    className="w-10 h-10 rounded-xl object-cover border border-slate-700/50 shrink-0" 
+                                  />
+                                  <div>
+                                    <div className="font-bold text-slate-200 line-clamp-1">{p.name}</div>
+                                    <div className="text-[10px] text-slate-400">{p.condition === 'new' ? "Yangi (Zavod)" : "Ideal B/U"}</div>
+                                  </div>
                                 </div>
                               </td>
-
-                              <td className="p-3 max-w-[200px]">
-                                <div className="font-bold truncate">{prod.name}</div>
-                                <div className="text-[10px] text-rose-500 font-bold uppercase">{prod.category}</div>
+                              <td className="p-3.5">
+                                <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-semibold text-[11px]">
+                                  {p.car_model || p.category}
+                                </span>
                               </td>
-
-                              <td className="p-3 whitespace-nowrap">
-                                <span className="font-bold">{prod.car_model || "Universal"}</span>
-                                <div className="text-[10px] text-slate-400">{prod.condition || "Yangi"}</div>
+                              <td className="p-3.5 font-mono font-bold text-rose-400">
+                                {parseInt(p.price || 0).toLocaleString()} UZS
                               </td>
-
-                              {/* Quick Stock Stepper */}
-                              <td className="p-3 whitespace-nowrap">
-                                <div className="flex items-center gap-1.5">
-                                  <button 
-                                    onClick={() => handleQuickStock(prod.id, -1)}
-                                    className="w-6 h-6 rounded-lg border border-slate-700 flex items-center justify-center hover:bg-slate-800 active:scale-90"
+                              <td className="p-3.5">
+                                {/* Quick Stepper (- / +) for instant offline store stock changes */}
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleQuickStock(p.id, -1)}
+                                    className="w-6 h-6 rounded-lg border border-slate-700 hover:bg-slate-700/50 flex items-center justify-center font-bold text-slate-300 active:scale-95"
                                   >
-                                    <Icon name="minus" className="w-3 h-3" />
+                                    -
                                   </button>
-
-                                  <span className={'px-2.5 py-0.5 rounded-lg font-black text-xs ' + 
-                                    ((prod.stock !== undefined && prod.stock <= 3) ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-slate-800 text-slate-200')}>
-                                    {prod.stock !== undefined ? prod.stock : 10}
+                                  <span className={'font-mono font-bold px-2 py-0.5 rounded-lg text-xs ' + 
+                                    (p.stock <= 2 ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-800 text-slate-200')}>
+                                    {p.stock || 0} ta
                                   </span>
-
-                                  <button 
-                                    onClick={() => handleQuickStock(prod.id, 1)}
-                                    className="w-6 h-6 rounded-lg border border-slate-700 flex items-center justify-center hover:bg-slate-800 active:scale-90"
+                                  <button
+                                    onClick={() => handleQuickStock(p.id, 1)}
+                                    className="w-6 h-6 rounded-lg border border-slate-700 hover:bg-slate-700/50 flex items-center justify-center font-bold text-slate-300 active:scale-95"
                                   >
-                                    <Icon name="plus" className="w-3 h-3" />
+                                    +
                                   </button>
                                 </div>
                               </td>
-
-                              <td className="p-3 whitespace-nowrap">
-                                <div className="font-black text-rose-500">{prod.new_price?.toLocaleString()} so'm</div>
-                                {prod.old_price > prod.new_price && (
-                                  <div className="text-[10px] line-through text-slate-500">{prod.old_price?.toLocaleString()}</div>
-                                )}
-                              </td>
-
-                              <td className="p-3 text-right whitespace-nowrap">
-                                <div className="flex justify-end gap-1.5">
-                                  <button 
-                                    onClick={() => {
-                                      const initial = {
-                                        name: prod.name || "",
-                                        category: prod.category || prod.car_model || "Cobalt",
-                                        new_price: String(prod.new_price || ""),
-                                        old_price: prod.old_price ? String(prod.old_price) : "",
-                                        image_url: prod.image_url || "",
-                                        description: prod.description || "",
-                                        condition: prod.condition || "Yangi",
-                                        detailsText: (Array.isArray(prod.details) ? prod.details : []).join("\\n"),
-                                        stock: String(prod.stock !== undefined && prod.stock !== null ? prod.stock : 10),
-                                        color: prod.color || "Universal",
-                                        car_model: prod.car_model || prod.category || "Cobalt"
-                                      };
-                                      setEditingProduct(prod);
-                                      setProductImagePreview(prod.image_url || "");
-                                      setFormData(initial);
-                                      setInitialFormData(JSON.parse(JSON.stringify(initial)));
-                                      setShowProductModal(true);
-                                    }}
-                                    className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300"
-                                    title="Tahrirlash"
-                                  >
-                                    <Icon name="edit" className="w-3.5 h-3.5" />
-                                  </button>
-
-                                  <button 
-                                    onClick={() => handleDeleteProduct(prod.id)}
-                                    className="p-1.5 rounded-lg border border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
-                                    title="O'chirish"
-                                  >
-                                    <Icon name="trash" className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
+                              <td className="p-3.5 text-right">
+                                <button 
+                                  onClick={() => setEditingProduct({ ...p })}
+                                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                                  title="Tahrirlash"
+                                >
+                                  <Icon name="edit" className="w-4 h-4" />
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -6078,7 +6122,21 @@ function getAdminPanelHtml() {
 
                   {/* Existing Categories List */}
                   <div className={'p-5 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Mavjud Bo'limlar ({categories.length})</h4>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Mavjud Bo'limlar ({categories.length})
+                      </h4>
+                      {categories.length === 0 && (
+                        <button
+                          onClick={handleSeedCategories}
+                          className="px-3 py-1 rounded-xl bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 text-xs font-bold transition flex items-center gap-1.5"
+                        >
+                          <Icon name="refresh" className="w-3.5 h-3.5" />
+                          <span>Standart Modellarni Tiklash (12 ta)</span>
+                        </button>
+                      )}
+                    </div>
+
                     <div className="divide-y divide-slate-800/40 text-xs">
                       {categories.map(c => (
                         <div key={c.id || c.name} className="py-2.5 flex items-center justify-between">
@@ -6095,13 +6153,202 @@ function getAdminPanelHtml() {
                           </button>
                         </div>
                       ))}
+                      {categories.length === 0 && (
+                        <div className="py-6 text-center text-slate-500 space-y-2">
+                          <div>Hozircha bo'limlar yo'q</div>
+                          <button
+                            onClick={handleSeedCategories}
+                            className="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold"
+                          >
+                            Standart 12 ta Avto Modellarni Tiklash
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               )}
 
               {/* ========================================= */}
-              {/* TAB 5: CRM (CUSTOMERS) */}
+              {/* TAB 5: STORIES MANAGEMENT (ISTORIYALAR) */}
+              {/* ========================================= */}
+              {tab === 'stories' && (
+                <div className="space-y-6 max-w-4xl">
+                  {/* Create New Story Form */}
+                  <div className={'p-5 rounded-2xl border space-y-4 ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                    <div>
+                      <h3 className="text-sm font-black flex items-center gap-2">
+                        <Icon name="stories" className="w-4 h-4 text-rose-500" />
+                        <span>Yangi Istoriya (Story) Joylash</span>
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Mijozlar Mini App bosh sahifasida ko'radigan qisqa fotoxabarlar va aksiyalar.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleAddStory} className="space-y-3.5 text-xs">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block mb-1 font-semibold text-slate-400">Sarlavha *</label>
+                          <input 
+                            type="text" 
+                            required
+                            value={storyTitle}
+                            onChange={e => setStoryTitle(e.target.value)}
+                            placeholder="Masalan: Cobalt yangi eshik va bamperlar"
+                            className={'w-full p-2.5 rounded-xl border focus:outline-none ' + 
+                              (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block mb-1 font-semibold text-slate-400">Teg / Kategoriya</label>
+                          <select 
+                            value={storyTag}
+                            onChange={e => setStoryTag(e.target.value)}
+                            className={'w-full p-2.5 rounded-xl border focus:outline-none ' + 
+                              (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                          >
+                            <option value="Yangi">Yangi</option>
+                            <option value="Chegirma">Chegirma</option>
+                            <option value="Original">Original</option>
+                            <option value="Xizmat">Xizmat</option>
+                            <option value="Aksiya">Aksiya</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block mb-1 font-semibold text-slate-400">Qisqacha Tavsif</label>
+                        <input 
+                          type="text" 
+                          value={storyDescription}
+                          onChange={e => setStoryDescription(e.target.value)}
+                          placeholder="Masalan: Zavod GM detallari keldi, Farhod bozorida o'rnatib beramiz"
+                          className={'w-full p-2.5 rounded-xl border focus:outline-none ' + 
+                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block mb-1 font-semibold text-slate-400">Rasm Havolasi (URL) *</label>
+                        <input 
+                          type="url" 
+                          required
+                          value={storyImageUrl}
+                          onChange={e => setStoryImageUrl(e.target.value)}
+                          placeholder="https://images.unsplash.com/photo-..."
+                          className={'w-full p-2.5 rounded-xl border focus:outline-none font-mono text-[11px] ' + 
+                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        />
+                      </div>
+
+                      {/* Quick Image Presets */}
+                      <div>
+                        <span className="text-[11px] text-slate-500 block mb-1.5">Tezkor tayyor rasmlar:</span>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { name: "Avto qismlar", url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80" },
+                            { name: "-30% Chegirma", url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80" },
+                            { name: "Usta xizmati", url: "https://images.unsplash.com/photo-1508974239320-0a029497e820?auto=format&fit=crop&w=800&q=80" },
+                            { name: "Kafolat", url: "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?auto=format&fit=crop&w=800&q=80" }
+                          ].map(item => (
+                            <button
+                              key={item.name}
+                              type="button"
+                              onClick={() => setStoryImageUrl(item.url)}
+                              className="px-2.5 py-1 rounded-lg border border-slate-700/60 hover:border-rose-500/60 bg-slate-800/40 text-slate-300 text-[11px] transition active:scale-95"
+                            >
+                              {item.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Live Preview If URL Entered */}
+                      {storyImageUrl && (
+                        <div className="p-3 rounded-xl border border-slate-800 bg-[#090D16] flex items-center gap-3">
+                          <img 
+                            src={storyImageUrl} 
+                            alt="Preview" 
+                            className="w-16 h-16 rounded-xl object-cover border border-slate-700" 
+                            onError={e => { e.target.style.display = 'none'; }}
+                          />
+                          <div>
+                            <span className="px-2 py-0.5 rounded-md bg-rose-600/20 text-rose-400 font-bold text-[10px] uppercase">
+                              {storyTag}
+                            </span>
+                            <div className="font-bold text-slate-200 mt-1">{storyTitle || "Sarlavha oldindan ko'rinishi"}</div>
+                            <div className="text-[11px] text-slate-400">{storyDescription || "Tavsif oldindan ko'rinishi"}</div>
+                          </div>
+                        </div>
+                      )}
+
+                      <button 
+                        type="submit"
+                        disabled={storySaving}
+                        className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold transition flex items-center gap-2"
+                      >
+                        <Icon name="plus" className="w-4 h-4" />
+                        <span>{storySaving ? "Joylanmoqda..." : "Yangi Istoriya Joylash"}</span>
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Active Stories Grid */}
+                  <div className={'p-5 rounded-2xl border ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">
+                      Faol Istoriyalar ({stories.length})
+                    </h4>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {stories.map(s => (
+                        <div 
+                          key={s.id} 
+                          className="rounded-2xl border border-slate-800 bg-[#090D16] overflow-hidden flex flex-col justify-between group relative"
+                        >
+                          <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
+                            <img 
+                              src={s.image_url} 
+                              alt={s.title} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition duration-300" 
+                            />
+                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-sm text-rose-400 text-[10px] font-extrabold uppercase border border-rose-500/30">
+                              {s.tag || "Yangi"}
+                            </span>
+                          </div>
+
+                          <div className="p-3 flex-1 flex flex-col justify-between space-y-2">
+                            <div>
+                              <div className="font-bold text-slate-100 text-xs line-clamp-1">{s.title}</div>
+                              {s.description && (
+                                <div className="text-[11px] text-slate-400 line-clamp-2 mt-0.5">{s.description}</div>
+                              )}
+                            </div>
+
+                            <button 
+                              onClick={() => handleDeleteStory(s.id, s.title)}
+                              className="w-full py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[11px] font-bold transition flex items-center justify-center gap-1"
+                            >
+                              <Icon name="trash" className="w-3.5 h-3.5" />
+                              <span>O'chirish</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {stories.length === 0 && (
+                        <div className="col-span-full py-10 text-center text-slate-500 text-xs">
+                          Hozircha faol istoriyalar yo'q. Yuqoridagi formadan yangi istoriya qo'shing.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ========================================= */}
+              {/* TAB 6: CRM (CUSTOMERS) */}
               {/* ========================================= */}
               {tab === 'crm' && (
                 <div className="space-y-4">
@@ -6109,24 +6356,24 @@ function getAdminPanelHtml() {
                   <div className={'rounded-2xl border overflow-hidden ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className={'border-b uppercase text-[10px] font-black tracking-wider ' + 
+                        <thead className={'border-b font-bold uppercase tracking-wider text-[10px] ' + 
                           (isDark ? 'bg-[#090D16] border-[#1F2B45] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500')}>
                           <tr>
-                            <th className="p-3">ID</th>
-                            <th className="p-3">Mijoz Ismi</th>
-                            <th className="p-3">Telegram Username</th>
-                            <th className="p-3">Telefon</th>
-                            <th className="p-3">Telegram ID</th>
+                            <th className="p-3.5">Telegram ID</th>
+                            <th className="p-3.5">Ism-Sharif</th>
+                            <th className="p-3.5">Telefon Raqami</th>
+                            <th className="p-3.5">Ro'yxatdan O'tgan</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/40">
                           {users.map(u => (
-                            <tr key={u.id} className={isDark ? 'hover:bg-[#162033]/50' : 'hover:bg-slate-50'}>
-                              <td className="p-3 font-mono">#{u.id}</td>
-                              <td className="p-3 font-bold">{u.full_name || u.first_name}</td>
-                              <td className="p-3 text-rose-400">{u.username ? '@' + u.username : '-'}</td>
-                              <td className="p-3 font-mono">{u.phone || '-'}</td>
-                              <td className="p-3 font-mono text-slate-400">{u.telegram_id}</td>
+                            <tr key={u.id || u.telegram_id} className="hover:bg-slate-800/20 transition">
+                              <td className="p-3.5 font-mono text-slate-400 font-bold">{u.telegram_id}</td>
+                              <td className="p-3.5 font-bold text-slate-200">{u.first_name || u.username || "Mijoz"}</td>
+                              <td className="p-3.5 font-mono font-bold text-slate-300">{u.phone || "—"}</td>
+                              <td className="p-3.5 text-slate-400">
+                                {u.created_at ? new Date(u.created_at).toLocaleDateString('uz-UZ') : "—"}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -6137,50 +6384,50 @@ function getAdminPanelHtml() {
               )}
 
               {/* ========================================= */}
-              {/* TAB 6: BROADCAST (OMMAVIY XABAR) */}
+              {/* TAB 7: BROADCAST */}
               {/* ========================================= */}
               {tab === 'broadcast' && (
-                <div className="max-w-2xl space-y-4">
+                <div className="space-y-4 max-w-2xl">
                   <div className={'p-5 rounded-2xl border space-y-4 ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
                     <div>
                       <h3 className="text-sm font-black flex items-center gap-2">
                         <Icon name="broadcast" className="w-4 h-4 text-rose-500" />
-                        <span>Barcha Telegram Foydalanuvchilariga Xabar Yuborish</span>
+                        <span>Ommaviy Xabar Tarqatish</span>
                       </h3>
-                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                        Aksiyalar va yangiliklarni bot orqali barcha {users.length} nafar mijozga bir vaqtda jo'natish.
+                      <p className="text-xs text-slate-400 mt-1">
+                        Barcha {users.length} ta ro'yxatdan o'tgan bot mijozlariga birdaniga e'lon yoki chegirma xabari yuborish.
                       </p>
                     </div>
 
-                    <form onSubmit={handleSendBroadcast} className="space-y-3 text-xs">
-                      <div>
-                        <label className="block mb-1 font-semibold text-slate-400">Rasm URL (ixtiyoriy)</label>
-                        <input 
-                          type="url" 
-                          value={broadcastPhoto}
-                          onChange={e => setBroadcastPhoto(e.target.value)}
-                          placeholder="https://images.unsplash.com/..."
-                          className={'w-full p-2.5 rounded-xl border focus:outline-none ' + 
-                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                        />
-                      </div>
-
+                    <form onSubmit={handleSendBroadcast} className="space-y-3.5 text-xs">
                       <div>
                         <label className="block mb-1 font-semibold text-slate-400">Xabar matni *</label>
                         <textarea 
-                          rows="4"
+                          rows={4}
                           required
-                          value={broadcastMsg}
-                          onChange={e => setBroadcastMsg(e.target.value)}
+                          value={broadcastText}
+                          onChange={e => setBroadcastText(e.target.value)}
                           placeholder="DIQQAT! Barcha Cobalt zapchastlariga 20% chegirma boshlandi!"
+                          className={'w-full p-3 rounded-xl border focus:outline-none resize-none ' + 
+                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block mb-1 font-semibold text-slate-400">Rasm havolasi (ixtiyoriy)</label>
+                        <input 
+                          type="url"
+                          value={broadcastImage}
+                          onChange={e => setBroadcastImage(e.target.value)}
+                          placeholder="https://..."
                           className={'w-full p-2.5 rounded-xl border focus:outline-none ' + 
                             (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
                         />
                       </div>
 
-                      {broadcastResult && (
-                        <div className="p-3 rounded-xl bg-emerald-600/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
-                          {broadcastResult}
+                      {broadcastStatus && (
+                        <div className="p-3 rounded-xl bg-slate-800 text-xs font-bold text-rose-400">
+                          {broadcastStatus}
                         </div>
                       )}
 
@@ -6190,7 +6437,7 @@ function getAdminPanelHtml() {
                         className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold transition flex items-center gap-2"
                       >
                         <Icon name="broadcast" className="w-4 h-4" />
-                        <span>{broadcastSending ? "Yuborilmoqda..." : "Xabarni Barchaga Yuborish"}</span>
+                        <span>{broadcastSending ? "Yuborilmoqda..." : "Barchaga Yuborish"}</span>
                       </button>
                     </form>
                   </div>
@@ -6198,52 +6445,171 @@ function getAdminPanelHtml() {
               )}
 
               {/* ========================================= */}
-              {/* TAB 7: SETTINGS & DETAILS */}
+              {/* TAB 8: SETTINGS (UZCARD, HUMO, VISA & STORE) */}
               {/* ========================================= */}
               {tab === 'settings' && (
-                <div className="max-w-2xl space-y-4">
-                  <div className={'p-5 rounded-2xl border space-y-4 ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
-                    <h3 className="text-sm font-black flex items-center gap-2">
-                      <Icon name="settings" className="w-4 h-4 text-rose-500" />
-                      <span>Do'kon Rekvizitlari va Sozlamalari</span>
-                    </h3>
+                <div className="space-y-6 max-w-3xl">
+                  <form onSubmit={handleSaveSettings} className="space-y-6 text-xs">
+                    {/* Payment Cards Settings */}
+                    <div className={'p-5 rounded-2xl border space-y-4 ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                      <h3 className="text-sm font-black flex items-center gap-2">
+                        <Icon name="credit-card" className="w-4 h-4 text-rose-500" />
+                        <span>To'lov Kartalari Sozlamalari (Uzcard, Humo, Visa)</span>
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Mijozlar buyurtma berishda tanlashi va to'lov qilishi mumkin bo'lgan kartalar:
+                      </p>
 
-                    <form onSubmit={handleSaveSettings} className="space-y-3.5 text-xs">
-                      <div>
-                        <label className="block mb-1 font-semibold text-slate-400">Karta raqami (Uzcard / Humo)</label>
-                        <input 
-                          type="text" 
-                          value={settings.card_number}
-                          onChange={e => setSettings({ ...settings, card_number: e.target.value })}
-                          className={'w-full p-2.5 rounded-xl border focus:outline-none font-mono font-bold ' + 
-                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                        />
+                      {/* Uzcard */}
+                      <div className="p-3.5 rounded-xl border border-slate-800 bg-[#090D16] space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-200 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            <span>Uzcard Karta</span>
+                          </span>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={settings.uzcard_active !== false}
+                              onChange={e => setSettings({ ...settings, uzcard_active: e.target.checked })}
+                              className="accent-rose-600 rounded"
+                            />
+                            <span className="text-[11px] text-slate-400">Faol</span>
+                          </label>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block mb-1 text-[11px] text-slate-400 font-semibold">Uzcard Raqami</label>
+                            <input 
+                              type="text" 
+                              value={settings.uzcard_number || settings.card_number || ""}
+                              onChange={e => setSettings({ ...settings, uzcard_number: e.target.value, card_number: e.target.value })}
+                              placeholder="8600 5304 1234 5678"
+                              className={'w-full p-2 rounded-xl border focus:outline-none font-mono font-bold ' + 
+                                (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                            />
+                          </div>
+                          <div>
+                            <label className="block mb-1 text-[11px] text-slate-400 font-semibold">Karta Egasi</label>
+                            <input 
+                              type="text" 
+                              value={settings.uzcard_holder || settings.card_holder || ""}
+                              onChange={e => setSettings({ ...settings, uzcard_holder: e.target.value, card_holder: e.target.value })}
+                              placeholder="AZIMXON (KUZAVNOY.UZZ)"
+                              className={'w-full p-2 rounded-xl border focus:outline-none ' + 
+                                (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                            />
+                          </div>
+                        </div>
                       </div>
 
-                      <div>
-                        <label className="block mb-1 font-semibold text-slate-400">Karta egasining ismi</label>
-                        <input 
-                          type="text" 
-                          value={settings.card_holder}
-                          onChange={e => setSettings({ ...settings, card_holder: e.target.value })}
-                          className={'w-full p-2.5 rounded-xl border focus:outline-none ' + 
-                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                        />
+                      {/* Humo */}
+                      <div className="p-3.5 rounded-xl border border-slate-800 bg-[#090D16] space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-200 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                            <span>Humo Karta</span>
+                          </span>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={settings.humo_active !== false}
+                              onChange={e => setSettings({ ...settings, humo_active: e.target.checked })}
+                              className="accent-rose-600 rounded"
+                            />
+                            <span className="text-[11px] text-slate-400">Faol</span>
+                          </label>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block mb-1 text-[11px] text-slate-400 font-semibold">Humo Raqami</label>
+                            <input 
+                              type="text" 
+                              value={settings.humo_number || ""}
+                              onChange={e => setSettings({ ...settings, humo_number: e.target.value })}
+                              placeholder="9860 1201 5678 4321"
+                              className={'w-full p-2 rounded-xl border focus:outline-none font-mono font-bold ' + 
+                                (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                            />
+                          </div>
+                          <div>
+                            <label className="block mb-1 text-[11px] text-slate-400 font-semibold">Karta Egasi</label>
+                            <input 
+                              type="text" 
+                              value={settings.humo_holder || settings.card_holder || ""}
+                              onChange={e => setSettings({ ...settings, humo_holder: e.target.value })}
+                              placeholder="AZIMXON (KUZAVNOY.UZZ)"
+                              className={'w-full p-2 rounded-xl border focus:outline-none ' + 
+                                (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                            />
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      {/* Visa (User Explicit Request) */}
+                      <div className="p-3.5 rounded-xl border border-rose-900/40 bg-[#090D16] space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-rose-400 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                            <span>Visa Karta (Xalqaro)</span>
+                          </span>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={settings.visa_active !== false}
+                              onChange={e => setSettings({ ...settings, visa_active: e.target.checked })}
+                              className="accent-rose-600 rounded"
+                            />
+                            <span className="text-[11px] text-slate-400">Faol</span>
+                          </label>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block mb-1 text-[11px] text-slate-400 font-semibold">Visa Raqami</label>
+                            <input 
+                              type="text" 
+                              value={settings.visa_number || ""}
+                              onChange={e => setSettings({ ...settings, visa_number: e.target.value })}
+                              placeholder="4000 1234 5678 9010"
+                              className={'w-full p-2 rounded-xl border focus:outline-none font-mono font-bold ' + 
+                                (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                            />
+                          </div>
+                          <div>
+                            <label className="block mb-1 text-[11px] text-slate-400 font-semibold">Visa Egasi</label>
+                            <input 
+                              type="text" 
+                              value={settings.visa_holder || settings.card_holder || ""}
+                              onChange={e => setSettings({ ...settings, visa_holder: e.target.value })}
+                              placeholder="AZIMXON (KUZAVNOY.UZZ)"
+                              className={'w-full p-2 rounded-xl border focus:outline-none ' + 
+                                (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Store Contact & Address Settings */}
+                    <div className={'p-5 rounded-2xl border space-y-4 ' + (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                      <h3 className="text-sm font-black flex items-center gap-2">
+                        <Icon name="phone" className="w-4 h-4 text-rose-500" />
+                        <span>Do'kon Aloqa & Manzillari</span>
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                          <label className="block mb-1 font-semibold text-slate-400">Aloqa telefoni (1)</label>
+                          <label className="block mb-1 font-semibold text-slate-400">Aloqa Telefoni (1)</label>
                           <input 
                             type="text" 
-                            value={settings.phone}
+                            value={settings.phone || ""}
                             onChange={e => setSettings({ ...settings, phone: e.target.value })}
                             className={'w-full p-2.5 rounded-xl border focus:outline-none font-mono ' + 
                               (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
                           />
                         </div>
                         <div>
-                          <label className="block mb-1 font-semibold text-slate-400">Aloqa telefoni (2)</label>
+                          <label className="block mb-1 font-semibold text-slate-400">Aloqa Telefoni (2)</label>
                           <input 
                             type="text" 
                             value={settings.phone2 || ""}
@@ -6255,222 +6621,147 @@ function getAdminPanelHtml() {
                       </div>
 
                       <div>
-                        <label className="block mb-1 font-semibold text-slate-400">Do'kon manzili (Olib ketish uchun)</label>
+                        <label className="block mb-1 font-semibold text-slate-400">Do'kon Manzili (Farhod Bozori)</label>
                         <input 
                           type="text" 
-                          value={settings.store_address}
+                          value={settings.store_address || ""}
                           onChange={e => setSettings({ ...settings, store_address: e.target.value })}
                           className={'w-full p-2.5 rounded-xl border focus:outline-none ' + 
                             (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
                         />
                       </div>
 
+                      <div>
+                        <label className="block mb-1 font-semibold text-slate-400">Ish Vaqti</label>
+                        <input 
+                          type="text" 
+                          value={settings.store_hours || "09:00 - 19:00"}
+                          onChange={e => setSettings({ ...settings, store_hours: e.target.value })}
+                          className={'w-full p-2.5 rounded-xl border focus:outline-none ' + 
+                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                        />
+                      </div>
+
                       {settingsMessage && (
-                        <div className="p-3 rounded-xl bg-emerald-600/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
-                          {settingsMessage}
+                        <div className="p-3 rounded-xl bg-emerald-600/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-2">
+                          <Icon name="check" className="w-4 h-4" />
+                          <span>{settingsMessage}</span>
                         </div>
                       )}
 
                       <button 
                         type="submit"
                         disabled={settingsSaving}
-                        className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold transition flex items-center gap-2"
+                        className="px-6 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold transition flex items-center gap-2"
                       >
                         <Icon name="check" className="w-4 h-4" />
                         <span>{settingsSaving ? "Saqlanmoqda..." : "Sozlamalarni Saqlash"}</span>
                       </button>
-                    </form>
-                  </div>
+                    </div>
+                  </form>
                 </div>
               )}
             </main>
           </div>
 
-          {/* ========================================= */}
-          {/* PRODUCT ADD / EDIT MODAL */}
-          {/* ========================================= */}
-          {showProductModal && (
-            <div 
-              onClick={handleAttemptCloseProductModal}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto p-2 sm:p-4 flex items-center justify-center min-h-screen"
-              style={{ WebkitOverflowScrolling: 'touch' }}
-            >
-              <div 
-                onClick={e => e.stopPropagation()} 
-                className={'border rounded-3xl max-w-xl w-full my-auto shadow-2xl flex flex-col max-h-[92vh] overflow-hidden ' + 
-                  (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-white border-slate-200 text-slate-900')}
-              >
-                {/* Modal Header */}
-                <div className={'px-5 py-4 border-b flex items-center justify-between sticky top-0 z-10 shrink-0 ' + 
-                  (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
-                  <div className="flex items-center gap-2.5">
-                    <Icon name="package" className="w-5 h-5 text-rose-500" />
-                    <div>
-                      <h3 className="text-base font-black">
-                        {editingProduct ? "Zapchastni Tahrirlash" : "Yangi Zapchast Qo'shish"}
-                      </h3>
-                      <p className="text-[11px] text-slate-400">{editingProduct ? formData.name : "Katalog va omborga kiritish"}</p>
-                    </div>
-                  </div>
-
-                  <button 
-                    type="button"
-                    onClick={handleAttemptCloseProductModal}
-                    className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition"
-                  >
-                    <Icon name="close" className="w-4 h-4" />
+          {/* EDIT PRODUCT MODAL */}
+          {editingProduct && (
+            <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className={'w-full max-w-lg rounded-2xl border p-5 space-y-4 max-h-[90vh] overflow-y-auto ' + 
+                (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                
+                <div className="flex items-center justify-between border-b border-[#1F2B45] pb-3">
+                  <h3 className="font-black text-sm">Mahsulotni Tahrirlash</h3>
+                  <button onClick={() => setEditingProduct(null)} className="text-slate-400 hover:text-white">
+                    <Icon name="close" className="w-5 h-5" />
                   </button>
                 </div>
 
-                {/* Modal Body & Footer */}
-                <form onSubmit={executeSaveProduct} className="flex-1 flex flex-col overflow-hidden min-h-0">
-                  <div className="p-5 overflow-y-auto flex-1 space-y-3.5 text-xs" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <form onSubmit={handleSaveProduct} className="space-y-3 text-xs">
+                  <div>
+                    <label className="block mb-1 text-slate-400 font-semibold">Nomi</label>
+                    <input 
+                      type="text" 
+                      value={editingProduct.name}
+                      onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                      className={'w-full p-2.5 rounded-xl border focus:outline-none ' + 
+                        (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block mb-1 font-semibold text-slate-400">Zapchast nomi *</label>
+                      <label className="block mb-1 text-slate-400 font-semibold">Narxi (UZS)</label>
                       <input 
-                        type="text" 
-                        required
-                        value={formData.name}
-                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="M-Sport Anatomiya Rul"
-                        className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
+                        type="number" 
+                        value={editingProduct.price}
+                        onChange={e => setEditingProduct({ ...editingProduct, price: parseInt(e.target.value) || 0 })}
+                        className={'w-full p-2.5 rounded-xl border focus:outline-none font-mono ' + 
                           (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
                       />
                     </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div>
-                        <label className="block mb-1 font-semibold text-slate-400">Model / Toifa</label>
-                        <select 
-                          value={formData.category}
-                          onChange={e => setFormData({ ...formData, category: e.target.value, car_model: e.target.value })}
-                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                        >
-                          {categories.map(cat => <option key={cat.id || cat.name} value={cat.name}>{cat.name}</option>)}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block mb-1 font-semibold text-slate-400">Holati</label>
-                        <select 
-                          value={formData.condition || 'Yangi'}
-                          onChange={e => setFormData({ ...formData, condition: e.target.value })}
-                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                        >
-                          <option value="Yangi">Yangi</option>
-                          <option value="B/U (Ideal)">B/U (Ideal)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block mb-1 font-semibold text-slate-400">Ombor (Stock)</label>
-                        <input 
-                          type="number" 
-                          min="0"
-                          value={formData.stock !== undefined ? formData.stock : "10"}
-                          onChange={e => setFormData({ ...formData, stock: e.target.value })}
-                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block mb-1 font-semibold text-slate-400">Rangi</label>
-                        <input 
-                          type="text" 
-                          value={formData.color || ""}
-                          onChange={e => setFormData({ ...formData, color: e.target.value })}
-                          placeholder="Universal"
-                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block mb-1 font-semibold text-slate-400">Yangi narxi (so'm) *</label>
-                        <input 
-                          type="number" 
-                          required
-                          value={formData.new_price}
-                          onChange={e => setFormData({ ...formData, new_price: e.target.value })}
-                          placeholder="1450000"
-                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block mb-1 font-semibold text-slate-400">Eski narxi (so'm)</label>
-                        <input 
-                          type="number" 
-                          value={formData.old_price}
-                          onChange={e => setFormData({ ...formData, old_price: e.target.value })}
-                          placeholder="1800000"
-                          className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                            (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                        />
-                      </div>
-                    </div>
-
                     <div>
-                      <label className="block mb-1 font-semibold text-slate-400">Rasm URL havolasi</label>
+                      <label className="block mb-1 text-slate-400 font-semibold">Ombordagi Soni (Stock)</label>
                       <input 
-                        type="url" 
-                        value={formData.image_url || ""}
-                        onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                        placeholder="https://..."
-                        className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                          (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block mb-1 font-semibold text-slate-400">Qisqa tavsif</label>
-                      <input 
-                        type="text" 
-                        value={formData.description}
-                        onChange={e => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Malibu va Tracker uchun original sport rul"
-                        className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
-                          (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block mb-1 font-semibold text-slate-400">Xususiyatlar (har bir qator yangi band)</label>
-                      <textarea 
-                        rows="3"
-                        value={formData.detailsText}
-                        onChange={e => setFormData({ ...formData, detailsText: e.target.value })}
-                        placeholder="Original charm qoplama\\nKafolat beriladi"
-                        className={'w-full p-2.5 border rounded-xl focus:outline-none ' + 
+                        type="number" 
+                        value={editingProduct.stock}
+                        onChange={e => setEditingProduct({ ...editingProduct, stock: parseInt(e.target.value) || 0 })}
+                        className={'w-full p-2.5 rounded-xl border focus:outline-none font-mono font-bold ' + 
                           (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
                       />
                     </div>
                   </div>
 
-                  {/* Sticky Footer */}
-                  <div className={'px-5 py-3.5 border-t flex items-center justify-between gap-3 sticky bottom-0 z-10 shrink-0 ' + 
-                    (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block mb-1 text-slate-400 font-semibold">Avto Model</label>
+                      <input 
+                        type="text" 
+                        value={editingProduct.car_model || ""}
+                        onChange={e => setEditingProduct({ ...editingProduct, car_model: e.target.value })}
+                        className={'w-full p-2.5 rounded-xl border focus:outline-none ' + 
+                          (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-slate-400 font-semibold">Holati</label>
+                      <select
+                        value={editingProduct.condition || 'new'}
+                        onChange={e => setEditingProduct({ ...editingProduct, condition: e.target.value })}
+                        className={'w-full p-2.5 rounded-xl border focus:outline-none ' + 
+                          (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                      >
+                        <option value="new">Yangi (Original)</option>
+                        <option value="used">Ideal B/U</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block mb-1 text-slate-400 font-semibold">Rasm Havolasi (URL)</label>
+                    <input 
+                      type="text" 
+                      value={editingProduct.image_url || ""}
+                      onChange={e => setEditingProduct({ ...editingProduct, image_url: e.target.value })}
+                      className={'w-full p-2.5 rounded-xl border focus:outline-none text-[11px] font-mono ' + 
+                        (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
                     <button 
                       type="button" 
-                      onClick={handleAttemptCloseProductModal}
-                      className={'px-4 py-2 rounded-xl font-bold ' + (isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700')}
+                      onClick={() => setEditingProduct(null)}
+                      className="px-4 py-2 rounded-xl border border-slate-700 text-slate-300 font-bold"
                     >
                       Bekor qilish
                     </button>
-
                     <button 
                       type="submit" 
                       disabled={productSaving}
-                      className="px-6 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold transition flex items-center gap-2"
+                      className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold transition"
                     >
-                      <Icon name="check" className="w-4 h-4" />
-                      <span>{productSaving ? "Saqlanmoqda..." : "Saqlash"}</span>
+                      {productSaving ? "Saqlanmoqda..." : "Saqlash"}
                     </button>
                   </div>
                 </form>
@@ -6478,95 +6769,80 @@ function getAdminPanelHtml() {
             </div>
           )}
 
-          {/* UNSAVED CHANGES CONFIRMATION MODAL */}
-          {showUnsavedConfirm && (
-            <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-              <div className={'border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 ' + 
-                (isDark ? 'bg-[#101726] border-[#1F2B45] text-white' : 'bg-white border-slate-200 text-slate-900')}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center font-black shrink-0">
-                    <Icon name="shield" className="w-5 h-5" />
-                  </div>
+          {/* VIEW ORDER DETAILS MODAL */}
+          {selectedOrder && (
+            <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className={'w-full max-w-lg rounded-2xl border p-5 space-y-4 max-h-[90vh] overflow-y-auto ' + 
+                (isDark ? 'bg-[#101726] border-[#1F2B45]' : 'bg-white border-slate-200')}>
+                
+                <div className="flex items-center justify-between border-b border-[#1F2B45] pb-3">
                   <div>
-                    <h4 className="text-base font-black">O'zgarishlar saqlanmadi!</h4>
-                    <p className="text-xs text-slate-400 mt-0.5">Siz ehtiyot qism ma'lumotlarini tahrirladingiz</p>
-                  </div>
-                </div>
-
-                <p className="text-xs leading-relaxed text-slate-300">
-                  Qanday yo'l tutmoqchisiz? Tahrirlangan holatda saqlansinmi yoki eski holatda qoldirilsinmi?
-                </p>
-
-                <div className="space-y-2 pt-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setShowUnsavedConfirm(false);
-                      await executeSaveProduct();
-                    }}
-                    className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center justify-center gap-2"
-                  >
-                    <Icon name="check" className="w-4 h-4" />
-                    <span>Tahrirlangan holatda saqlansin (Saqlash)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowUnsavedConfirm(false);
-                      setShowProductModal(false);
-                      setEditingProduct(null);
-                      setInitialFormData(null);
-                      setProductImagePreview("");
-                    }}
-                    className="w-full py-2.5 px-4 bg-rose-600/15 text-rose-400 border border-rose-500/30 rounded-xl font-bold flex items-center justify-center gap-2"
-                  >
-                    <Icon name="trash" className="w-4 h-4" />
-                    <span>Eski holatda qolsin (Bekor qilish & Chiqish)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowUnsavedConfirm(false)}
-                    className="w-full py-2 px-4 rounded-xl font-bold text-slate-400 hover:text-white"
-                  >
-                    Tahrirlashda davom etish
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* RECEIPT MODAL */}
-          {selectedReceiptOrder && (
-            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="w-full max-w-sm rounded-3xl bg-white text-slate-900 p-5 shadow-2xl space-y-3 font-mono text-xs">
-                <div className="flex justify-between items-center pb-2 border-b-2 border-dashed border-slate-300">
-                  <span className="font-black text-sm">kuzavnoy.uzz CHEK</span>
-                  <button onClick={() => setSelectedReceiptOrder(null)} className="font-bold text-base text-slate-500 hover:text-slate-900">
-                    <Icon name="close" className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="text-[11px] text-slate-600">
-                  <div>Do'kon: Farhod avto ehtiyot qismlar bozori</div>
-                  <div>Buyurtma ID: #{selectedReceiptOrder.id}</div>
-                  <div>Mijoz: {selectedReceiptOrder.customer_name}</div>
-                  <div>Tel: {selectedReceiptOrder.phone}</div>
-                </div>
-                <div className="py-2 border-y-2 border-dashed border-slate-300 space-y-1">
-                  {(Array.isArray(selectedReceiptOrder.items) ? selectedReceiptOrder.items : (typeof selectedReceiptOrder.items === 'string' ? JSON.parse(selectedReceiptOrder.items || '[]') : [])).map((it, idx) => (
-                    <div key={idx} className="flex justify-between">
-                      <span className="truncate max-w-[180px]">{it.name} x{it.quantity || 1}</span>
-                      <span className="font-bold">{((it.new_price || 0) * (it.quantity || 1)).toLocaleString()} so'm</span>
+                    <h3 className="font-black text-sm">Buyurtma #{selectedOrder.id} Tafsilotlari</h3>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('uz-UZ') : ''}
                     </div>
-                  ))}
+                  </div>
+                  <button onClick={() => setSelectedOrder(null)} className="text-slate-400 hover:text-white">
+                    <Icon name="close" className="w-5 h-5" />
+                  </button>
                 </div>
-                <div className="flex justify-between font-black text-sm pt-1">
-                  <span>JAMI:</span>
-                  <span className="text-rose-600">{selectedReceiptOrder.total_price?.toLocaleString()} so'm</span>
-                </div>
-                <div className="text-center text-[10px] text-slate-500 pt-2">
-                  Xaridingiz uchun rahmat!
+
+                <div className="space-y-3 text-xs">
+                  <div className="p-3 rounded-xl bg-[#090D16] border border-[#1F2B45] space-y-1">
+                    <div className="text-slate-400">Mijoz ma'lumotlari:</div>
+                    <div className="font-bold text-slate-200 text-sm">{selectedOrder.customer_name}</div>
+                    <div className="font-mono text-rose-400 font-bold flex items-center justify-between">
+                      <span>{selectedOrder.phone}</span>
+                      <a href={'tel:' + selectedOrder.phone} className="px-2 py-0.5 rounded-md bg-rose-600/20 text-rose-400 text-[10px]">
+                        Qo'ng'iroq
+                      </a>
+                    </div>
+                    {selectedOrder.address && (
+                      <div className="text-slate-400 pt-1">
+                        Manzil: <span className="text-slate-200">{selectedOrder.address}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="text-slate-400 font-semibold">Buyurtma tovarlari:</div>
+                    <div className="divide-y divide-slate-800/60 p-2.5 rounded-xl bg-[#090D16] border border-[#1F2B45]">
+                      {(Array.isArray(selectedOrder.items) ? selectedOrder.items : []).map((item, idx) => (
+                        <div key={idx} className="py-2 flex items-center justify-between">
+                          <div>
+                            <div className="font-bold text-slate-200">{item.name}</div>
+                            <div className="text-[11px] text-slate-400 font-mono">
+                              {parseInt(item.price || 0).toLocaleString()} UZS × {item.quantity || 1}
+                            </div>
+                          </div>
+                          <div className="font-mono font-bold text-slate-200">
+                            {(parseInt(item.price || 0) * (item.quantity || 1)).toLocaleString()} UZS
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-[#090D16] border border-[#1F2B45] font-bold">
+                    <span>Jami to'lov:</span>
+                    <span className="text-base text-rose-400 font-mono">
+                      {parseInt(selectedOrder.total_price || 0).toLocaleString()} UZS
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block mb-1 text-slate-400 font-semibold">Buyurtma holatini yangilash</label>
+                    <select
+                      value={selectedOrder.status}
+                      onChange={e => handleUpdateOrderStatus(selectedOrder.id, e.target.value)}
+                      className={'w-full p-2.5 rounded-xl border font-bold text-xs focus:outline-none ' + 
+                        (isDark ? 'bg-[#090D16] border-[#1F2B45] text-white' : 'bg-slate-50 border-slate-200 text-slate-900')}
+                    >
+                      {['Yangi', 'Tasdiqlandi', 'Tayyorlanmoqda', 'Yetkazilmoqda', 'Yetkazildi', 'Bekor qilindi'].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -6576,7 +6852,7 @@ function getAdminPanelHtml() {
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<AdminApp />);
+    root.render(<AdminDashboard />);
   </script>
 </body>
 </html>`;

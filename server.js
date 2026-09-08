@@ -3912,9 +3912,9 @@ function getMiniAppHtml() {
       const effectivePrice = isMechanicMode ? Math.round(product.price * 0.9) : product.price;
 
       const handleShareToTelegram = () => {
-        const text = encodeURIComponent(product.name + " - Original ehtiyot qism (kuzavnoy.uzz)\nNarxi: " + formatPrice(effectivePrice) + " so'm\nFarhod avto bozori rasmiy do'koni");
+        const shareMsg = encodeURIComponent(product.name + " - Original ehtiyot qism (kuzavnoy.uzz)") + "%0A" + encodeURIComponent("Narxi: " + formatPrice(effectivePrice) + " so'm") + "%0A" + encodeURIComponent("Farhod avto bozori rasmiy do'koni");
         const url = encodeURIComponent("https://t.me/kuzavnoy_bot");
-        window.open("https://t.me/share/url?url=" + url + "&text=" + text, "_blank");
+        window.open("https://t.me/share/url?url=" + url + "&text=" + shareMsg, "_blank");
       };
 
       const handleAddBundle = () => {

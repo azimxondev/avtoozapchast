@@ -1988,7 +1988,7 @@ app.delete('/api/stories/:id', async (req, res) => {
 // API: Barcha mahsulotlarni olish
 app.get('/api/products', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM products ORDER BY id ASC');
+    const result = await pool.query('SELECT *, COALESCE(new_price, old_price, 0) AS price FROM products ORDER BY id ASC');
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -3239,6 +3239,71 @@ function getMiniAppHtml() {
         apply: "Применить",
         sum: "сум",
         total: "Итого"
+      },
+      en: {
+        appName: "kuzavnoy.uzz",
+        tagline: "Genuine Auto Spare Parts",
+        officialBadge: "Farhod Car Market • Official Store",
+        greetingTitle: "Hello,",
+        greetingDesc: "genuine auto parts for your car",
+        myGarage: "My Garage",
+        chooseCar: "Select your vehicle",
+        changeCar: "Change",
+        allCars: "All models",
+        searchPlaceholder: "Part name, model or VIN code...",
+        categoriesTitle: "Models & Categories",
+        popularTitle: "Most Popular Parts",
+        viewAll: "View all →",
+        addToCart: "Add to cart",
+        buyNow: "Buy now",
+        onlyLeft: "Only {n} left",
+        inStock: "In stock",
+        outOfStock: "Out of stock",
+        warrantyTag: "12-Month Official Warranty",
+        deliverySpeedTag: "Fast 2-4h Delivery",
+        installServiceTag: "Farhod Market Installation",
+        crossSellTitle: "Frequently bought together",
+        addBothToCart: "Add Both to Cart",
+        requestPartTitle: "Request a Part",
+        requestPartDesc: "Can't find the part you need? Leave a request, we'll find it!",
+        reviewsTitle: "Customer Reviews",
+        leaveReview: "Leave Review",
+        cartTitle: "Cart",
+        cartEmpty: "Your cart is empty",
+        cartEmptyDesc: "Browse our catalog to find matching car parts",
+        exploreCatalog: "Explore Catalog",
+        checkout: "Checkout",
+        deliveryAddress: "Delivery address",
+        pinDropMap: "Pick on map",
+        paymentMethod: "Payment method",
+        cardPayment: "Card payment",
+        cashPayment: "Cash on delivery",
+        walletBalance: "Cashback balance",
+        useCashback: "Deduct cashback balance",
+        mechanicWholesale: "Mechanic / Wholesale mode",
+        orderSuccess: "Order received successfully!",
+        orderSuccessDesc: "Our operator will contact you shortly to confirm",
+        viewOrder: "View order",
+        ordersHistory: "My Orders",
+        savedFavorites: "Saved",
+        storeInfo: "Store Information",
+        reOrder: "Re-Order",
+        requestReturn: "Return / Exchange",
+        statusConfirmed: "Confirmed",
+        statusProcessing: "Packing",
+        statusShipping: "Shipping",
+        statusDelivered: "Delivered",
+        contactSupport: "Contact Support",
+        navHome: "Home",
+        navCatalog: "Catalog",
+        navCart: "Cart",
+        navProfile: "Profile",
+        vipTier: "VIP Tier",
+        serviceCheckbox: "Installation service needed? (Farhod Market, -10% promo)",
+        promoCode: "Promo code",
+        apply: "Apply",
+        sum: "UZS",
+        total: "Total"
       }
     };
 
@@ -4139,6 +4204,63 @@ function getMiniAppHtml() {
       );
     };
 
+    // 2.8 Language Selection Modal
+    const LanguageModal = ({ isOpen, onClose, currentLang, onSelectLang }) => {
+      if (!isOpen) return null;
+      const languages = [
+        { code: "uz", label: "O'zbekcha", sub: "Lotin yozuvida", flag: "UZ" },
+        { code: "ru", label: "Русский", sub: "Язык интерфейса", flag: "RU" },
+        { code: "en", label: "English", sub: "International", flag: "EN" }
+      ];
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#101726] border border-[#1F2B45] w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl animate-slideUp space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1F2B45]">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 bg-slate-800 rounded-xl text-slate-300">
+                  <Icon name="globe" className="w-5 h-5 text-rose-500" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm">Tilni tanlang / Select Language</h3>
+                  <p className="text-[11px] text-slate-400">Interfeys tilini o'zgartirish</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800/50">
+                <Icon name="close" className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {languages.map(item => (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={() => { onSelectLang(item.code); onClose(); }}
+                  className={"w-full p-3 rounded-xl border flex items-center justify-between transition-all " + (currentLang === item.code ? "border-rose-500 bg-rose-950/30 text-white font-bold" : "border-[#1F2B45] bg-[#090D16] text-slate-300 hover:border-slate-600")}
+                >
+                  <div className="flex items-center space-x-3">
+                    <span className="w-8 h-8 rounded-lg bg-slate-800 text-xs font-black flex items-center justify-center text-slate-200 border border-[#1F2B45]">
+                      {item.flag}
+                    </span>
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-white">{item.label}</div>
+                      <div className="text-[10px] text-slate-400">{item.sub}</div>
+                    </div>
+                  </div>
+                  {currentLang === item.code && (
+                    <div className="w-6 h-6 rounded-full bg-rose-600 flex items-center justify-center text-white">
+                      <Icon name="check" className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
 
     // ==========================================
     // 3. MAIN MINI-APP COMPONENT
@@ -4156,8 +4278,9 @@ function getMiniAppHtml() {
       const [isLoading, setIsLoading] = useState(true);
 
       // Garage & Personalization
-      const [garageCar, setGarageCar] = useState(() => localStorage.getItem("kuzavnoy_garage_car") || "Gentra");
+      const [garageCar, setGarageCar] = useState(() => localStorage.getItem("kuzavnoy_garage_car") || "");
       const [isGarageModalOpen, setIsGarageModalOpen] = useState(false);
+      const [isLangModalOpen, setIsLangModalOpen] = useState(false);
 
       // Hero Carousel
       const [heroIndex, setHeroIndex] = useState(0);
@@ -4257,16 +4380,27 @@ function getMiniAppHtml() {
           const tgId = tgUser?.id;
 
           const [pRes, cRes, sRes, rRes] = await Promise.all([
-            fetch("/api/products").then(r => r.json()),
-            fetch("/api/categories").then(r => r.json()),
-            fetch("/api/stories").then(r => r.json()),
+            fetch("/api/products").then(r => r.json()).catch(() => []),
+            fetch("/api/categories").then(r => r.json()).catch(() => []),
+            fetch("/api/stories").then(r => r.json()).catch(() => []),
             fetch("/api/reviews").then(r => r.json()).catch(() => ({ reviews: [] }))
           ]);
 
-          if (pRes.products) setProducts(pRes.products);
-          if (cRes.categories) setCategories(cRes.categories);
-          if (sRes.stories) setStories(sRes.stories);
-          if (rRes.reviews) setReviews(rRes.reviews);
+          const rawProds = Array.isArray(pRes) ? pRes : (pRes?.products || []);
+          const normalizedProds = rawProds.map(p => ({
+            ...p,
+            price: Number(p.price || p.new_price || p.old_price || 0)
+          }));
+          setProducts(normalizedProds);
+
+          const rawCats = Array.isArray(cRes) ? cRes : (cRes?.categories || []);
+          setCategories(rawCats);
+
+          const rawStories = Array.isArray(sRes) ? sRes : (sRes?.stories || []);
+          setStories(rawStories);
+
+          const rawReviews = Array.isArray(rRes) ? rRes : (rRes?.reviews || []);
+          setReviews(rawReviews);
 
           if (tgId) {
             const [wRes, oRes] = await Promise.all([
@@ -4376,10 +4510,12 @@ function getMiniAppHtml() {
           const gLower = garageCar.toLowerCase();
           const matchGarage = list.filter(p => 
             (p.name && p.name.toLowerCase().includes(gLower)) ||
-            (p.description && p.description.toLowerCase().includes(gLower))
+            (p.description && p.description.toLowerCase().includes(gLower)) ||
+            (p.category && p.category.toLowerCase().includes(gLower))
           );
           if (matchGarage.length > 0) {
-            list = matchGarage;
+            const nonMatch = list.filter(p => !matchGarage.includes(p));
+            list = [...matchGarage, ...nonMatch];
           }
         }
 
@@ -4405,7 +4541,13 @@ function getMiniAppHtml() {
 
         // Category filter
         if (selectedCategory && selectedCategory !== "all") {
-          list = list.filter(p => String(p.category_id) === String(selectedCategory));
+          const matchedCat = categories.find(c => String(c.id) === String(selectedCategory));
+          const catNameLower = matchedCat ? (matchedCat.name || "").toLowerCase() : "";
+          list = list.filter(p => 
+            String(p.category_id) === String(selectedCategory) ||
+            (catNameLower && p.category && p.category.toLowerCase().includes(catNameLower)) ||
+            (catNameLower && p.category_name && p.category_name.toLowerCase().includes(catNameLower))
+          );
         }
 
         // Condition filter
@@ -4560,10 +4702,12 @@ function getMiniAppHtml() {
 
                 {/* Language Switcher */}
                 <button
-                  onClick={() => setLang(l => l === "uz" ? "ru" : "uz")}
-                  className="px-2.5 py-1 rounded-lg bg-[#101726] border border-[#1F2B45] text-[11px] font-bold text-slate-300 hover:text-white transition-colors"
+                  type="button"
+                  onClick={() => setIsLangModalOpen(true)}
+                  className="px-2.5 py-1 rounded-lg bg-[#101726] border border-[#1F2B45] text-[11px] font-bold text-slate-300 hover:text-white transition-colors flex items-center space-x-1"
                 >
-                  {lang.toUpperCase()}
+                  <Icon name="globe" className="w-3 h-3 text-slate-400" />
+                  <span>{lang.toUpperCase()}</span>
                 </button>
 
                 {/* Refresh Data */}
@@ -5618,6 +5762,18 @@ function getMiniAppHtml() {
             products={products}
           />
 
+          <LanguageModal
+            isOpen={isLangModalOpen}
+            onClose={() => setIsLangModalOpen(false)}
+            currentLang={lang}
+            onSelectLang={(newLang) => {
+              setLang(newLang);
+              localStorage.setItem("kuzavnoy_lang", newLang);
+              setIsLangModalOpen(false);
+              showToast(newLang === "uz" ? "Til tanlandi: O'zbekcha" : newLang === "ru" ? "Язык выбран: Русский" : "Language selected: English");
+            }}
+          />
+
           <ProductDetailModal
             product={selectedProduct}
             onClose={() => setSelectedProduct(null)}
@@ -5986,7 +6142,11 @@ function getAdminPanelHtml() {
         try {
           const res = await fetch("/api/products" + (force ? "?_t=" + Date.now() : ""), { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
           const data = await res.json();
-          if (Array.isArray(data)) setProducts(data);
+          const prods = Array.isArray(data) ? data : (data?.products || []);
+          setProducts(prods.map(p => ({
+            ...p,
+            price: Number(p.price || p.new_price || p.old_price || 0)
+          })));
         } catch(e) {}
       };
 

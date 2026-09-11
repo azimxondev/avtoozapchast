@@ -73,6 +73,8 @@ async def lifespan(app: FastAPI):
     print("👋 Tizim to'xtatildi.")
 
 
+from fastapi.responses import FileResponse, JSONResponse
+
 # FastAPI instance
 app = FastAPI(
     title="Avto Sklad",
@@ -80,6 +82,15 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    print(f"🔴 Global Error: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)}
+    )
 
 # CORS
 app.add_middleware(

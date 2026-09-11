@@ -1,0 +1,77 @@
+/* =====================================================
+   AVTO SKLAD — Navigation & Responsive Layout CSS
+   ===================================================== */
+
+header {
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur-glass);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.app-container {
+    flex: 1;
+    padding: 16px;
+    padding-bottom: 90px;
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* Bottom Navigation */
+.nav-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur-glass);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 12px;
+    z-index: 200;
+}
+
+.nav-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.nav-btn .icon {
+    font-size: 20px;
+}
+
+.nav-btn.active {
+    color: var(--accent-indigo);
+}
+
+.nav-btn.active .icon {
+    transform: translateY(-2px);
+}

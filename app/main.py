@@ -9,14 +9,14 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database.pool import create_pool, close_pool
 from app.database.queries import init_tables
-from app.api.routes import api_router
+from app.api.router import api_router
 from app.bot.bot import bot, dp
-from app.bot.handlers import router as bot_router
+from app.bot.handlers import bot_router
 from app.config import BOT_TOKEN
 
 # Bot router ni dispatcher ga ulash
@@ -39,10 +39,9 @@ async def _start_bot_polling():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle — startup va shutdown."""
-    # STARTUP
     print("🚀 Avto Sklad tizimi ishga tushmoqda...")
 
-    # 1. Database pool ochish
+    # 1. Database pool ochish va jadvallarni avto-migratsiya qilish
     await create_pool()
     await init_tables()
 
@@ -73,12 +72,10 @@ async def lifespan(app: FastAPI):
     print("👋 Tizim to'xtatildi.")
 
 
-from fastapi.responses import FileResponse, JSONResponse
-
 # FastAPI instance
 app = FastAPI(
     title="Avto Sklad",
-    description="Avto ehtiyot qismlari sklad boshqaruv tizimi",
+    description="Avto ehtiyot qismlari sklad boshqaruv va hisob-kitob tizimi",
     version="2.0.0",
     lifespan=lifespan,
 )
@@ -119,9 +116,7 @@ async def serve_frontend():
     return {"status": "Avto Sklad API ishlamoqda", "version": "2.0.0"}
 
 
-
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
-    """Health check (UptimeRobot uchun GET va HEAD so'rovlarini qabul qiladi)."""
+    """Health check (UptimeRobot uchun)."""
     return {"status": "ok"}
-

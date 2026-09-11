@@ -1,0 +1,134 @@
+/* =====================================================
+   AVTO SKLAD — Products List & Search CSS
+   ===================================================== */
+
+.search-bar {
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.search-bar input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px 14px 44px;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    transition: var(--transition);
+}
+
+.search-bar input:focus {
+    border-color: var(--accent-indigo);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 16px;
+}
+
+.product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.product-card {
+    background: var(--bg-card);
+    backdrop-filter: var(--blur-glass);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.product-card:active {
+    transform: scale(0.98);
+    background: var(--bg-element);
+}
+
+.product-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.product-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.product-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.product-price {
+    color: var(--accent-emerald);
+    font-weight: 700;
+}
+
+.product-qty {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 2px 8px;
+    border-radius: 12px;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.product-qty.low {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--accent-rose);
+}
+
+.product-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.badge-new { background: rgba(16, 185, 129, 0.2); color: var(--accent-emerald); }
+.badge-used { background: rgba(245, 158, 11, 0.2); color: var(--accent-amber); }
+
+.product-arrow {
+    color: var(--text-muted);
+    font-size: 18px;
+}
+
+/* FAB button */
+.fab {
+    position: fixed;
+    bottom: 84px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-indigo), #4F46E5);
+    color: #FFF;
+    border: none;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+    cursor: pointer;
+    z-index: 90;
+    transition: var(--transition);
+}
+
+.fab:active { transform: scale(0.9); }

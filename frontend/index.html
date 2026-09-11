@@ -3,88 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Avto Sklad</title>
+    <title>Avto Sklad — Boshqaruv Tizimi</title>
+    
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Modular CSS Stylesheets -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/products.css">
+    <link rel="stylesheet" href="/static/css/modal.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+    <link rel="stylesheet" href="/static/css/responsive.css">
 </head>
 <body>
-    <div id="app">
-        <!-- Loading Screen -->
-        <div id="loading-screen" class="loading-screen">
-            <div class="loading-spinner"></div>
-            <p>Yuklanmoqda...</p>
+
+    <!-- Header -->
+    <header>
+        <div class="logo">
+            <span>🚗</span>
+            <span>Avto Sklad</span>
         </div>
+        <div id="header-role-badge"></div>
+    </header>
 
-        <!-- Error Screen -->
-        <div id="error-screen" class="error-screen hidden">
-            <div class="error-icon">❌</div>
-            <p id="error-message">Xatolik yuz berdi</p>
-            <button onclick="location.reload()" class="btn btn-primary">Qayta yuklash</button>
-        </div>
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden"></div>
 
-        <!-- Main Content -->
-        <div id="main-content" class="hidden">
-            <!-- Header -->
-            <header class="header">
-                <div class="header-title">
-                    <span class="header-icon">🚗</span>
-                    <h1>AVTO SKLAD</h1>
-                </div>
-            </header>
-
-            <!-- Tab Content -->
-            <main id="tab-content" class="tab-content"></main>
-
-            <!-- Bottom Navigation -->
-            <nav class="bottom-nav" id="bottom-nav">
-                <button class="nav-btn active" data-tab="dashboard">
-                    <span class="nav-icon">🏠</span>
-                    <span class="nav-label">Bosh sahifa</span>
-                </button>
-                <button class="nav-btn" data-tab="products">
-                    <span class="nav-icon">📦</span>
-                    <span class="nav-label">Sklad</span>
-                </button>
-                <button class="nav-btn admin-only" data-tab="history">
-                    <span class="nav-icon">📜</span>
-                    <span class="nav-label">Tarix</span>
-                </button>
-                <button class="nav-btn" data-tab="location">
-                    <span class="nav-icon">📍</span>
-                    <span class="nav-label">Manzil</span>
-                </button>
-            </nav>
-        </div>
-
-        <!-- Modals -->
-        <div id="modal-overlay" class="modal-overlay hidden" onclick="closeAllModals()"></div>
-
-        <!-- Product Detail Modal -->
-        <div id="product-detail-modal" class="modal hidden">
-            <div class="modal-content" id="product-detail-content"></div>
-        </div>
-
-        <!-- Add/Edit Product Modal -->
-        <div id="product-form-modal" class="modal hidden">
-            <div class="modal-content" id="product-form-content"></div>
-        </div>
-
-        <!-- Confirm Modal -->
-        <div id="confirm-modal" class="modal modal-sm hidden">
-            <div class="modal-content" id="confirm-content"></div>
-        </div>
-
-        <!-- Stock Change Modal -->
-        <div id="stock-modal" class="modal modal-sm hidden">
-            <div class="modal-content" id="stock-modal-content"></div>
-        </div>
-
-        <!-- Toast -->
-        <div id="toast" class="toast hidden"></div>
+    <!-- Loading Screen -->
+    <div id="loading-screen" style="position:fixed;inset:0;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999">
+        <div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent-indigo);border-radius:50%;animation:spin 0.8s linear infinite"></div>
+        <p style="margin-top:16px;color:var(--text-muted);font-size:14px;font-weight:500">Sklad tizimi yuklanmoqda...</p>
     </div>
 
-    <script src="/static/app.js"></script>
+    <!-- Error Screen -->
+    <div id="error-screen" class="hidden" style="position:fixed;inset:0;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;z-index:999">
+        <div style="font-size:56px;margin-bottom:16px">❌</div>
+        <div id="error-message" style="font-size:16px;font-weight:700;color:var(--accent-rose);margin-bottom:20px">Xatolik yuz berdi</div>
+        <button class="btn btn-primary" onclick="location.reload()">Qayta yuklash</button>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content" class="app-container hidden">
+        <div id="tab-content"></div>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="nav-bar">
+        <button class="nav-btn active" data-tab="dashboard">
+            <span class="icon">📊</span>
+            <span>Hisob-kitob</span>
+        </button>
+        <button class="nav-btn" data-tab="products">
+            <span class="icon">📦</span>
+            <span>Sklad</span>
+        </button>
+        <button class="nav-btn" data-tab="history">
+            <span class="icon">📜</span>
+            <span>Tarix</span>
+        </button>
+        <button class="nav-btn" data-tab="location">
+            <span class="icon">📍</span>
+            <span>Manzil</span>
+        </button>
+        <button class="nav-btn" data-tab="admin">
+            <span class="icon">⚙️</span>
+            <span>Admin</span>
+        </button>
+    </nav>
+
+    <!-- Modal Overlay -->
+    <div id="modal-overlay" class="modal-overlay hidden" onclick="closeAllModals()"></div>
+
+    <!-- Modals -->
+    <div id="product-detail-modal" class="modal hidden" onclick="event.stopPropagation()">
+        <div id="product-detail-content"></div>
+    </div>
+
+    <div id="stock-modal" class="modal hidden" onclick="event.stopPropagation()">
+        <div id="stock-modal-content"></div>
+    </div>
+
+    <div id="product-form-modal" class="modal hidden" onclick="event.stopPropagation()">
+        <div id="product-form-content"></div>
+    </div>
+
+    <div id="confirm-modal" class="modal hidden" onclick="event.stopPropagation()">
+        <div id="confirm-content" style="padding:10px"></div>
+    </div>
+
+    <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+
+    <!-- Modular JavaScript Files (in dependency order) -->
+    <script src="/static/js/utils.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+    <script src="/static/js/products.js"></script>
+    <script src="/static/js/statistics.js"></script>
+    <script src="/static/js/transactions.js"></script>
+    <script src="/static/js/location.js"></script>
+    <script src="/static/js/admin.js"></script>
+    <script src="/static/js/app.js"></script>
+
 </body>
 </html>

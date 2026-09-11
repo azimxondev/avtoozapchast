@@ -99,12 +99,14 @@ if FRONTEND_DIR.exists():
 
 
 @app.get("/")
+@app.get("/app")
 async def serve_frontend():
     """Mini App bosh sahifasi."""
     index_path = FRONTEND_DIR / "index.html"
     if index_path.exists():
         return FileResponse(str(index_path))
     return {"status": "Avto Sklad API ishlamoqda", "version": "2.0.0"}
+
 
 
 @app.get("/health")

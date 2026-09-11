@@ -1,13 +1,52 @@
-"""Bot admin command handlers (/broadcast, etc.)."""
+"""Bot admin command handlers (/admin, /broadcast, etc.)."""
 
 from aiogram import Router
 from aiogram.types import Message
 from aiogram.filters import Command
 
-from app.config import is_head_admin
+from app.config import is_admin, is_head_admin
+from app.bot.keyboards.main import webapp_keyboard
 from app.database import queries
 
 router = Router()
+
+
+@router.message(Command("admin"))
+async def cmd_admin(message: Message):
+    """
+    /admin — Admin panel va statistikani Telegram xabarida ko'rish.
+    """
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer("❌ <b>Sizda admin ruxsati yo'q.</b>")
+        return
+
+    role_title = "🔑 Bosh Admin" if is_head_admin(user_id) else "👨‍💼 Co-Admin"
+
+    try:
+        overview = await queries.get_overview_stats()
+        total_prods = overview.get("total_products", 0)
+        total_qty = overview.get("total_quantity", 0)
+        stock_val = overview.get("stock_value", 0)
+        val_str = f"{int(stock_val):,} so'm".replace(",", " ")
+    except Exception:
+        total_prods = 0
+        total_qty = 0
+        val_str = "0 so'm"
+
+    text = (
+        f"⚙️ <b>ADMIN PANEL — SKLAD BOSH QARUVI</b>\n\n"
+        f"👤 <b>Foydalanuvchi:</b> {message.from_user.full_name}\n"
+        f"🔑 <b>Rol:</b> {role_title}\n"
+        f"🆔 <b>Telegram ID:</b> <code>{user_id}</code>\n\n"
+        f"📊 <b>Sklad Qisqa Statistikasi:</b>\n"
+        f"• Mahsulot turlari: <b>{total_prods} tur</b>\n"
+        f"• Jami ombor qoldig'i: <b>{total_qty} dona</b>\n"
+        f"• Sklad umumi qiymati: <b>{val_str}</b>\n\n"
+        f"Boshqarish va hisobotlar uchun pastdagi tugmani bosing: 👇"
+    )
+
+    await message.answer(text, reply_markup=webapp_keyboard(is_admin=True))
 
 
 @router.message(Command("broadcast"))

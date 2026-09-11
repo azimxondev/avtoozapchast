@@ -31,3 +31,29 @@ function showToast(msg, type = "") {
         $toast.classList.add("hidden");
     }, 2500);
 }
+
+function initTheme() {
+    const saved = localStorage.getItem("theme");
+    if (saved === "light") {
+        document.body.classList.add("light-theme");
+        const btn = document.getElementById("theme-toggle-btn");
+        if (btn) btn.textContent = "☀️";
+    }
+}
+
+function toggleTheme() {
+    const isLight = document.body.classList.toggle("light-theme");
+    const btn = document.getElementById("theme-toggle-btn");
+    if (isLight) {
+        if (btn) btn.textContent = "☀️";
+        localStorage.setItem("theme", "light");
+        showToast("☀️ Kunduzgi rejim", "info");
+    } else {
+        if (btn) btn.textContent = "🌙";
+        localStorage.setItem("theme", "dark");
+        showToast("🌙 Tungi rejim", "info");
+    }
+}
+
+document.addEventListener("DOMContentLoaded", initTheme);
+

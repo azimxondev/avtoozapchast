@@ -41,9 +41,12 @@ async def lifespan(app: FastAPI):
     """Application lifecycle — startup va shutdown."""
     print("🚀 Avto Sklad tizimi ishga tushmoqda...")
 
-    # 1. Database pool ochish va jadvallarni avto-migratsiya qilish
-    await create_pool()
-    await init_tables()
+    # 1. Database pool ochish (xatolik bo'lsa ham bot to'xtab qolmaydi)
+    try:
+        await create_pool()
+        await init_tables()
+    except Exception as db_err:
+        print(f"⚠️ DB ulanish xatosi (bot baribir ishga tushadi): {db_err}")
 
     # 2. Bot polling ni boshlash (background task)
     global _bot_task
@@ -55,6 +58,7 @@ async def lifespan(app: FastAPI):
 
     print("✅ Tizim tayyor!")
     yield
+
 
     # SHUTDOWN
     print("🛑 Tizim to'xtatilmoqda...")

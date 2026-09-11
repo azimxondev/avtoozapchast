@@ -35,6 +35,22 @@
     --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+body.light-theme {
+    --bg-primary: #F3F4F6;
+    --bg-secondary: #FFFFFF;
+    --bg-card: rgba(255, 255, 255, 0.95);
+    --bg-glass: rgba(255, 255, 255, 0.85);
+    --bg-element: #E5E7EB;
+    
+    --border: rgba(0, 0, 0, 0.08);
+    --border-light: rgba(0, 0, 0, 0.15);
+    
+    --text-primary: #111827;
+    --text-secondary: #374151;
+    --text-muted: #6B7280;
+}
+
+
 * {
     box-sizing: border-box;
     margin: 0;

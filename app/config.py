@@ -23,11 +23,18 @@ if _raw_ids:
     if _parsed:
         HEAD_ADMIN_ID = _parsed[0]
         ADMIN_IDS = _parsed
+else:
+    # Fallback to user's Telegram ID if ADMIN_IDS env var is not set yet
+    HEAD_ADMIN_ID = 5846655013
+    ADMIN_IDS = [5846655013]
+
 
 def is_admin(user_id: int) -> bool:
     """Foydalanuvchi admin yoki yo'qligini tekshirish."""
     return user_id in ADMIN_IDS
 
+
 def is_head_admin(user_id: int) -> bool:
     """Foydalanuvchi bosh admin yoki yo'qligini tekshirish."""
     return user_id == HEAD_ADMIN_ID
+

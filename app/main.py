@@ -120,7 +120,8 @@ async def serve_frontend():
 
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
-    """Health check (UptimeRobot uchun)."""
+    """Health check (UptimeRobot uchun GET va HEAD so'rovlarini qabul qiladi)."""
     return {"status": "ok"}
+

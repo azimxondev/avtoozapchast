@@ -9,7 +9,7 @@ TZ_TASHKENT = timezone(timedelta(hours=5))
 # ─────────────────────────── SCHEMA INIT ───────────────────────────
 
 async def init_tables() -> None:
-    """Jadvallarni yaratish (agar mavjud bo'lmasa)."""
+    """Jadvallarni yaratish va mavjud jadvallarni avto-migratsiya qilish."""
     pool = get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
@@ -19,8 +19,7 @@ async def init_tables() -> None:
                 quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0),
                 price BIGINT NOT NULL DEFAULT 0 CHECK (price >= 0),
                 description TEXT DEFAULT '',
-                condition VARCHAR(10) NOT NULL DEFAULT 'NEW'
-                    CHECK (condition IN ('NEW', 'USED')),
+                condition VARCHAR(10) NOT NULL DEFAULT 'NEW',
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );
@@ -28,9 +27,9 @@ async def init_tables() -> None:
             CREATE TABLE IF NOT EXISTS transactions (
                 id SERIAL PRIMARY KEY,
                 product_id INT NOT NULL REFERENCES stock_products(id) ON DELETE CASCADE,
-                type VARCHAR(10) NOT NULL CHECK (type IN ('kirim', 'chiqim')),
-                amount INT NOT NULL CHECK (amount > 0),
-                price_at_transaction BIGINT NOT NULL,
+                type VARCHAR(10) NOT NULL DEFAULT 'chiqim',
+                amount INT NOT NULL DEFAULT 1,
+                price_at_transaction BIGINT NOT NULL DEFAULT 0,
                 admin_id BIGINT,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
@@ -43,12 +42,22 @@ async def init_tables() -> None:
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
 
+            -- Avto-migratsiya: Eski jadvallarga yetishmayotgan ustunlarni avtomatik qo'shish
+            ALTER TABLE stock_products ADD COLUMN IF NOT EXISTS condition VARCHAR(10) DEFAULT 'NEW';
+            ALTER TABLE stock_products ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+
+            ALTER TABLE transactions ADD COLUMN IF NOT EXISTS amount INT DEFAULT 1;
+            ALTER TABLE transactions ADD COLUMN IF NOT EXISTS price_at_transaction BIGINT DEFAULT 0;
+            ALTER TABLE transactions ADD COLUMN IF NOT EXISTS admin_id BIGINT;
+            ALTER TABLE transactions ADD COLUMN IF NOT EXISTS type VARCHAR(10) DEFAULT 'chiqim';
+
             CREATE INDEX IF NOT EXISTS idx_transactions_product ON transactions(product_id);
             CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
             CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(created_at);
             CREATE INDEX IF NOT EXISTS idx_products_name ON stock_products(name);
         """)
-        print("✅ Jadvallar va indekslar tayyor.")
+        print("✅ Jadvallar va indekslar tayyor va avto-migratsiya qilindi.")
+
 
 
 # ─────────────────────── BOT USERS ───────────────────────

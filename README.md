@@ -1,73 +1,150 @@
-# 🚗 kuzavnoy.uzz — E-Commerce Platform
+# 🚗 Avto Sklad — Telegram Mini App
 
-> Telegram Mini App, Web Admin Panel va Telegram Bot yagona all-in-one arxitekturada.
+> Avto ehtiyot qismlari do'koni va omborini (sklad) boshqarish tizimi.
+> Telegram Mini App + FastAPI Backend + PostgreSQL (Neon).
 
-[![Node.js](https://img.shields.io/badge/Node.js-18+-68a063?style=flat-square&logo=node.js)](https://nodejs.org/)
-[![React](https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react)](https://react.dev/)
+[![Python](https://img.shields.io/badge/Python-3.12+-3776ab?style=flat-square&logo=python)](https://python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon_Cloud-4169e1?style=flat-square&logo=postgresql)](https://neon.tech/)
-[![Telegram](https://img.shields.io/badge/Telegram-Bot_API-2ca5e0?style=flat-square&logo=telegram)](https://core.telegram.org/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](#)
+[![Telegram](https://img.shields.io/badge/Telegram-Mini_App-2ca5e0?style=flat-square&logo=telegram)](https://core.telegram.org/)
 
 ---
 
-## ⚡️ Imkoniyatlar (Features)
+## ⚡️ Imkoniyatlar
 
-* **🛍 Telegram Mini App (Mijozlar uchun)**:
-  * Avto ehtiyot qismlar katalogi, qidiruv va mashina modellari filtri
-  * Instagram uslubidagi avto-o'tuvchi Stories (Istoriyalar)
-  * Qulay savatcha va buyurtma berish (Yetkazish / Olib ketish)
-  * Ko'p kartali to'lov (Uzcard, Humo, Visa) va naqd to'lov
-  * Buyurtma holatini real vaqtda kuzatuvchi 4 bosqichli treker
-  * 3 ta til (UZ, RU, EN) va Tun/Kun (Dark/Light) rejimi
-
-* **👨‍💼 Admin Dashboard (Do'kon egasi uchun)**:
-  * Buyurtmalar jurnali va holatlarni boshqarish (`Kutilmoqda`, `Jarayonda`, `Tayyorlandi`, `Yetkazildi`, `Bekor qilindi`)
-  * Aniq sanalar kesimidagi moliyaviy analitika (Bugun, Hafta, Oy, Yil)
-  * QR-kodli va Soliq 1% keshbekli 80mm termal kassa chekini chiqarish
-  * Zapchastlar va istoriyalarni boshqarish (CRUD)
-  * Barcha mijozlarga bot orqali ommaviy xabar va rasm tarqatish (Broadcast)
-  * Aloqa telefonlari va kartalar uchun faollik galchkalari (Sozlamalar)
-
-* **🤖 Telegram Bot**:
-  * Buyurtma tushganda admin va mijozga bir zumda avtomatik xabar
-  * Holat o'zgarganda mijozga darhol SMS bildirishnoma
-  * Doimiy menyu buyruqlari: `/start`, `/katalog`, `/aloqa`, `/admin`
+* **📦 Sklad boshqaruvi**: Mahsulot qo'shish, tahrirlash, o'chirish
+* **➕➖ Kirim/Chiqim**: Omborga tovar kiritish va sotish (atomic transaction)
+* **📊 Dashboard**: Sklad qiymati, jami qoldiq, sotuv hisobi
+* **📈 Statistika**: Kunlik, haftalik, oylik, yillik sotuv va kirim
+* **📜 Tarix**: Barcha kirim/chiqim operatsiyalari tarixi
+* **📍 Manzil**: Do'kon manzili (Google Maps / Yandex Xarita)
+* **🔐 Xavfsizlik**: Telegram initData HMAC-SHA256 tekshiruv
+* **👨‍💼 Admin tizimi**: Head Admin + Co-admins
+* **📢 Broadcast**: Head Admin barcha foydalanuvchilarga xabar yuborishi
 
 ---
 
-## 🚀 Ishga tushirish (Quick Start)
+## 🏗 Arxitektura
 
-### 1. Repozitoriyani yuklab olish va paketlarni o'rnatish
+```
+Telegram Bot (/start)
+       ↓
+Telegram Mini App (WebApp)
+       ↓
+FastAPI Backend (API)
+       ↓
+PostgreSQL (Neon Cloud)
+```
+
+---
+
+## 🚀 Ishga tushirish
+
+### 1. Repozitoriyani yuklab olish
+
 ```bash
 git clone https://github.com/azimxondev/kuzavnoy-app.git
 cd kuzavnoy-app
-npm install
 ```
 
-### 2. Sozlamalar (.env)
-`.env.example` faylidan nusxa olib, `.env` faylini yarating:
+### 2. Python muhitini sozlash
+
+```bash
+python -m venv venv
+
+# Windows:
+venv\Scripts\activate
+# Linux/Mac:
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+### 3. .env faylini yaratish
+
 ```bash
 cp .env.example .env
 ```
 
 Kerakli kalitlarni to'ldiring:
 ```env
-PORT=3000
-BOT_TOKEN=sizning_bot_tokeningiz
-DATABASE_URL=sizning_postgres_baza_havolangiz
-ADMIN_CHAT_IDS=sizning_telegram_idingiz
-WEB_APP_URL=https://sizning-domen.onrender.com
+BOT_TOKEN=1234567890:ABCDefGhIjKlMnOpQrStUvWxYz
+ADMIN_IDS=123456789
+DATABASE_URL=postgresql://user:pass@host/dbname?sslmode=require
+WEBAPP_URL=https://your-app.onrender.com
+SHOP_ADDRESS=Toshkent sh., Farhod bozori
 ```
 
-### 3. Serverni yoqish
+### 4. Ma'lumotlar bazasini sozlash
+
+Neon Dashboard → SQL Editor da `sql/schema.sql` faylini ishga tushiring.
+
+### 5. Serverni yoqish
+
 ```bash
-npm start
+uvicorn app.main:app --reload
 ```
 
-* **Mini App**: `http://localhost:3000`
-* **Admin Panel**: `http://localhost:3000/admin`
+* **Mini App**: `http://localhost:8000`
+* **API Docs**: `http://localhost:8000/docs`
+
+---
+
+## 📡 API Endpointlar
+
+| Method | Path | Vazifa |
+|--------|------|--------|
+| `GET` | `/api/products` | Barcha mahsulotlar |
+| `GET` | `/api/products/{id}` | Bitta mahsulot |
+| `POST` | `/api/products` | Yangi mahsulot qo'shish |
+| `PATCH` | `/api/products/{id}` | Mahsulotni tahrirlash |
+| `DELETE` | `/api/products/{id}` | Mahsulotni o'chirish |
+| `POST` | `/api/products/{id}/in` | Kirim (+) |
+| `POST` | `/api/products/{id}/out` | Chiqim (-) |
+| `GET` | `/api/statistics` | Umumiy statistika |
+| `GET` | `/api/statistics/{period}` | Davriy statistika |
+| `GET` | `/api/transactions` | Transaction tarix |
+| `GET` | `/api/shop` | Do'kon manzili |
+| `GET` | `/health` | Health check |
+
+---
+
+## 🔐 Xavfsizlik
+
+* Telegram `initData` HMAC-SHA256 bilan tekshiriladi
+* Faqat `ADMIN_IDS` ichidagi userlar boshqaruv qila oladi
+* `HEAD_ADMIN` (birinchi ID) — boshqa adminlarni boshqaradi
+* SQL Injection himoyasi (parametrized queries)
+* `quantity < 0` bo'lishining oldi olingan
+
+---
+
+## ☁️ Render ga deploy qilish
+
+1. GitHub'ga push qiling
+2. [Render.com](https://render.com) → **New Web Service**
+3. **Build Command**: `pip install -r requirements.txt`
+4. **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+5. **Environment Variables** ga `.env` dagi barcha kalitlarni kiriting
+6. `WEBAPP_URL` ni Render domen bilan yangilang
+
+### UptimeRobot sozlash
+* URL: `https://your-app.onrender.com/health`
+* Interval: 5 daqiqa
+* Type: HTTP(s)
+
+---
+
+## 🤖 Telegram Bot buyruqlari
+
+| Buyruq | Vazifa | Kim uchun |
+|--------|--------|-----------|
+| `/start` | Skladni ochish | Hammaga |
+| `/help` | Yordam | Adminlar |
+| `/broadcast <xabar>` | Barcha userlarga xabar | Head Admin |
 
 ---
 
 ## 📄 Litsenziya
-Ushbu loyiha MIT litsenziyasi asosida tarqatiladi.
+
+MIT

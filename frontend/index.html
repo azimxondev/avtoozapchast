@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Avto Sklad</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="loading-screen">
+            <div class="loading-spinner"></div>
+            <p>Yuklanmoqda...</p>
+        </div>
+
+        <!-- Error Screen -->
+        <div id="error-screen" class="error-screen hidden">
+            <div class="error-icon">❌</div>
+            <p id="error-message">Xatolik yuz berdi</p>
+            <button onclick="location.reload()" class="btn btn-primary">Qayta yuklash</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="main-content" class="hidden">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-title">
+                    <span class="header-icon">🚗</span>
+                    <h1>AVTO SKLAD</h1>
+                </div>
+            </header>
+
+            <!-- Tab Content -->
+            <main id="tab-content" class="tab-content"></main>
+
+            <!-- Bottom Navigation -->
+            <nav class="bottom-nav" id="bottom-nav">
+                <button class="nav-btn active" data-tab="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-label">Bosh sahifa</span>
+                </button>
+                <button class="nav-btn" data-tab="products">
+                    <span class="nav-icon">📦</span>
+                    <span class="nav-label">Sklad</span>
+                </button>
+                <button class="nav-btn admin-only" data-tab="history">
+                    <span class="nav-icon">📜</span>
+                    <span class="nav-label">Tarix</span>
+                </button>
+                <button class="nav-btn" data-tab="location">
+                    <span class="nav-icon">📍</span>
+                    <span class="nav-label">Manzil</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Modals -->
+        <div id="modal-overlay" class="modal-overlay hidden" onclick="closeAllModals()"></div>
+
+        <!-- Product Detail Modal -->
+        <div id="product-detail-modal" class="modal hidden">
+            <div class="modal-content" id="product-detail-content"></div>
+        </div>
+
+        <!-- Add/Edit Product Modal -->
+        <div id="product-form-modal" class="modal hidden">
+            <div class="modal-content" id="product-form-content"></div>
+        </div>
+
+        <!-- Confirm Modal -->
+        <div id="confirm-modal" class="modal modal-sm hidden">
+            <div class="modal-content" id="confirm-content"></div>
+        </div>
+
+        <!-- Stock Change Modal -->
+        <div id="stock-modal" class="modal modal-sm hidden">
+            <div class="modal-content" id="stock-modal-content"></div>
+        </div>
+
+        <!-- Toast -->
+        <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

@@ -8,8 +8,8 @@ from app.config import WEBAPP_URL, SHOP_PHONE, SHOP_TELEGRAM
 
 def get_webapp_url() -> str:
     url = (WEBAPP_URL or "").strip()
-    if not url or "localhost" in url or "127.0.0.1" in url:
-        return "https://kuzavnoy-app.onrender.com"
+    if not url or "localhost" in url or "127.0.0.1" in url or "kuzavnoy" in url:
+        return "https://avtoozapchast.onrender.com"
     if url.startswith("http://"):
         return url.replace("http://", "https://")
     if not url.startswith("https://"):

@@ -38,8 +38,8 @@ async def init_database():
                 min_stock INT NOT NULL DEFAULT 2,
                 unit VARCHAR(20) DEFAULT 'dona',
                 shelf_location VARCHAR(100) DEFAULT '',
-                is_active BOOLEAN DEFAULT TRUE,
-                is_deleted BOOLEAN DEFAULT FALSE,
+                is_active SMALLINT DEFAULT 1,
+                is_deleted SMALLINT DEFAULT 0,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );
@@ -84,7 +84,7 @@ async def init_database():
                 username VARCHAR(255) DEFAULT '',
                 phone_number VARCHAR(50) DEFAULT '',
                 role VARCHAR(20) DEFAULT 'USER',
-                is_active BOOLEAN DEFAULT TRUE,
+                is_active SMALLINT DEFAULT 1,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
 
@@ -282,8 +282,38 @@ async def init_database():
             await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50) DEFAULT ''")
             await db.execute("ALTER TABLE admins ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50) DEFAULT ''")
             await db.execute("ALTER TABLE admin_invitations ADD COLUMN IF NOT EXISTS token_hash VARCHAR(64) DEFAULT ''")
-        except Exception:
-            pass
+            
+            # Migrate products boolean to smallint
+            await db.execute("""
+                DO $$ BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name = 'products' AND column_name = 'is_active' AND data_type = 'boolean'
+                    ) THEN
+                        ALTER TABLE products ALTER COLUMN is_active DROP DEFAULT;
+                        ALTER TABLE products ALTER COLUMN is_active TYPE SMALLINT USING (CASE WHEN is_active THEN 1 ELSE 0 END);
+                        ALTER TABLE products ALTER COLUMN is_active SET DEFAULT 1;
+                    END IF;
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name = 'products' AND column_name = 'is_deleted' AND data_type = 'boolean'
+                    ) THEN
+                        ALTER TABLE products ALTER COLUMN is_deleted DROP DEFAULT;
+                        ALTER TABLE products ALTER COLUMN is_deleted TYPE SMALLINT USING (CASE WHEN is_deleted THEN 1 ELSE 0 END);
+                        ALTER TABLE products ALTER COLUMN is_deleted SET DEFAULT 0;
+                    END IF;
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name = 'users' AND column_name = 'is_active' AND data_type = 'boolean'
+                    ) THEN
+                        ALTER TABLE users ALTER COLUMN is_active DROP DEFAULT;
+                        ALTER TABLE users ALTER COLUMN is_active TYPE SMALLINT USING (CASE WHEN is_active THEN 1 ELSE 0 END);
+                        ALTER TABLE users ALTER COLUMN is_active SET DEFAULT 1;
+                    END IF;
+                END $$;
+            """)
+        except Exception as e:
+            print(f"[DB Migration Note] {e}")
     else:
         for alter_cmd in [
             "ALTER TABLE users ADD COLUMN phone_number TEXT DEFAULT ''",

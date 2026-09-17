@@ -27,12 +27,8 @@ class Database:
             try:
                 import asyncpg
                 # Neon/cloud ssl mode
-                clean_url = DATABASE_URL
-                if "sslmode=require" in clean_url:
-                    clean_url = clean_url.replace("?sslmode=require", "").replace("&sslmode=require", "")
-                    self.pg_pool = await asyncpg.create_pool(clean_url, ssl="require", min_size=1, max_size=10, timeout=10)
-                else:
-                    self.pg_pool = await asyncpg.create_pool(clean_url, min_size=1, max_size=10, timeout=10)
+                clean_url = DATABASE_URL.split("?")[0] if "?" in DATABASE_URL else DATABASE_URL
+                self.pg_pool = await asyncpg.create_pool(clean_url, ssl="require", min_size=1, max_size=10, timeout=15)
                 self.is_pg = True
                 self._active_db_type = "postgresql"
                 print("[DB] PostgreSQL (Neon/Remote) ga ulandi!")

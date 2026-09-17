@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: auto-sklad
+    name: avtoozapchast
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: python main.py
     healthCheckPath: /health
     envVars:
       - key: ENVIRONMENT

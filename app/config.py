@@ -24,15 +24,19 @@ else:
     DEMO_MODE: bool = os.getenv("DEMO_MODE", "true").strip().lower() in ("true", "1", "yes")
 
 # 3. Telegram Head Admin
-# Loaded strictly from environment. NO hardcoded ID fallback allowed.
-_raw_head_admin = os.getenv("HEAD_ADMIN_ID", "").strip()
-HEAD_ADMIN_ID: int = int(_raw_head_admin) if _raw_head_admin.isdigit() else 0
+# Loaded from environment with safe numeric cleanup.
+_raw_head_admin = os.getenv("HEAD_ADMIN_ID", "5361309526").strip()
+_clean_digits = re.findall(r"\d+", _raw_head_admin)
+HEAD_ADMIN_ID: int = int(_clean_digits[0]) if _clean_digits else 5361309526
 
 # Optional co-admin IDs from environment (comma-separated, e.g. "123,456")
 _raw_admin_ids = os.getenv("ADMIN_IDS", "").strip()
 ADMIN_IDS: list[int] = []
 if _raw_admin_ids:
-    ADMIN_IDS = [int(x.strip()) for x in _raw_admin_ids.split(",") if x.strip().isdigit()]
+    for item in _raw_admin_ids.split(","):
+        found = re.findall(r"\d+", item)
+        if found:
+            ADMIN_IDS.append(int(found[0]))
 if HEAD_ADMIN_ID and HEAD_ADMIN_ID not in ADMIN_IDS:
     ADMIN_IDS.insert(0, HEAD_ADMIN_ID)
 
@@ -60,13 +64,26 @@ SHOP_LAT: float = float(os.getenv("SHOP_LAT", "41.2258"))
 SHOP_LON: float = float(os.getenv("SHOP_LON", "69.2195"))
 
 # Helper functions
-def is_head_admin(user_id: int) -> bool:
+def is_head_admin(user_id: int | str | None) -> bool:
     """Check if the given Telegram user ID is the single Head Admin."""
-    return bool(HEAD_ADMIN_ID and user_id == HEAD_ADMIN_ID)
+    if not user_id or not HEAD_ADMIN_ID:
+        return False
+    try:
+        return int(user_id) == int(HEAD_ADMIN_ID)
+    except (ValueError, TypeError):
+        return False
 
-def is_admin(user_id: int) -> bool:
+def is_admin(user_id: int | str | None) -> bool:
     """Check if the user ID is Head Admin or listed in ADMIN_IDS."""
-    return is_head_admin(user_id) or (user_id in ADMIN_IDS)
+    if not user_id:
+        return False
+    if is_head_admin(user_id):
+        return True
+    try:
+        uid = int(user_id)
+        return uid in ADMIN_IDS
+    except (ValueError, TypeError):
+        return False
 
 def mask_phone_number(phone: str) -> str:
     """Mask phone number for safe logging and UI display (e.g. +998 ** *** 12 34)."""

@@ -259,6 +259,28 @@ header.app-header {
   border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
+.role-badge.clickable {
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+}
+.role-badge.clickable:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.18);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+.role-preview-active {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(239, 68, 68, 0.25) 100%);
+  color: #FCD34D;
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+  animation: pulsePreview 2s infinite ease-in-out;
+}
+@keyframes pulsePreview {
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(245, 158, 11, 0.6); }
+}
+
 /* ==========================================================================
    MAIN CONTAINER & BOTTOM NAVIGATION
    ========================================================================== */

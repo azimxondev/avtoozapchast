@@ -1,7 +1,7 @@
 """
 Avto Sklad — Telegram Bot Admin Handlers
 Provides quick operational commands for Admins & Head Admin:
-/status, /stock, /balance, /sales, /purchases, /transactions, /search
+/admin, /status, /stock, /balance, /sales, /purchases, /transactions, /products, /analytics, /search
 """
 
 from datetime import datetime, timezone
@@ -15,23 +15,27 @@ from app.bot.keyboards import webapp_admin_keyboard, webapp_head_admin_keyboard
 
 router = Router()
 
-async def is_user_admin(telegram_id: int) -> bool:
+async def is_user_admin(telegram_id: int | str | None) -> bool:
     """Check if user is Head Admin or active Admin."""
+    if not telegram_id:
+        return False
     if is_head_admin(telegram_id):
         return True
-    row = await db.fetchrow("SELECT status FROM admins WHERE telegram_id = $1", telegram_id)
-    return bool(row and row["status"] == "ACTIVE")
+    try:
+        tid = int(telegram_id)
+        row = await db.fetchrow("SELECT role, status FROM admins WHERE telegram_id = $1", tid)
+        return bool(row and row["status"] == "ACTIVE")
+    except Exception:
+        return False
 
 def format_sum(amount: int) -> str:
     """Format sum into readable Uzbek So'm string."""
     return f"{int(amount):,} so'm".replace(",", " ")
 
-@router.message(Command("admin"))
-@router.message(Command("status"))
-async def cmd_status(message: Message):
+async def show_status(target: Message, user_id: int):
     """Ombor va kassa tezkor holati."""
-    if not await is_user_admin(message.from_user.id):
-        await message.answer("❌ Ushbu buyruq faqat adminlar uchun.")
+    if not await is_user_admin(user_id):
+        await target.answer("❌ Ushbu buyruq faqat adminlar uchun.")
         return
 
     # Kassa balansi
@@ -61,7 +65,7 @@ async def cmd_status(message: Message):
     today_start = now_utc.strftime("%Y-%m-%d 00:00:00")
 
     today_sales = await db.fetchrow("""
-        SELECT COUNT(*) as cnt, COALESCE(SUM(total_amount), 0) as total, COALESCE(SUM(total_profit), 0) as profit
+        SELECT COUNT(*) as cnt, COALESCE(SUM(total_amount), 0) as total, COALESCE(SUM(profit), 0) as profit
         FROM transactions
         WHERE type = 'chiqim' AND created_at >= $1
     """, today_start)
@@ -96,16 +100,19 @@ async def cmd_status(message: Message):
         "Batafsil ko'rish uchun ERP ilovasini oching:"
     )
 
-    is_head = is_head_admin(message.from_user.id)
+    is_head = is_head_admin(user_id)
     kb = webapp_head_admin_keyboard() if is_head else webapp_admin_keyboard()
-    await message.answer(text, reply_markup=kb)
+    await target.answer(text, reply_markup=kb)
 
-@router.message(Command("stock"))
-@router.message(Command("inventory"))
-async def cmd_stock(message: Message):
+@router.message(Command("admin"))
+@router.message(Command("status"))
+async def cmd_status(message: Message):
+    await show_status(message, message.from_user.id)
+
+async def show_stock(target: Message, user_id: int):
     """Kam qolgan yoki tugagan mahsulotlar ogohlantirishi."""
-    if not await is_user_admin(message.from_user.id):
-        await message.answer("❌ Ushbu buyruq faqat adminlar uchun.")
+    if not await is_user_admin(user_id):
+        await target.answer("❌ Ushbu buyruq faqat adminlar uchun.")
         return
 
     low_items = await db.fetch("""
@@ -117,7 +124,7 @@ async def cmd_stock(message: Message):
     """)
 
     if not low_items:
-        await message.answer("✅ <b>Barcha mahsulotlar yetarli!</b>\n\nOmborda kam qolgan yoki tugagan tovarlar yo'q.")
+        await target.answer("✅ <b>Barcha mahsulotlar yetarli!</b>\n\nOmborda kam qolgan yoki tugagan tovarlar yo'q.")
         return
 
     text = f"⚠️ <b>KAM QOLGAN VA TUGAGAN TOVARLAR ({len(low_items)} ta ko'rsatilmoqda):</b>\n\n"
@@ -132,19 +139,22 @@ async def cmd_stock(message: Message):
         )
 
     text += "<i>Yangi partiya kirim qilish uchun ilovadagi Kirim bo'limidan foydalaning.</i>"
-    await message.answer(text)
+    await target.answer(text)
 
-@router.message(Command("balance"))
-async def cmd_balance(message: Message):
+@router.message(Command("stock"))
+@router.message(Command("inventory"))
+async def cmd_stock(message: Message):
+    await show_stock(message, message.from_user.id)
+
+async def show_balance(target: Message, user_id: int):
     """Kassa balansi ma'lumotnomasi."""
-    if not await is_user_admin(message.from_user.id):
-        await message.answer("❌ Ushbu buyruq faqat adminlar uchun.")
+    if not await is_user_admin(user_id):
+        await target.answer("❌ Ushbu buyruq faqat adminlar uchun.")
         return
 
     ledger = await db.fetchrow("SELECT balance_after FROM cash_ledger ORDER BY id DESC LIMIT 1")
     cash_balance = ledger["balance_after"] if ledger else 150000000
 
-    # Oxirgi kassa harakati
     last_entry = await db.fetchrow("SELECT * FROM cash_ledger ORDER BY id DESC LIMIT 1")
     last_desc = last_entry["description"] if last_entry else "Boshlang'ich kassa kiritilgan"
 
@@ -155,26 +165,29 @@ async def cmd_balance(message: Message):
         f"{last_desc}\n\n"
         "Shaffoflik: Kassa summasidagi har bir o'zgarish avtomatik tranzaksiya orqali asoslangan."
     )
-    await message.answer(text)
+    await target.answer(text)
 
-@router.message(Command("sales"))
-async def cmd_sales(message: Message):
+@router.message(Command("balance"))
+async def cmd_balance(message: Message):
+    await show_balance(message, message.from_user.id)
+
+async def show_sales(target: Message, user_id: int):
     """Bugungi sotuvlar hisoboti."""
-    if not await is_user_admin(message.from_user.id):
-        await message.answer("❌ Ushbu buyruq faqat adminlar uchun.")
+    if not await is_user_admin(user_id):
+        await target.answer("❌ Ushbu buyruq faqat adminlar uchun.")
         return
 
     now_utc = datetime.now(timezone.utc)
     today_start = now_utc.strftime("%Y-%m-%d 00:00:00")
 
     today_sales = await db.fetchrow("""
-        SELECT COUNT(*) as cnt, COALESCE(SUM(total_amount), 0) as total, COALESCE(SUM(total_profit), 0) as profit
+        SELECT COUNT(*) as cnt, COALESCE(SUM(total_amount), 0) as total, COALESCE(SUM(profit), 0) as profit
         FROM transactions
         WHERE type = 'chiqim' AND created_at >= $1
     """, today_start)
 
     recent_sales = await db.fetch("""
-        SELECT t.id, t.quantity, t.total_amount, t.total_profit, t.created_at, p.name as product_name
+        SELECT t.id, t.quantity, t.total_amount, t.profit, t.created_at, p.name as product_name
         FROM transactions t
         LEFT JOIN products p ON t.product_id = p.id
         WHERE t.type = 'chiqim'
@@ -196,17 +209,20 @@ async def cmd_sales(message: Message):
 
     if recent_sales:
         for s in recent_sales:
-            text += f"• #{s['id']} {s['product_name'] or 'Tovar'}: {s['quantity']} dona = {format_sum(s['total_amount'])} (foyda: +{format_sum(s['total_profit'])})\n"
+            text += f"• #{s['id']} {s['product_name'] or 'Tovar'}: {s['quantity']} dona = {format_sum(s['total_amount'])} (foyda: +{format_sum(s['profit'])})\n"
     else:
         text += "<i>Hozircha sotuvlar qayd etilmagan.</i>\n"
 
-    await message.answer(text)
+    await target.answer(text)
 
-@router.message(Command("purchases"))
-async def cmd_purchases(message: Message):
+@router.message(Command("sales"))
+async def cmd_sales(message: Message):
+    await show_sales(message, message.from_user.id)
+
+async def show_purchases(target: Message, user_id: int):
     """Bugungi xaridlar (kirim) hisoboti."""
-    if not await is_user_admin(message.from_user.id):
-        await message.answer("❌ Ushbu buyruq faqat adminlar uchun.")
+    if not await is_user_admin(user_id):
+        await target.answer("❌ Ushbu buyruq faqat adminlar uchun.")
         return
 
     now_utc = datetime.now(timezone.utc)
@@ -243,7 +259,11 @@ async def cmd_purchases(message: Message):
     else:
         text += "<i>Hozircha xaridlar qayd etilmagan.</i>\n"
 
-    await message.answer(text)
+    await target.answer(text)
+
+@router.message(Command("purchases"))
+async def cmd_purchases(message: Message):
+    await show_purchases(message, message.from_user.id)
 
 @router.message(Command("transactions"))
 async def cmd_transactions(message: Message):
@@ -253,7 +273,7 @@ async def cmd_transactions(message: Message):
         return
 
     rows = await db.fetch("""
-        SELECT t.id, t.type, t.quantity, t.total_amount, t.total_profit,
+        SELECT t.id, t.type, t.quantity, t.total_amount, t.profit,
                t.prev_balance, t.new_balance, t.admin_name, t.created_at,
                p.name as product_name
         FROM transactions t
@@ -398,31 +418,31 @@ async def cmd_search(message: Message, command: CommandObject):
     text += "Barcha tovarlar va buyurtma uchun katalog ilovasini oching."
     await message.answer(text)
 
-# Callback query shortcuts
+# Callback query shortcuts — always use query.from_user.id (the actual user who clicked)
 @router.callback_query(F.data == "cmd:status")
 async def cb_status(query: CallbackQuery):
     await query.answer()
-    await cmd_status(query.message)
+    await show_status(query.message, query.from_user.id)
 
 @router.callback_query(F.data == "cmd:stock")
 async def cb_stock(query: CallbackQuery):
     await query.answer()
-    await cmd_stock(query.message)
+    await show_stock(query.message, query.from_user.id)
 
 @router.callback_query(F.data == "cmd:balance")
 async def cb_balance(query: CallbackQuery):
     await query.answer()
-    await cmd_balance(query.message)
+    await show_balance(query.message, query.from_user.id)
 
 @router.callback_query(F.data == "cmd:sales")
 async def cb_sales(query: CallbackQuery):
     await query.answer()
-    await cmd_sales(query.message)
+    await show_sales(query.message, query.from_user.id)
 
 @router.callback_query(F.data == "cmd:purchases")
 async def cb_purchases(query: CallbackQuery):
     await query.answer()
-    await cmd_purchases(query.message)
+    await show_purchases(query.message, query.from_user.id)
 
 @router.callback_query(F.data == "cmd:search_hint")
 async def cb_search_hint(query: CallbackQuery):

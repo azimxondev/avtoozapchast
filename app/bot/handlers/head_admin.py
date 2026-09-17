@@ -22,14 +22,20 @@ from app.bot.keyboards import (
 
 router = Router()
 
-def check_head_admin(user_id: int) -> bool:
-    return is_head_admin(user_id)
+async def check_head_admin(user_id: int | str | None) -> bool:
+    if is_head_admin(user_id):
+        return True
+    try:
+        uid = int(user_id) if user_id else 0
+        row = await db.fetchrow("SELECT role, status FROM admins WHERE telegram_id = $1", uid)
+        return bool(row and row["role"] == "HEAD_ADMIN" and row["status"] == "ACTIVE")
+    except Exception:
+        return False
 
-@router.message(Command("admins"))
-async def cmd_admins(message: Message):
-    """Barcha adminlar ro'yxati (Faqat Bosh Admin uchun)."""
-    if not check_head_admin(message.from_user.id):
-        await message.answer("❌ Bu buyruq faqat Bosh Admin (Head Admin) uchun ruxsat etilgan.")
+async def show_admins_list(target_message: Message, user_id: int):
+    """Barcha adminlar ro'yxatini chiqarish."""
+    if not await check_head_admin(user_id):
+        await target_message.answer("❌ Bu buyruq faqat Bosh Admin (Head Admin) uchun ruxsat etilgan.")
         return
 
     admins = await db.fetch("""
@@ -47,11 +53,11 @@ async def cmd_admins(message: Message):
     if not co_admins:
         text += "<i>Hozircha qo'shimcha operatsion adminlar mavjud emas.</i>\n\n"
         text += "Yangi admin qo'shish uchun: <code>/invite_admin</code> yoki <code>/addadmin &lt;id&gt;</code>"
-        await message.answer(text, reply_markup=webapp_head_admin_keyboard())
+        await target_message.answer(text, reply_markup=webapp_head_admin_keyboard())
         return
 
     text += f"👨‍💼 <b>Operatsion Adminlar ({len(co_admins)} ta):</b>\n\n"
-    await message.answer(text)
+    await target_message.answer(text)
 
     for a in co_admins:
         name = f"{a['first_name']} {a['last_name']}".strip() or "Noma'lum"
@@ -61,15 +67,17 @@ async def cmd_admins(message: Message):
             f"🆔 Telegram ID: <code>{a['telegram_id']}</code>\n"
             f"🟢 Status: Faol Admin"
         )
-        await message.answer(card_text, reply_markup=admin_action_keyboard(a["telegram_id"]))
+        await target_message.answer(card_text, reply_markup=admin_action_keyboard(a["telegram_id"]))
 
-@router.message(Command("invite_admin"))
-@router.message(Command("invite"))
-@router.message(F.text.in_({"Admin qo‘shish", "Admin qo'shish", "/invite_admin", "/invite"}))
-async def cmd_invite_admin(message: Message):
-    """Admin qo'shish usullarini tanlash (Faqat Bosh Admin)."""
-    if not check_head_admin(message.from_user.id):
-        await message.answer("❌ Bu buyruq faqat Bosh Admin (Head Admin) uchun ruxsat etilgan.")
+@router.message(Command("admins"))
+async def cmd_admins(message: Message):
+    """Barcha adminlar ro'yxati (Faqat Bosh Admin uchun)."""
+    await show_admins_list(message, message.from_user.id)
+
+async def show_invite_options(target_message: Message, user_id: int):
+    """Admin qo'shish variantlarini ko'rsatish."""
+    if not await check_head_admin(user_id):
+        await target_message.answer("❌ Bu buyruq faqat Bosh Admin (Head Admin) uchun ruxsat etilgan.")
         return
 
     text = (
@@ -77,12 +85,19 @@ async def cmd_invite_admin(message: Message):
         "Qanday usulda yangi admin tayinlamoqchisiz?\n"
         "Quyidagi variantlardan birini tanlang:"
     )
-    await message.answer(text, reply_markup=invite_admin_options_keyboard())
+    await target_message.answer(text, reply_markup=invite_admin_options_keyboard())
+
+@router.message(Command("invite_admin"))
+@router.message(Command("invite"))
+@router.message(F.text.in_({"Admin qo‘shish", "Admin qo'shish", "/invite_admin", "/invite"}))
+async def cmd_invite_admin(message: Message):
+    """Admin qo'shish usullarini tanlash (Faqat Bosh Admin)."""
+    await show_invite_options(message, message.from_user.id)
 
 @router.callback_query(F.data == "invite_opt:by_id")
 async def cb_invite_by_id(query: CallbackQuery):
     """Telegram ID orqali admin qo'shish yo'riqnomasi."""
-    if not check_head_admin(query.from_user.id):
+    if not await check_head_admin(query.from_user.id):
         await query.answer("❌ Ruxsat berilmagan.", show_alert=True)
         return
 
@@ -127,11 +142,10 @@ async def cb_invite_by_link(query: CallbackQuery):
     )
     await query.message.answer(text, reply_markup=invite_created_keyboard(invite_url, token))
 
-@router.message(Command("invites"))
-async def cmd_invites(message: Message):
+async def show_invites_list(target_message: Message, user_id: int):
     """Faol taklif havolalari ro'yxati."""
-    if not check_head_admin(message.from_user.id):
-        await message.answer("❌ Bu buyruq faqat Bosh Admin uchun.")
+    if not await check_head_admin(user_id):
+        await target_message.answer("❌ Bu buyruq faqat Bosh Admin uchun.")
         return
 
     invites = await db.fetch("""
@@ -142,7 +156,7 @@ async def cmd_invites(message: Message):
     """)
 
     if not invites:
-        await message.answer("ℹ️ Hozircha yaratilgan taklif havolalari yo'q. Yaratish: <code>/invite</code>")
+        await target_message.answer("ℹ️ Hozircha yaratilgan taklif havolalari yo'q. Yaratish: <code>/invite</code>")
         return
 
     now = datetime.now(timezone.utc)
@@ -180,12 +194,17 @@ async def cmd_invites(message: Message):
             f"  Holati: <b>{status_badge}</b>{rem_str}\n\n"
         )
 
-    await message.answer(text)
+    await target_message.answer(text)
+
+@router.message(Command("invites"))
+async def cmd_invites(message: Message):
+    """Faol taklif havolalari ro'yxati."""
+    await show_invites_list(message, message.from_user.id)
 
 @router.message(Command("addadmin"))
 async def cmd_addadmin(message: Message, command: CommandObject):
     """Telegram ID orqali to'g'ridan-to'g'ri admin qo'shish."""
-    if not check_head_admin(message.from_user.id):
+    if not await check_head_admin(message.from_user.id):
         await message.answer("❌ Bu buyruq faqat Bosh Admin uchun.")
         return
 
@@ -236,7 +255,7 @@ async def cmd_addadmin(message: Message, command: CommandObject):
 @router.message(Command("removeadmin"))
 async def cmd_removeadmin(message: Message, command: CommandObject):
     """Adminlik huquqini bekor qilish."""
-    if not check_head_admin(message.from_user.id):
+    if not await check_head_admin(message.from_user.id):
         await message.answer("❌ Bu buyruq faqat Bosh Admin uchun.")
         return
 
@@ -277,7 +296,7 @@ async def cmd_removeadmin(message: Message, command: CommandObject):
 @router.message(Command("broadcast"))
 async def cmd_broadcast(message: Message, command: CommandObject):
     """Barcha foydalanuvchilarga e'lon tarqatish."""
-    if not check_head_admin(message.from_user.id):
+    if not await check_head_admin(message.from_user.id):
         await message.answer("❌ Bu buyruq faqat Bosh Admin uchun.")
         return
 
@@ -314,7 +333,7 @@ async def cmd_broadcast(message: Message, command: CommandObject):
 # Callback queries
 @router.callback_query(F.data.startswith("revoke_invite:"))
 async def cb_revoke_invite(query: CallbackQuery):
-    if not check_head_admin(query.from_user.id):
+    if not await check_head_admin(query.from_user.id):
         await query.answer("❌ Ruxsat berilmagan.", show_alert=True)
         return
 
@@ -328,7 +347,7 @@ async def cb_revoke_invite(query: CallbackQuery):
 
 @router.callback_query(F.data.startswith("revoke_admin:"))
 async def cb_revoke_admin(query: CallbackQuery):
-    if not check_head_admin(query.from_user.id):
+    if not await check_head_admin(query.from_user.id):
         await query.answer("❌ Ruxsat berilmagan.", show_alert=True)
         return
 
@@ -352,14 +371,14 @@ async def cb_revoke_admin(query: CallbackQuery):
 @router.callback_query(F.data == "cmd:admins")
 async def cb_admins(query: CallbackQuery):
     await query.answer()
-    await cmd_admins(query.message)
+    await show_admins_list(query.message, query.from_user.id)
 
 @router.callback_query(F.data == "cmd:invite")
 async def cb_invite(query: CallbackQuery):
     await query.answer()
-    await cmd_invite(query.message)
+    await show_invite_options(query.message, query.from_user.id)
 
 @router.callback_query(F.data == "cmd:invites")
 async def cb_invites(query: CallbackQuery):
     await query.answer()
-    await cmd_invites(query.message)
+    await show_invites_list(query.message, query.from_user.id)

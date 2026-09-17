@@ -34,9 +34,7 @@ const App = {
     try {
       const authRes = await API.get("/auth/me");
       State.currentUser = authRes.user;
-      if (!State.currentRole) {
-        State.currentRole = authRes.user.role;
-      }
+      State.initRole(authRes.user.role);
     } catch (e) {
       console.warn("Auth check fallback:", e);
     }
@@ -80,16 +78,44 @@ const App = {
     const badge = document.getElementById("header-role-badge");
     if (!badge) return;
 
-    const roleMap = {
-      "SUPER_ADMIN": { label: "Bosh Admin", class: "role-super-admin" },
-      "ADMIN": { label: "Admin", class: "role-admin" },
-      "STAFF": { label: "Xodim", class: "role-staff" },
-      "USER": { label: "Mijoz", class: "role-user" }
-    };
+    if (State.isUserPreview) {
+      badge.className = "role-badge role-preview-active clickable";
+      badge.innerHTML = `<span>👁️ Mijoz Rejimi</span> <span style="font-size:10px; opacity:0.85; margin-left:4px;">↩ Qaytish</span>`;
+      badge.title = "Boshqaruv (Admin) rejimiga qaytish uchun bosing";
+      badge.onclick = () => App.toggleUserPreview();
+      return;
+    }
 
-    const r = roleMap[State.currentRole] || { label: State.currentRole, class: "role-admin" };
-    badge.className = `role-badge ${r.class}`;
-    badge.textContent = r.label;
+    const actual = State.actualRole;
+    if (actual === "HEAD_ADMIN" || actual === "SUPER_ADMIN") {
+      badge.className = "role-badge role-super-admin clickable";
+      badge.innerHTML = `<span>👑 Bosh Admin</span> <span style="font-size:11px; margin-left:4px; opacity:0.75;">⇄</span>`;
+      badge.title = "Mijoz (Xaridor) ko'rinishiga o'tish uchun bosing";
+      badge.onclick = () => App.toggleUserPreview();
+    } else if (actual === "ADMIN" || actual === "STAFF") {
+      badge.className = "role-badge role-admin clickable";
+      badge.innerHTML = `<span>⚡ Admin</span> <span style="font-size:11px; margin-left:4px; opacity:0.75;">⇄</span>`;
+      badge.title = "Mijoz (Xaridor) ko'rinishiga o'tish uchun bosing";
+      badge.onclick = () => App.toggleUserPreview();
+    } else {
+      badge.className = "role-badge role-user";
+      badge.innerHTML = `<span>👤 Mijoz</span>`;
+      badge.title = "Mijoz profili";
+      badge.onclick = null;
+    }
+  },
+
+  toggleUserPreview() {
+    if (!State.canSwitchRole()) return;
+    State.togglePreview();
+    this.updateRoleBadge();
+    this.renderNav();
+    this.navigate(State.currentTab);
+    if (State.isUserPreview) {
+      Utils.showToast("👁️ Mijoz ko'rinishi faollashdi. Tovar va narxlar xaridorlarga qanday ko'rinishini tekshirishingiz mumkin.", "info");
+    } else {
+      Utils.showToast("👑 Boshqaruv (Admin) rejimiga qaytildi.", "success");
+    }
   },
 
   onRoleChange(newRole) {
@@ -160,9 +186,15 @@ const App = {
           <span class="nav-icon">📍</span>
           <span>Do'kon & Manzil</span>
         </button>
+        ${State.isUserPreview ? `
+          <button class="nav-item" onclick="App.toggleUserPreview()" style="color:#FBBF24; font-weight:700;">
+            <span class="nav-icon">👑</span>
+            <span>Admin Rejim</span>
+          </button>
+        ` : ''}
       `;
     } else {
-      const isSuper = State.currentRole === "SUPER_ADMIN" || State.currentUser?.is_super_admin;
+      const isSuper = State.currentRole === "SUPER_ADMIN" || State.currentRole === "HEAD_ADMIN" || State.currentUser?.is_super_admin;
       nav.innerHTML = `
         <button class="nav-item ${State.currentTab === 'dashboard' ? 'active' : ''}" onclick="App.navigate('dashboard')">
           <span class="nav-icon">📊</span>

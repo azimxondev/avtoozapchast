@@ -50,8 +50,20 @@ async def lifespan(app: FastAPI):
                 if not bot_instance:
                     return
                 try:
-                    from aiogram.types import BotCommand
-                    commands = [
+                    from aiogram.types import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
+                    from app.config import HEAD_ADMIN_ID
+
+                    user_commands = [
+                        BotCommand(command="start", description="🚗 Ehtiyot qismlar katalogi"),
+                        BotCommand(command="search", description="🔍 Mahsulot qidirish (SKU/Nom)"),
+                        BotCommand(command="info", description="📍 Do'kon manzili va ish vaqti"),
+                        BotCommand(command="contact", description="📞 Sotuvchi bilan bog'lanish"),
+                        BotCommand(command="profile", description="👤 Mening profilim"),
+                        BotCommand(command="help", description="ℹ️ Yordam")
+                    ]
+                    await bot_instance.set_my_commands(user_commands, scope=BotCommandScopeDefault())
+
+                    admin_commands = [
                         BotCommand(command="start", description="🚗 Bosh sahifa va Mini App"),
                         BotCommand(command="admin", description="👑 Admin boshqaruv paneli"),
                         BotCommand(command="status", description="📊 Kassa va ombor auditi"),
@@ -61,13 +73,17 @@ async def lifespan(app: FastAPI):
                         BotCommand(command="balance", description="💰 Kassa balansi va aylanma"),
                         BotCommand(command="sales", description="🛒 Bugungi sotuvlar tarixi"),
                         BotCommand(command="purchases", description="📥 Xaridlar va kirimlar"),
-                        BotCommand(command="search", description="🔍 Mahsulot qidirish (SKU/Nom)"),
+                        BotCommand(command="search", description="🔍 Mahsulot qidirish"),
                         BotCommand(command="invite_admin", description="🔑 Yangi adminga taklifnoma berish"),
                         BotCommand(command="admins", description="👥 Barcha adminlar ro'yxati"),
                         BotCommand(command="help", description="ℹ️ Yordam va qo'llanma")
                     ]
-                    await bot_instance.set_my_commands(commands)
-                    print("[BOT] Telegram buyruqlari muvaffaqiyatli ro'yxatga olindi.")
+                    if HEAD_ADMIN_ID:
+                        try:
+                            await bot_instance.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=HEAD_ADMIN_ID))
+                        except Exception:
+                            pass
+                    print("[BOT] Telegram buyruqlari muvaffaqiyatli ro'yxatga olindi (User va Admin alohida).")
                 except Exception as c_err:
                     print(f"[BOT COMMANDS NOTE] {c_err}")
 

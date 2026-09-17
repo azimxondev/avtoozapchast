@@ -17,6 +17,22 @@ const UserCatalogView = {
     const shop = State.shopSettings || {};
 
     container.innerHTML = `
+      ${State.isUserPreview ? `
+      <!-- Admin Preview Banner -->
+      <div style="background:linear-gradient(135deg, rgba(37,99,235,0.2) 0%, rgba(16,185,129,0.2) 100%);border:1px solid rgba(59,130,246,0.5);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:0 4px 16px rgba(37,99,235,0.2);">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">👁️</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#93c5fd">Mijoz Ko'rinishi Faol (Preview Rejimi)</div>
+            <div style="font-size:11px;color:var(--text-muted)">Do'koningiz xaridorlarga qanday ko'rinishini tekshirmoqdasiz. Tannarxlar va ombor operatsiyalari yashirilgan.</div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="App.toggleUserPreview()" style="font-weight:700;box-shadow:0 0 12px rgba(37,99,235,0.4)">
+          👑 Boshqaruvga qaytish
+        </button>
+      </div>
+      ` : ''}
+
       <!-- Storefront Hero -->
       <div style="background:linear-gradient(135deg, #1E293B 0%, #0F172A 100%);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
         <div>

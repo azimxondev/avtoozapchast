@@ -94,21 +94,22 @@ git push -u origin main
 ### 2-qadam. Render.com da bepul ishga tushirish
 1. [Render.com](https://render.com) ga kiring va GitHub profilingiz bilan ulaning.
 2. **New +** -> **Web Service** ni bosing.
-3. GitHub repozitoriyangizni tanlang (`auto-sklad`).
+3. GitHub repozitoriyangizni tanlang (`azimxondev/avtoozapchast`).
 4. Sozlamalarni tekshiring:
-   - **Name**: `auto-sklad`
+   - **Name**: `avtoozapchast`
+   - **Branch**: `main`
    - **Runtime**: `Python 3`
    - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - **Start Command**: `python main.py`  *(yoki `uvicorn app.main:app --host 0.0.0.0 --port $PORT`)*
    - **Instance Type**: `Free` (0$ bepul rejim)
 5. **Environment Variables** (Muhit o'zgaruvchilari) bo'limiga quyidagilarni kiriting:
    - `ENVIRONMENT` = `production`
    - `DEMO_MODE` = `false`
    - `HEAD_ADMIN_ID` = `5361309526`
    - `BOT_TOKEN` = `8759699560:AAG7ZO77LAlAbiz47gQAUdl02bDJunqEih8`
-   - `DATABASE_URL` = Neon.tech'dan olgan havolangiz
-   - `SECRET_KEY` = `ixtiyoriy_uzun_maxfiy_soz_32talik`
-   - `WEBAPP_URL` = Render beradigan havola (masalan: `https://auto-sklad.onrender.com`)
+   - `DATABASE_URL` = `postgresql://neondb_owner:npg_n1ztxXR3FJyr@ep-dark-forest-b5lu1g3c-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require`
+   - `SECRET_KEY` = `auto-sklad-prod-secure-token-32chars-ok`
+   - `WEBAPP_URL` = `https://avtoozapchast.onrender.com`
 6. **Deploy Web Service** tugmasini bosing. 2-3 daqiqada saytingiz va botingiz 24/7 rejimda to'liq ishga tushadi!
 
 ---

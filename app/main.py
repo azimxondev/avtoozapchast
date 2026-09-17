@@ -50,6 +50,28 @@ async def lifespan(app: FastAPI):
                 if not bot_instance:
                     return
                 try:
+                    from aiogram.types import BotCommand
+                    commands = [
+                        BotCommand(command="start", description="🚗 Bosh sahifa va Mini App"),
+                        BotCommand(command="admin", description="👑 Admin boshqaruv paneli"),
+                        BotCommand(command="status", description="📊 Kassa va ombor auditi"),
+                        BotCommand(command="products", description="📦 Ehtiyot qismlar qoldiqlari"),
+                        BotCommand(command="stock", description="⚠️ Kam qolgan va tugagan tovarlar"),
+                        BotCommand(command="analytics", description="📈 Kunlik tushum va sof foyda"),
+                        BotCommand(command="balance", description="💰 Kassa balansi va aylanma"),
+                        BotCommand(command="sales", description="🛒 Bugungi sotuvlar tarixi"),
+                        BotCommand(command="purchases", description="📥 Xaridlar va kirimlar"),
+                        BotCommand(command="search", description="🔍 Mahsulot qidirish (SKU/Nom)"),
+                        BotCommand(command="invite_admin", description="🔑 Yangi adminga taklifnoma berish"),
+                        BotCommand(command="admins", description="👥 Barcha adminlar ro'yxati"),
+                        BotCommand(command="help", description="ℹ️ Yordam va qo'llanma")
+                    ]
+                    await bot_instance.set_my_commands(commands)
+                    print("[BOT] Telegram buyruqlari muvaffaqiyatli ro'yxatga olindi.")
+                except Exception as c_err:
+                    print(f"[BOT COMMANDS NOTE] {c_err}")
+
+                try:
                     await dp.start_polling(bot_instance, allowed_updates=dp.resolve_used_update_types())
                 except asyncio.CancelledError:
                     pass

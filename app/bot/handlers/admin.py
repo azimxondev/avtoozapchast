@@ -26,6 +26,7 @@ def format_sum(amount: int) -> str:
     """Format sum into readable Uzbek So'm string."""
     return f"{int(amount):,} so'm".replace(",", " ")
 
+@router.message(Command("admin"))
 @router.message(Command("status"))
 async def cmd_status(message: Message):
     """Ombor va kassa tezkor holati."""

@@ -85,7 +85,8 @@ async def init_database():
                 phone_number VARCHAR(50) DEFAULT '',
                 role VARCHAR(20) DEFAULT 'USER',
                 is_active SMALLINT DEFAULT 1,
-                created_at TIMESTAMPTZ DEFAULT NOW()
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                last_start_at TIMESTAMPTZ DEFAULT NOW()
             );
 
             CREATE TABLE IF NOT EXISTS admins (
@@ -218,7 +219,8 @@ async def init_database():
                 phone_number TEXT DEFAULT '',
                 role TEXT DEFAULT 'USER',
                 is_active INTEGER DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_start_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS admins (
@@ -280,6 +282,7 @@ async def init_database():
     if db.is_pg:
         try:
             await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50) DEFAULT ''")
+            await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_start_at TIMESTAMPTZ DEFAULT NOW()")
             await db.execute("ALTER TABLE admins ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50) DEFAULT ''")
             await db.execute("ALTER TABLE admin_invitations ADD COLUMN IF NOT EXISTS token_hash VARCHAR(64) DEFAULT ''")
             

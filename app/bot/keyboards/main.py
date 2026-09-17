@@ -161,7 +161,7 @@ def contact_request_keyboard() -> ReplyKeyboardMarkup:
         one_time_keyboard=True
     )
 
-def users_pagination_keyboard(page: int, total_pages: int) -> InlineKeyboardMarkup:
+def users_pagination_keyboard(page: int, total_pages: int, is_head: bool = False) -> InlineKeyboardMarkup:
     """Foydalanuvchilar ro'yxati sahifalash va yangilash tugmalari."""
     buttons = []
     nav_row = []
@@ -174,9 +174,35 @@ def users_pagination_keyboard(page: int, total_pages: int) -> InlineKeyboardMark
     if nav_row:
         buttons.append(nav_row)
 
+    action_row = [
+        InlineKeyboardButton(text="🔄 Yangilash", callback_data=f"users_page:{page}")
+    ]
+    if is_head:
+        action_row.append(InlineKeyboardButton(text="🗑️ O'chirish", callback_data=f"users_del_menu:{page}"))
+    buttons.append(action_row)
+
     buttons.append([
-        InlineKeyboardButton(text="🔄 Yangilash", callback_data=f"users_page:{page}"),
         InlineKeyboardButton(text="🔙 Bosh menyu", callback_data="cmd:status")
     ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def user_delete_selection_keyboard(users_list: list, page: int, head_admin_id: int) -> InlineKeyboardMarkup:
+    """O'chirilishi kerak bo'lgan foydalanuvchini tanlash tugmalari."""
+    buttons = []
+    for u in users_list:
+        tid = u["telegram_id"]
+        if tid == head_admin_id:
+            continue
+        name = (u["full_name"] or f"ID {tid}").strip()[:18]
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"❌ O'chirish: {name} ({tid})",
+                callback_data=f"confirm_del_user:{tid}:{page}"
+            )
+        ])
+    buttons.append([
+        InlineKeyboardButton(text="🔙 Bekor qilish (Orqaga)", callback_data=f"users_page:{page}")
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
 

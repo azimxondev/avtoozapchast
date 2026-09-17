@@ -11,6 +11,7 @@ from app.bot.keyboards.main import (
     invite_admin_options_keyboard,
     contact_request_keyboard,
     users_pagination_keyboard,
+    user_delete_selection_keyboard,
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "invite_admin_options_keyboard",
     "contact_request_keyboard",
     "users_pagination_keyboard",
+    "user_delete_selection_keyboard",
 ]

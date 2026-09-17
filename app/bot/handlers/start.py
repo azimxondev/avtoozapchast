@@ -135,11 +135,12 @@ async def cmd_start_deep_link(message: Message, command: CommandObject):
 
     # 3. Users jadvalini yangilash
     await db.execute("""
-        INSERT INTO users (telegram_id, full_name, username, role, is_active)
-        VALUES ($1, $2, $3, 'ADMIN', 1)
+        INSERT INTO users (telegram_id, full_name, username, role, is_active, created_at, last_start_at)
+        VALUES ($1, $2, $3, 'ADMIN', 1, $4, $4)
         ON CONFLICT(telegram_id) DO UPDATE SET
-            role = 'ADMIN', full_name = EXCLUDED.full_name, username = EXCLUDED.username
-    """, user.id, user.full_name or f"User {user.id}", user.username or "")
+            role = 'ADMIN', full_name = EXCLUDED.full_name, username = EXCLUDED.username,
+            last_start_at = EXCLUDED.last_start_at
+    """, user.id, user.full_name or f"User {user.id}", user.username or "", now_utc)
 
     # 4. Audit jurnali (never write raw token to logs)
     masked_tok = f"{token[:6]}...{token[-4:]}" if len(token) > 10 else "***"
@@ -169,14 +170,18 @@ async def cmd_start(message: Message):
     user = message.from_user
     role = await get_user_role(user.id)
 
-    # Sync to users table
+    # Sync to users table (saqlash va so'nggi faollik vaqtini qayd etish)
+    now_utc = datetime.now(timezone.utc)
     try:
         await db.execute("""
-            INSERT INTO users (telegram_id, full_name, username, role, is_active)
-            VALUES ($1, $2, $3, $4, 1)
+            INSERT INTO users (telegram_id, full_name, username, role, is_active, created_at, last_start_at)
+            VALUES ($1, $2, $3, $4, 1, $5, $5)
             ON CONFLICT(telegram_id) DO UPDATE SET
-                full_name = EXCLUDED.full_name, username = EXCLUDED.username
-        """, user.id, user.full_name, user.username or "", role)
+                full_name = EXCLUDED.full_name,
+                username = EXCLUDED.username,
+                last_start_at = EXCLUDED.last_start_at,
+                is_active = 1
+        """, user.id, user.full_name, user.username or "", role, now_utc)
     except Exception:
         pass
 

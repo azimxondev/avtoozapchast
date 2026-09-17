@@ -20,9 +20,32 @@ from app.bot.keyboards import (
     webapp_head_admin_keyboard,
     invite_admin_options_keyboard,
     users_pagination_keyboard,
+    user_delete_selection_keyboard,
 )
 
 router = Router()
+
+TZ_TASHKENT = timezone(timedelta(hours=5))
+
+def format_tashkent_time(dt_val) -> str:
+    """Datetimeni Toshkent vaqtiga (+5) o'tkazib chiroyli formatlash: 17.09.2026 20:25"""
+    if not dt_val:
+        return ""
+    if isinstance(dt_val, str):
+        try:
+            dt = datetime.fromisoformat(dt_val.replace("Z", "+00:00"))
+        except Exception:
+            return dt_val[:16]
+    else:
+        dt = dt_val
+
+    try:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        tashkent_dt = dt.astimezone(TZ_TASHKENT)
+        return tashkent_dt.strftime("%d.%m.%Y %H:%M")
+    except Exception:
+        return str(dt)[:16]
 
 async def check_head_admin(user_id: int | str | None) -> bool:
     if is_head_admin(user_id):
@@ -412,7 +435,7 @@ async def show_users_list(target_message: Message, user_id: int, page: int = 1, 
         page = 1
 
     users = await db.fetch("""
-        SELECT telegram_id, full_name, username, phone_number, role, is_active, created_at
+        SELECT telegram_id, full_name, username, phone_number, role, is_active, created_at, last_start_at
         FROM users
         ORDER BY id DESC
         LIMIT $1 OFFSET $2
@@ -433,15 +456,18 @@ async def show_users_list(target_message: Message, user_id: int, page: int = 1, 
             role_badge = "🔑 Bosh Admin" if u["role"] == "HEAD_ADMIN" else ("👨‍💼 Admin" if u["role"] == "ADMIN" else "🛍️ Mijoz")
             phone = f"\n   📞 Tel: {u['phone_number']}" if u.get("phone_number") else ""
 
-            created = str(u.get("created_at", ""))[:16]
-            created_str = f" | 📅 {created}" if created else ""
+            # Real vaqtda oxirgi kirgan yoki ro'yxatdan o'tgan vaqt (Toshkent UTC+5)
+            active_time = u.get("last_start_at") or u.get("created_at")
+            time_str = format_tashkent_time(active_time)
+            time_display = f" | 📅 {time_str}" if time_str else ""
 
             text += (
                 f"<b>{i}. {name}</b> ({username})\n"
-                f"   🆔 ID: <code>{u['telegram_id']}</code> | {role_badge}{created_str}{phone}\n\n"
+                f"   🆔 ID: <code>{u['telegram_id']}</code> | {role_badge}{time_display}{phone}\n\n"
             )
 
-    kb = users_pagination_keyboard(page, total_pages)
+    is_head = await check_head_admin(user_id)
+    kb = users_pagination_keyboard(page, total_pages, is_head=is_head)
     if edit:
         try:
             await target_message.edit_text(text, reply_markup=kb, parse_mode="HTML")
@@ -475,4 +501,110 @@ async def cb_users_page(query: CallbackQuery):
 @router.callback_query(F.data == "noop")
 async def cb_noop(query: CallbackQuery):
     await query.answer()
+
+@router.message(Command("delete_user"))
+@router.message(Command("deluser"))
+async def cmd_delete_user(message: Message, command: CommandObject):
+    """Foydalanuvchini bazadan to'liq o'chirish (Faqat Bosh Admin)."""
+    if not await check_head_admin(message.from_user.id):
+        await message.answer("❌ Ushbu buyruq faqat Bosh Admin uchun ruxsat etilgan.")
+        return
+
+    arg = (command.args or "").strip()
+    if not arg:
+        await message.answer(
+            "🗑️ <b>Foydalanuvchini o'chirish:</b>\n\n"
+            "Foydalanish: <code>/delete_user [Telegram ID]</code>\n\n"
+            "Misol: <code>/delete_user 6427415448</code>\n\n"
+            "<i>Eslatma: Foydalanuvchi o'chirilgach, u botga qayta kirsa, yangitdan /start bosib ro'yxatdan o'tishi kerak bo'ladi.</i>"
+        )
+        return
+
+    try:
+        target_id = int(arg)
+    except ValueError:
+        await message.answer("❌ Noto'g'ri Telegram ID kiritildi.")
+        return
+
+    if target_id == HEAD_ADMIN_ID:
+        await message.answer("❌ Bosh Adminni (o'zingizni) o'chirib bo'lmaydi!")
+        return
+
+    target_user = await db.fetchrow("SELECT full_name, username, role FROM users WHERE telegram_id = $1", target_id)
+    admin_check = await db.fetchrow("SELECT first_name, last_name, role FROM admins WHERE telegram_id = $1", target_id)
+    if not target_user and not admin_check:
+        await message.answer(f"❌ Telegram ID: <code>{target_id}</code> bo'yicha foydalanuvchi topilmadi.")
+        return
+
+    # Butunlay o'chirish
+    await db.execute("DELETE FROM users WHERE telegram_id = $1", target_id)
+    await db.execute("DELETE FROM admins WHERE telegram_id = $1", target_id)
+    await db.execute("DELETE FROM admin_invitations WHERE used_by = $1", target_id)
+
+    user_name = target_user["full_name"] if target_user else (admin_check["first_name"] if admin_check else "Foydalanuvchi")
+    await message.answer(
+        f"✅ <b>Foydalanuvchi muvaffaqiyatli o'chirildi!</b>\n\n"
+        f"👤 <b>Ismi:</b> {user_name}\n"
+        f"🆔 <b>Telegram ID:</b> <code>{target_id}</code>\n\n"
+        f"Uning barcha ma'lumotlari bazadan to'liq olib tashlandi. "
+        f"Agar u botga qayta kirsa, yangi foydalanuvchi sifatida ro'yxatdan o'tadi."
+    )
+
+@router.callback_query(F.data.startswith("users_del_menu:"))
+async def cb_users_del_menu(query: CallbackQuery):
+    """O'chirish uchun foydalanuvchilar menyusini chiqarish."""
+    if not await check_head_admin(query.from_user.id):
+        await query.answer("❌ Faqat Bosh Admin o'chira oladi.", show_alert=True)
+        return
+
+    try:
+        page = int(query.data.split(":", 1)[1])
+    except Exception:
+        page = 1
+
+    limit = 10
+    offset = (page - 1) * limit
+    users = await db.fetch("""
+        SELECT telegram_id, full_name FROM users
+        WHERE telegram_id != $1
+        ORDER BY id DESC LIMIT $2 OFFSET $3
+    """, HEAD_ADMIN_ID, limit, offset)
+
+    if not users:
+        await query.answer("O'chirish uchun boshqa foydalanuvchi topilmadi.", show_alert=True)
+        return
+
+    await query.answer()
+    kb = user_delete_selection_keyboard(users, page, HEAD_ADMIN_ID)
+    await query.message.edit_text(
+        "🗑️ <b>Qaysi foydalanuvchini o'chirmoqchisiz?</b>\n\n"
+        "O'chirish uchun quyidagi tugmalardan birini bosing yoki <code>/delete_user ID</code> buyrug'ini yuboring:\n\n"
+        "<i>(O'chirilgan foydalanuvchining barcha ma'lumotlari tozalanadi va u yangitdan /start bosishi kerak bo'ladi)</i>",
+        reply_markup=kb,
+        parse_mode="HTML"
+    )
+
+@router.callback_query(F.data.startswith("confirm_del_user:"))
+async def cb_confirm_del_user(query: CallbackQuery):
+    """Foydalanuvchini bazadan butunlay o'chirish callbacki."""
+    if not await check_head_admin(query.from_user.id):
+        await query.answer("❌ Faqat Bosh Admin o'chira oladi.", show_alert=True)
+        return
+
+    parts = query.data.split(":")
+    target_id = int(parts[1])
+    page = int(parts[2]) if len(parts) > 2 else 1
+
+    if target_id == HEAD_ADMIN_ID:
+        await query.answer("❌ Bosh Adminni o'chirib bo'lmaydi!", show_alert=True)
+        return
+
+    # Foydalanuvchini bazadan to'liq tozalash
+    await db.execute("DELETE FROM users WHERE telegram_id = $1", target_id)
+    await db.execute("DELETE FROM admins WHERE telegram_id = $1", target_id)
+    await db.execute("DELETE FROM admin_invitations WHERE used_by = $1", target_id)
+
+    await query.answer(f"✅ ID {target_id} butunlay o'chirildi!", show_alert=True)
+    await show_users_list(query.message, query.from_user.id, page=page, edit=True)
+
 

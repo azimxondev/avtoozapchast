@@ -4,6 +4,7 @@ Only HEAD_ADMIN can execute these commands:
 /admins, /invite, /invites, /addadmin, /removeadmin, /broadcast
 """
 
+import asyncio
 import secrets
 from datetime import datetime, timezone, timedelta
 from aiogram import Router, F
@@ -18,6 +19,7 @@ from app.bot.keyboards import (
     admin_action_keyboard,
     webapp_head_admin_keyboard,
     invite_admin_options_keyboard,
+    users_pagination_keyboard,
 )
 
 router = Router()
@@ -382,3 +384,95 @@ async def cb_invite(query: CallbackQuery):
 async def cb_invites(query: CallbackQuery):
     await query.answer()
     await show_invites_list(query.message, query.from_user.id)
+
+async def show_users_list(target_message: Message, user_id: int, page: int = 1, edit: bool = False):
+    """Barcha bot foydalanuvchilari ro'yxati va umumiy statistikasi."""
+    from app.bot.handlers.admin import is_user_admin
+    if not await is_user_admin(user_id):
+        await target_message.answer("❌ Bu buyruq faqat adminlar uchun ruxsat etilgan.")
+        return
+
+    limit = 10
+    offset = (page - 1) * limit
+
+    # Statistikani parallel ravishda tezkor chaqirish
+    total_count, admins_count, customers_count = await asyncio.gather(
+        db.fetchval("SELECT COUNT(*) FROM users"),
+        db.fetchval("SELECT COUNT(*) FROM users WHERE role IN ('HEAD_ADMIN', 'ADMIN')"),
+        db.fetchval("SELECT COUNT(*) FROM users WHERE role = 'USER' OR role IS NULL")
+    )
+    total_count = total_count or 0
+    admins_count = admins_count or 0
+    customers_count = customers_count or 0
+    total_pages = max(1, (total_count + limit - 1) // limit)
+
+    if page > total_pages:
+        page = total_pages
+    if page < 1:
+        page = 1
+
+    users = await db.fetch("""
+        SELECT telegram_id, full_name, username, phone_number, role, is_active, created_at
+        FROM users
+        ORDER BY id DESC
+        LIMIT $1 OFFSET $2
+    """, limit, offset)
+
+    text = "👥 <b>FOYDALANUVCHILAR RO‘YXATI VA STATISTIKA</b>\n\n"
+    text += f"📊 <b>Jami foydalanuvchilar:</b> <code>{total_count} ta</code>\n"
+    text += f"👑 <b>Adminlar:</b> <code>{admins_count} ta</code>\n"
+    text += f"🛍️ <b>Mijozlar:</b> <code>{customers_count} ta</code>\n\n"
+
+    if not users:
+        text += "<i>Hozircha foydalanuvchilar ro'yxati bo'sh.</i>"
+    else:
+        text += f"📋 <b>Foydalanuvchilar ro'yxati (Sahifa {page}/{total_pages}):</b>\n\n"
+        for i, u in enumerate(users, start=offset + 1):
+            name = (u["full_name"] or "Noma'lum").strip()
+            username = f"@{u['username']}" if u["username"] else "username yo'q"
+            role_badge = "🔑 Bosh Admin" if u["role"] == "HEAD_ADMIN" else ("👨‍💼 Admin" if u["role"] == "ADMIN" else "🛍️ Mijoz")
+            phone = f"\n   📞 Tel: {u['phone_number']}" if u.get("phone_number") else ""
+
+            created = str(u.get("created_at", ""))[:16]
+            created_str = f" | 📅 {created}" if created else ""
+
+            text += (
+                f"<b>{i}. {name}</b> ({username})\n"
+                f"   🆔 ID: <code>{u['telegram_id']}</code> | {role_badge}{created_str}{phone}\n\n"
+            )
+
+    kb = users_pagination_keyboard(page, total_pages)
+    if edit:
+        try:
+            await target_message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+            return
+        except Exception:
+            pass
+    await target_message.answer(text, reply_markup=kb, parse_mode="HTML")
+
+@router.message(Command("users"))
+@router.message(F.text.in_({"Foydalanuvchilar", "Foydalanuvchilar ro‘yxati", "/users"}))
+async def cmd_users(message: Message):
+    """Foydalanuvchilar ro'yxatini chiqarish."""
+    await show_users_list(message, message.from_user.id, page=1, edit=False)
+
+@router.callback_query(F.data == "cmd:users")
+async def cb_users(query: CallbackQuery):
+    """Tugma orqali foydalanuvchilar ro'yxatini chiqarish."""
+    await query.answer()
+    await show_users_list(query.message, query.from_user.id, page=1, edit=True)
+
+@router.callback_query(F.data.startswith("users_page:"))
+async def cb_users_page(query: CallbackQuery):
+    """Foydalanuvchilar sahifalarini varaqlash."""
+    await query.answer()
+    try:
+        page_num = int(query.data.split(":", 1)[1])
+    except (ValueError, IndexError):
+        page_num = 1
+    await show_users_list(query.message, query.from_user.id, page=page_num, edit=True)
+
+@router.callback_query(F.data == "noop")
+async def cb_noop(query: CallbackQuery):
+    await query.answer()
+

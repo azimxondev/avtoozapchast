@@ -76,6 +76,7 @@ async def lifespan(app: FastAPI):
                         BotCommand(command="search", description="🔍 Mahsulot qidirish"),
                         BotCommand(command="invite_admin", description="🔑 Yangi adminga taklifnoma berish"),
                         BotCommand(command="admins", description="👥 Barcha adminlar ro'yxati"),
+                        BotCommand(command="users", description="👥 Foydalanuvchilar ro'yxati va soni"),
                         BotCommand(command="help", description="ℹ️ Yordam va qo'llanma")
                     ]
                     if HEAD_ADMIN_ID:

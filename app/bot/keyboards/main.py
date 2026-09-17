@@ -36,10 +36,11 @@ def webapp_head_admin_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="👥 Adminlar", callback_data="cmd:admins")
             ],
             [
-                InlineKeyboardButton(text="➕ Taklif Havolasi", callback_data="cmd:invite"),
-                InlineKeyboardButton(text="📋 Barcha Takliflar", callback_data="cmd:invites")
+                InlineKeyboardButton(text="👤 Foydalanuvchilar", callback_data="cmd:users"),
+                InlineKeyboardButton(text="➕ Taklif Havolasi", callback_data="cmd:invite")
             ],
             [
+                InlineKeyboardButton(text="📋 Barcha Takliflar", callback_data="cmd:invites"),
                 InlineKeyboardButton(text="🔄 Yangilash", callback_data="cmd:refresh")
             ]
         ]
@@ -66,9 +67,10 @@ def webapp_admin_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(text="📥 Xaridlar", callback_data="cmd:purchases"),
-                InlineKeyboardButton(text="🔍 Qidirish", callback_data="cmd:search_hint")
+                InlineKeyboardButton(text="👤 Foydalanuvchilar", callback_data="cmd:users")
             ],
             [
+                InlineKeyboardButton(text="🔍 Qidirish", callback_data="cmd:search_hint"),
                 InlineKeyboardButton(text="🔄 Yangilash", callback_data="cmd:refresh")
             ]
         ]
@@ -158,3 +160,23 @@ def contact_request_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         one_time_keyboard=True
     )
+
+def users_pagination_keyboard(page: int, total_pages: int) -> InlineKeyboardMarkup:
+    """Foydalanuvchilar ro'yxati sahifalash va yangilash tugmalari."""
+    buttons = []
+    nav_row = []
+    if page > 1:
+        nav_row.append(InlineKeyboardButton(text="⬅️ Oldingi", callback_data=f"users_page:{page - 1}"))
+    nav_row.append(InlineKeyboardButton(text=f"📄 {page}/{total_pages}", callback_data="noop"))
+    if page < total_pages:
+        nav_row.append(InlineKeyboardButton(text="Keyingi ➡️", callback_data=f"users_page:{page + 1}"))
+
+    if nav_row:
+        buttons.append(nav_row)
+
+    buttons.append([
+        InlineKeyboardButton(text="🔄 Yangilash", callback_data=f"users_page:{page}"),
+        InlineKeyboardButton(text="🔙 Bosh menyu", callback_data="cmd:status")
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+

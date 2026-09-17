@@ -1,59 +1,87 @@
-/* =====================================================
-   AVTO SKLAD — Utility Helpers
-   ===================================================== */
+/**
+ * Avto Sklad — Utility Functions
+ */
 
-function formatPrice(num) {
-    if (!num && num !== 0) return "0 so'm";
-    return Number(num).toLocaleString("uz-UZ").replace(/,/g, " ") + " so'm";
-}
+const Utils = {
+  /**
+   * Format UZS currency: e.g. 150000 -> "150 000 UZS"
+   */
+  formatUZS(amount) {
+    if (amount === null || amount === undefined || isNaN(amount)) return "0 UZS";
+    const num = Math.round(Number(amount));
+    const parts = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    return `${parts} UZS`;
+  },
 
-function formatDate(dateStr) {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
-    const pad = (n) => String(n).padStart(2, "0");
-    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+  /**
+   * Format date/time cleanly for Uzbekistan (DD.MM.YYYY, HH:mm)
+   */
+  formatDateTime(dateStr) {
+    if (!dateStr) return "—";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const mins = String(d.getMinutes()).padStart(2, '0');
+      return `${day}.${month}.${year}, ${hours}:${mins}`;
+    } catch {
+      return dateStr;
+    }
+  },
 
-function escapeHtml(str) {
+  /**
+   * Debounce helper for instant search
+   */
+  debounce(func, wait = 300) {
+    let timeout;
+    return function (...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  },
+
+  /**
+   * Safe HTML escaping to prevent XSS
+   */
+  escapeHtml(str) {
     if (!str) return "";
-    const d = document.createElement("div");
-    d.textContent = str;
-    return d.innerHTML;
-}
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  },
 
-function showToast(msg, type = "") {
-    const $toast = document.getElementById("toast");
-    if (!$toast) return;
-    $toast.textContent = msg;
-    $toast.className = "toast" + (type ? " " + type : "");
-    clearTimeout(showToast._timer);
-    showToast._timer = setTimeout(() => {
-        $toast.classList.add("hidden");
-    }, 2500);
-}
-
-function initTheme() {
-    const saved = localStorage.getItem("theme");
-    if (saved === "light") {
-        document.body.classList.add("light-theme");
-        const btn = document.getElementById("theme-toggle-btn");
-        if (btn) btn.textContent = "☀️";
+  /**
+   * Toast notification
+   */
+  showToast(message, type = "info") {
+    // Respect Do Not Disturb (DND) application preference
+    if (window.AVTO_SKLAD_DND && type === "info") {
+      return;
     }
-}
+    const container = document.getElementById("toast-container");
+    if (!container) return;
 
-function toggleTheme() {
-    const isLight = document.body.classList.toggle("light-theme");
-    const btn = document.getElementById("theme-toggle-btn");
-    if (isLight) {
-        if (btn) btn.textContent = "☀️";
-        localStorage.setItem("theme", "light");
-        showToast("☀️ Kunduzgi rejim", "info");
-    } else {
-        if (btn) btn.textContent = "🌙";
-        localStorage.setItem("theme", "dark");
-        showToast("🌙 Tungi rejim", "info");
-    }
-}
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    
+    let icon = "ℹ️";
+    if (type === "success") icon = "✅";
+    if (type === "error") icon = "⚠️";
 
-document.addEventListener("DOMContentLoaded", initTheme);
+    toast.innerHTML = `<span>${icon}</span><span style="flex:1">${this.escapeHtml(message)}</span>`;
+    container.appendChild(toast);
 
+    setTimeout(() => {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(-8px)";
+      toast.style.transition = "all 0.3s ease";
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
+  }
+};

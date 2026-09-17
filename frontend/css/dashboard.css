@@ -1,113 +1,285 @@
-/* =====================================================
-   AVTO SKLAD — Dashboard & Statistics Styles
-   ===================================================== */
+/* ==========================================================================
+   AVTO SKLAD — DASHBOARD & ACCOUNTING ANALYTICS STYLES
+   ========================================================================== */
 
-.stat-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
+/* Main Balance Hero Card */
+.balance-hero-card {
+  background: linear-gradient(135deg, #131E33 0%, #0F172A 100%);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 20px;
 }
 
-.stat-card {
-    background: var(--bg-card);
-    backdrop-filter: var(--blur-glass);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    transition: var(--transition);
+.balance-hero-card::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, rgba(37, 99, 235, 0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
-.stat-card.full-width {
-    grid-column: span 2;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(16, 185, 129, 0.08));
-    border-color: rgba(99, 102, 241, 0.3);
+.hero-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
-.stat-icon {
-    font-size: 24px;
+.hero-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.stat-label {
-    font-size: 12px;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.hero-balance-amount {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #FFFFFF;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
 }
 
-.stat-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text-primary);
+.hero-balance-currency {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--brand-blue);
 }
 
-.stat-value.green { color: var(--accent-emerald); }
-.stat-value.indigo { color: var(--accent-indigo); }
-
-.section-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 20px 0 12px 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+/* Formula Transparency Trigger */
+.formula-pill-btn {
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  color: #93C5FD;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: var(--transition);
 }
 
-/* Period switcher */
-.period-switcher {
-    display: flex;
-    background: var(--bg-element);
-    padding: 4px;
-    border-radius: var(--radius-md);
-    gap: 4px;
-    margin-bottom: 16px;
+.formula-pill-btn:hover {
+  background: rgba(37, 99, 235, 0.25);
+  color: #FFFFFF;
 }
 
-.period-btn {
-    flex: 1;
-    padding: 8px 12px;
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-weight: 600;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: var(--transition);
+/* Quick Action Buttons Bar */
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
 }
 
-.period-btn.active {
-    background: var(--accent-indigo);
-    color: #FFF;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+.action-card-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+  color: var(--text-main);
+  text-decoration: none;
 }
 
-/* Sales cards */
-.sales-row {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 12px;
+.action-card-btn:hover {
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-light);
+  transform: translateY(-2px);
 }
 
-.sales-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 14px;
+.action-icon-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
 }
 
-.sales-label {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-bottom: 6px;
+.action-sale .action-icon-circle { background: var(--accent-emerald-subtle); color: var(--accent-emerald); }
+.action-purchase .action-icon-circle { background: var(--brand-blue-subtle); color: var(--brand-blue); }
+.action-product .action-icon-circle { background: var(--accent-purple); color: white; background: rgba(139, 92, 246, 0.15); color: #A78BFA; }
+
+.action-label {
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.sales-value {
-    font-size: 16px;
-    font-weight: 700;
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.metric-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.metric-icon {
+  font-size: 14px;
+}
+
+.metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.metric-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.metric-positive { color: var(--accent-emerald); }
+.metric-negative { color: var(--accent-rose); }
+.metric-warning { color: var(--accent-amber); }
+
+/* Chart Container */
+.chart-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  margin-bottom: 24px;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chart-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.period-pills {
+  display: flex;
+  background: var(--bg-surface-elevated);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  gap: 2px;
+}
+
+.period-pill {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.period-pill.active {
+  background: var(--brand-blue);
+  color: white;
+}
+
+.canvas-chart-wrapper {
+  position: relative;
+  width: 100%;
+  height: 220px;
+}
+
+canvas.chart-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Low Stock Alert List */
+.alert-card {
+  background: rgba(245, 158, 11, 0.05);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.alert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.alert-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-amber);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.alert-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.12);
+  font-size: 12px;
+}
+
+.alert-item-row:last-child {
+  border-bottom: none;
 }

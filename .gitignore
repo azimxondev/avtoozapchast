@@ -1,8 +1,20 @@
-# Maxfiy parametrlar
+# Maxfiy sozlamalar (Secrets)
 .env
-.env.local
-.env.*.local
-*.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# Ma'lumotlar bazasi (Database files)
+warehouse.db
+warehouse.db-shm
+warehouse.db-wal
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
 
 # Python
 __pycache__/
@@ -28,10 +40,9 @@ Thumbs.db
 logs/
 *.log
 
-# Scratch
+# Scratch va test fayllar
 scratch/
 
-# Node.js (eski)
+# Node.js
 node_modules/
-package-lock.json
 npm-debug.log*

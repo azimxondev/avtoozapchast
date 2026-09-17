@@ -1,77 +1,67 @@
-/* =====================================================
-   AVTO SKLAD — Navigation & Responsive Layout CSS
-   ===================================================== */
+/* ==========================================================================
+   AVTO SKLAD — RESPONSIVE DESIGN & TELEGRAM WEBAPP OPTIMIZATIONS
+   ========================================================================== */
 
-header {
-    background: var(--bg-glass);
-    backdrop-filter: var(--blur-glass);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 20px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+/* Mobile Safe Areas */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+  nav.bottom-nav {
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    height: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
+  }
 }
 
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--text-primary);
+/* Tablet & Desktop Layout */
+@media (min-width: 768px) {
+  :root {
+    --header-height: 64px;
+    --nav-height: 0px; /* Hide bottom nav, use top bar on large screens if desired */
+  }
+
+  .app-container {
+    padding: 24px;
+    padding-bottom: 40px;
+  }
+
+  .hero-balance-amount {
+    font-size: 38px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
 }
 
-.app-container {
-    flex: 1;
-    padding: 16px;
-    padding-bottom: 90px;
-    max-width: 600px;
-    width: 100%;
-    margin: 0 auto;
-}
+@media (max-width: 480px) {
+  .hero-balance-amount {
+    font-size: 26px;
+  }
 
-/* Bottom Navigation */
-.nav-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--bg-glass);
-    backdrop-filter: var(--blur-glass);
-    border-top: 1px solid var(--border);
-    display: flex;
-    justify-content: space-around;
-    padding: 8px 12px;
-    z-index: 200;
-}
+  .quick-actions-grid {
+    gap: 8px;
+  }
 
-.nav-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
+  .action-card-btn {
+    padding: 10px 6px;
+  }
+
+  .action-label {
     font-size: 11px;
-    font-weight: 500;
-    cursor: pointer;
-    padding: 6px 12px;
-    border-radius: var(--radius-md);
-    transition: var(--transition);
-}
+  }
 
-.nav-btn .icon {
-    font-size: 20px;
-}
+  .metrics-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
 
-.nav-btn.active {
-    color: var(--accent-indigo);
-}
-
-.nav-btn.active .icon {
-    transform: translateY(-2px);
+  .products-grid {
+    grid-template-columns: 1fr;
+  }
 }

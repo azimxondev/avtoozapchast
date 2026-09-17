@@ -1,123 +1,102 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html lang="uz" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Avto Sklad — Boshqaruv Tizimi</title>
-    
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Telegram WebApp SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Avto Sklad — Ombor & Buxgalteriya Boshqaruv Tizimi</title>
 
-    <!-- Modular CSS Stylesheets -->
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/dashboard.css">
-    <link rel="stylesheet" href="/static/css/products.css">
-    <link rel="stylesheet" href="/static/css/modal.css">
-    <link rel="stylesheet" href="/static/css/admin.css">
-    <link rel="stylesheet" href="/static/css/responsive.css">
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="/static/css/products.css">
+  <link rel="stylesheet" href="/static/css/modal.css">
+  <link rel="stylesheet" href="/static/css/responsive.css">
 </head>
 <body>
 
-    <!-- Header -->
-    <header>
-        <div class="logo">
-            <span>🚗</span>
-            <span>Avto Sklad</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-            <button id="theme-toggle-btn" class="btn btn-ghost" style="padding:6px 10px;font-size:16px" onclick="toggleTheme()">🌙</button>
-            <div id="header-role-badge"></div>
-        </div>
-    </header>
-
-
-    <!-- Toast Notification -->
-    <div id="toast" class="toast hidden"></div>
-
-    <!-- Loading Screen -->
-    <div id="loading-screen" style="position:fixed;inset:0;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999">
-        <div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent-indigo);border-radius:50%;animation:spin 0.8s linear infinite"></div>
-        <p style="margin-top:16px;color:var(--text-muted);font-size:14px;font-weight:500">Sklad tizimi yuklanmoqda...</p>
+  <!-- Standalone Demo Mode Banner (Hidden by default in production per strict spec) -->
+  <div id="standalone-demo-banner" class="demo-banner" style="display:none;">
+    <div class="demo-banner-left">
+      <span class="demo-badge">Demo Rejim</span>
+      <span>Test rejimi</span>
     </div>
-
-    <!-- Error Screen -->
-    <div id="error-screen" class="hidden" style="position:fixed;inset:0;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;z-index:999">
-        <div style="font-size:56px;margin-bottom:16px">❌</div>
-        <div id="error-message" style="font-size:16px;font-weight:700;color:var(--accent-rose);margin-bottom:20px">Xatolik yuz berdi</div>
-        <button class="btn btn-primary" onclick="location.reload()">Qayta yuklash</button>
+    <div class="demo-role-selector">
+      <select id="demo-role-select" onchange="App.onRoleChange(this.value)">
+        <option value="SUPER_ADMIN">Bosh Admin</option>
+        <option value="ADMIN">Admin</option>
+        <option value="USER">Mijoz</option>
+      </select>
     </div>
+  </div>
 
-    <!-- Main Content -->
-    <div id="main-content" class="app-container hidden">
-        <div id="tab-content"></div>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="header-logo-icon">🚗</div>
+      <div class="header-title-group">
+        <h1>Avto Sklad</h1>
+        <span>Ombor & Buxgalteriya ERP</span>
+      </div>
     </div>
-
-    <!-- Bottom Navigation Bar -->
-    <nav class="nav-bar">
-        <button class="nav-btn active" data-tab="dashboard">
-            <span class="icon">📊</span>
-            <span>Hisob-kitob</span>
-        </button>
-        <button class="nav-btn" data-tab="products">
-            <span class="icon">📦</span>
-            <span>Sklad</span>
-        </button>
-        <button class="nav-btn" data-tab="history">
-            <span class="icon">📜</span>
-            <span>Tarix</span>
-        </button>
-        <button class="nav-btn" data-tab="location">
-            <span class="icon">📍</span>
-            <span>Manzil</span>
-        </button>
-        <button class="nav-btn" data-tab="admin">
-            <span class="icon">⚙️</span>
-            <span>Admin</span>
-        </button>
-    </nav>
-
-    <!-- Modal Overlay -->
-    <div id="modal-overlay" class="modal-overlay hidden" onclick="closeAllModals()"></div>
-
-    <!-- Modals -->
-    <div id="product-detail-modal" class="modal hidden" onclick="event.stopPropagation()">
-        <div id="product-detail-content"></div>
+    <div class="header-actions">
+      <div id="header-role-badge"></div>
+      <button id="dnd-toggle-btn" class="btn btn-ghost btn-sm" onclick="App.toggleDND()" title="Bezovta qilinmasin (Do Not Disturb)" style="font-size:16px; padding: 4px 8px;">
+        🔔
+      </button>
+      <button id="theme-toggle-btn" class="btn btn-ghost btn-sm" onclick="App.toggleTheme()" title="Mavzuni almashtirish">
+        🌙
+      </button>
     </div>
+  </header>
 
-    <div id="stock-modal" class="modal hidden" onclick="event.stopPropagation()">
-        <div id="stock-modal-content"></div>
-    </div>
+  <!-- App Loading Screen -->
+  <div id="app-loading-screen" style="position:fixed;inset:0;background:var(--bg-main);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999">
+    <div style="width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--brand-blue);border-radius:50%;animation:spin 0.8s linear infinite"></div>
+    <p style="margin-top:16px;color:var(--text-muted);font-size:13px;font-weight:600">Avto Sklad tizimi yuklanmoqda...</p>
+  </div>
 
-    <div id="product-form-modal" class="modal hidden" onclick="event.stopPropagation()">
-        <div id="product-form-content"></div>
-    </div>
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
 
-    <div id="confirm-modal" class="modal hidden" onclick="event.stopPropagation()">
-        <div id="confirm-content" style="padding:10px"></div>
-    </div>
+  <!-- Main App Body -->
+  <main class="app-container">
+    <div id="tab-content"></div>
+  </main>
 
-    <style>
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav" id="bottom-nav"></nav>
 
-    <!-- Modular JavaScript Files (in dependency order) -->
-    <script src="/static/js/utils.js"></script>
-    <script src="/static/js/auth.js"></script>
-    <script src="/static/js/api.js"></script>
-    <script src="/static/js/modal.js"></script>
-    <script src="/static/js/dashboard.js"></script>
-    <script src="/static/js/products.js"></script>
-    <script src="/static/js/statistics.js"></script>
-    <script src="/static/js/transactions.js"></script>
-    <script src="/static/js/location.js"></script>
-    <script src="/static/js/admin.js"></script>
-    <script src="/static/js/app.js"></script>
+  <!-- Modals and Bottom Sheets -->
+  <div id="modal-overlay" class="modal-overlay" onclick="ProductsView.closeModal()">
+    <div id="modal-root" onclick="event.stopPropagation()"></div>
+  </div>
 
+  <style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+
+  <!-- Scripts in dependency order -->
+  <script src="/static/js/utils.js"></script>
+  <script src="/static/js/state.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/views/dashboard.js"></script>
+  <script src="/static/js/views/products.js"></script>
+  <script src="/static/js/views/inventory.js"></script>
+  <script src="/static/js/views/stock_modal.js"></script>
+  <script src="/static/js/views/transactions.js"></script>
+  <script src="/static/js/views/analytics.js"></script>
+  <script src="/static/js/views/user_catalog.js"></script>
+  <script src="/static/js/views/admin_management.js"></script>
+  <script src="/static/js/views/settings.js"></script>
+  <script src="/static/js/app.js"></script>
 </body>
 </html>

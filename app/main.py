@@ -1,102 +1,108 @@
 """
-Avto Sklad — Main Application Entry Point.
-FastAPI + aiogram 3.x birgalikda ishlaydi.
+Avto Sklad — Main Application Entry Point
+FastAPI backend + Telegram WebApp Mini App + Standalone Demo Mode.
 """
 
+import sys
 import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database.pool import create_pool, close_pool
-from app.database.queries import init_tables
+from app.database import db, init_database, seed_initial_data_if_empty
 from app.api.router import api_router
-from app.bot.bot import bot, dp
-from app.bot.handlers import bot_router
-from app.config import BOT_TOKEN
+from app.config import BOT_TOKEN, SHOP_NAME, IS_PRODUCTION, validate_configuration
 
-# Bot router ni dispatcher ga ulash
-dp.include_router(bot_router)
-
-# Bot polling task reference
+# Bot references
 _bot_task: asyncio.Task | None = None
-
-
-async def _start_bot_polling():
-    """Bot polling ni background task sifatida ishga tushirish."""
-    try:
-        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
-    except asyncio.CancelledError:
-        pass
-    except Exception as e:
-        print(f"⚠️ Bot polling xatosi: {e}")
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifecycle — startup va shutdown."""
-    print("🚀 Avto Sklad tizimi ishga tushmoqda...")
+    """Application lifecycle — startup and shutdown."""
+    print("[INIT] Avto Sklad tizimi ishga tushmoqda...")
 
-    # 1. Database pool ochish (xatolik bo'lsa ham bot to'xtab qolmaydi)
+    # 0. Central configuration validation
+    validate_configuration()
+
+    # 1. Connect database & run schema/seed
     try:
-        await create_pool()
-        await init_tables()
-    except Exception as db_err:
-        print(f"⚠️ DB ulanish xatosi (bot baribir ishga tushadi): {db_err}")
+        await db.connect()
+        await init_database()
+        await seed_initial_data_if_empty()
+        print("[INIT] Ma'lumotlar bazasi tayyor!")
+    except Exception as e:
+        print(f"[INIT ERROR] Ma'lumotlar bazasi xatosi: {e}")
 
-    # 2. Bot polling ni boshlash (background task)
+    # 2. Telegram bot polling (if BOT_TOKEN is set)
     global _bot_task
-    if BOT_TOKEN:
-        _bot_task = asyncio.create_task(_start_bot_polling())
-        print("🤖 Telegram bot polling boshlandi.")
-    else:
-        print("⚠️ BOT_TOKEN topilmadi — bot ishga tushmadi.")
+    if BOT_TOKEN and BOT_TOKEN.strip():
+        try:
+            from app.bot.bot import get_bot, dp
+            from app.bot.handlers import bot_router
+            dp.include_router(bot_router)
 
-    print("✅ Tizim tayyor!")
+            async def _start_bot_polling():
+                bot_instance = get_bot()
+                if not bot_instance:
+                    return
+                try:
+                    await dp.start_polling(bot_instance, allowed_updates=dp.resolve_used_update_types())
+                except asyncio.CancelledError:
+                    pass
+                except Exception as b_err:
+                    print(f"[BOT ERROR] Polling xatosi: {b_err}")
+
+            _bot_task = asyncio.create_task(_start_bot_polling())
+            print("[BOT] Telegram bot polling ishga tushdi.")
+        except Exception as bot_init_err:
+            print(f"[BOT WARNING] Botni ishga tushirishda xato: {bot_init_err}")
+    else:
+        print("[MODE] BOT_TOKEN berilmagan — Demo Standalone rejimida to'liq ishlamoqda.")
+
+    print("[READY] Tizim foydalanishga tayyor!")
     yield
 
-
     # SHUTDOWN
-    print("🛑 Tizim to'xtatilmoqda...")
-
+    print("[SHUTDOWN] Tizim to'xtatilmoqda...")
     if _bot_task:
-        await dp.stop_polling()
-        _bot_task.cancel()
         try:
-            await _bot_task
-        except asyncio.CancelledError:
+            from app.bot.bot import bot, dp
+            await dp.stop_polling()
+            _bot_task.cancel()
+            await bot.session.close()
+        except Exception:
             pass
-        await bot.session.close()
 
-    await close_pool()
-    print("👋 Tizim to'xtatildi.")
-
+    await db.close()
+    print("[SHUTDOWN] Tizim to'xtatildi.")
 
 # FastAPI instance
 app = FastAPI(
-    title="Avto Sklad",
-    description="Avto ehtiyot qismlari sklad boshqaruv va hisob-kitob tizimi",
-    version="2.0.0",
+    title="Avto Sklad — Ombor & Buxgalteriya Tizimi",
+    description="Avto ehtiyot qismlari ombori, sotuv, xarid, kassa va tahlil tizimi",
+    version="2.5.0",
     lifespan=lifespan,
 )
 
-
+# Global error handler (never expose SQL or internal stack traces to clients)
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    print(f"🔴 Global Error: {exc}")
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"[GLOBAL ERROR] {request.method} {request.url.path}: {exc}")
+    detail_msg = str(exc) if not IS_PRODUCTION else "Serverda ichki xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring."
     return JSONResponse(
         status_code=500,
-        content={"detail": str(exc)}
+        content={"detail": detail_msg}
     )
 
 # CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -104,23 +110,36 @@ app.add_middleware(
 # API routes
 app.include_router(api_router)
 
-# Frontend static fayllar
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+# Static frontend files
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
-
-@app.get("/")
-@app.get("/app")
+@app.api_route("/", methods=["GET", "HEAD"])
+@app.api_route("/app", methods=["GET", "HEAD"])
 async def serve_frontend():
-    """Mini App bosh sahifasi."""
+    """Telegram Mini App va Demo bosh sahifasi."""
     index_path = FRONTEND_DIR / "index.html"
     if index_path.exists():
         return FileResponse(str(index_path))
-    return {"status": "Avto Sklad API ishlamoqda", "version": "2.0.0"}
-
+    return {"status": "Avto Sklad API ishlamoqda", "version": "2.5.0"}
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
-    """Health check (UptimeRobot uchun)."""
-    return {"status": "ok"}
+    """Xavfsiz tizim holati (hech qanday sir yoki parollarni oshkor qilmaydi)."""
+    db_status = "connected"
+    try:
+        val = await db.fetchval("SELECT 1")
+        if val != 1:
+            db_status = "degraded"
+    except Exception:
+        db_status = "error"
+
+    bot_status = "running" if (_bot_task and not _bot_task.done()) else ("configured" if BOT_TOKEN else "disabled")
+
+    return {
+        "status": "healthy" if db_status == "connected" else "degraded",
+        "database": db_status,
+        "bot": bot_status,
+        "version": "2.5.0"
+    }

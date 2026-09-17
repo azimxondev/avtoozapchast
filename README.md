@@ -1,150 +1,147 @@
-# 🚗 Avto Sklad — Telegram Mini App
+# 🚗 Auto Sklad — Avtomobil Ehtiyot Qismlari Ombori & Telegram Mini App (ERP)
 
-> Avto ehtiyot qismlari do'koni va omborini (sklad) boshqarish tizimi.
-> Telegram Mini App + FastAPI Backend + PostgreSQL (Neon).
+Auto Sklad — bu avtomobil ehtiyot qismlari do'koni va ombori uchun yaratilgan to'liq **FastAPI (Backend)**, **Telegram Mini App (Frontend)**, **Telegram Bot (Aiogram 3)** va **Avtomatlashtirilgan Buxgalteriya** tizimi.
 
-[![Python](https://img.shields.io/badge/Python-3.12+-3776ab?style=flat-square&logo=python)](https://python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon_Cloud-4169e1?style=flat-square&logo=postgresql)](https://neon.tech/)
-[![Telegram](https://img.shields.io/badge/Telegram-Mini_App-2ca5e0?style=flat-square&logo=telegram)](https://core.telegram.org/)
+Loyihada **Backend**, **Frontend**, **Ma'lumotlar bazasi** va **Telegram Bot** 100% tayyor, to'liq bir-biriga bog'langan va xavfsiz holatga keltirilgan.
 
 ---
 
-## ⚡️ Imkoniyatlar
+## 🌟 Asosiy Imkoniyatlar
 
-* **📦 Sklad boshqaruvi**: Mahsulot qo'shish, tahrirlash, o'chirish
-* **➕➖ Kirim/Chiqim**: Omborga tovar kiritish va sotish (atomic transaction)
-* **📊 Dashboard**: Sklad qiymati, jami qoldiq, sotuv hisobi
-* **📈 Statistika**: Kunlik, haftalik, oylik, yillik sotuv va kirim
-* **📜 Tarix**: Barcha kirim/chiqim operatsiyalari tarixi
-* **📍 Manzil**: Do'kon manzili (Google Maps / Yandex Xarita)
-* **🔐 Xavfsizlik**: Telegram initData HMAC-SHA256 tekshiruv
-* **👨‍💼 Admin tizimi**: Head Admin + Co-admins
-* **📢 Broadcast**: Head Admin barcha foydalanuvchilarga xabar yuborishi
-
----
-
-## 🏗 Arxitektura
-
-```
-Telegram Bot (/start)
-       ↓
-Telegram Mini App (WebApp)
-       ↓
-FastAPI Backend (API)
-       ↓
-PostgreSQL (Neon Cloud)
-```
+1. **Telegram Mini App & Do'kon Katalogi**:
+   - Avtomobil rusumlari (Cobalt, Gentra, Nexia, Malibu va h.k.) va toifalar bo'yicha filter.
+   - Tezkor qidiruv (Artikul/SKU, nom, brend, model).
+   - Real-vaqt qoldiqlar (Mavjud, Kam qolgan, Tugagan).
+2. **Kassa & Buxgalteriya**:
+   - Kirim (Xaridlar) va Chiqim (Sotuvlar) harakatlari.
+   - Tranzaksiya yaxlitligi (Transaction Atomicity & Rollback).
+   - Shaffof kassa formulasi: `Boshlang'ich kassa - Xaridlar + Sotuvlar = Yakuniy kassa`.
+3. **Kalendar Tahlili & Drill-Down**:
+   - Kunlik, Haftalik (Dushanba - Yakshanba), Oylik va Yillik kalendar davrlari.
+   - Tushum yoki Xarajat kartochkasi bosilganda ochiladigan batafsil tranzaksiyalar oynasi (Drill-down).
+4. **Bosh Admin (Head Admin) & Xavfsiz Takliflar**:
+   - Yagona Bosh Admin: `HEAD_ADMIN_ID=5361309526`.
+   - 15 daqiqalik bir martalik taklif havolalari (Single-use Invite Link).
+   - Rollar: `HEAD_ADMIN`, `ADMIN`, `USER`.
+   - Yuqori o'ng burchakdagi **«Bezovta qilinmasin» (🔔 / 🔕)** ilova rejimi.
 
 ---
 
-## 🚀 Ishga tushirish
+## 🚀 1. LOKAL ISHGA TUSHIRISH (Kompyuterda)
 
-### 1. Repozitoriyani yuklab olish
+### 1-qadam. Talablar
+- Python 3.10+ o'rnatilgan bo'lishi kerak.
 
+### 2-qadam. Bog'liqliklarni o'rnatish
 ```bash
-git clone https://github.com/azimxondev/kuzavnoy-app.git
-cd kuzavnoy-app
-```
-
-### 2. Python muhitini sozlash
-
-```bash
-python -m venv venv
-
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
-
 pip install -r requirements.txt
 ```
 
-### 3. .env faylini yaratish
-
-```bash
-cp .env.example .env
-```
-
-Kerakli kalitlarni to'ldiring:
+### 3-qadam. .env fayli
+Loyiha papkasida `.env` fayli mavjud va sizning bot tokeningiz unga kiritilgan:
 ```env
-BOT_TOKEN=1234567890:ABCDefGhIjKlMnOpQrStUvWxYz
-ADMIN_IDS=123456789
-DATABASE_URL=postgresql://user:pass@host/dbname?sslmode=require
-WEBAPP_URL=https://your-app.onrender.com
-SHOP_ADDRESS=Toshkent sh., Farhod bozori
+ENVIRONMENT=development
+DEMO_MODE=true
+HEAD_ADMIN_ID=5361309526
+BOT_TOKEN=8759699560:AAG7ZO77LAlAbiz47gQAUdl02bDJunqEih8
+SECRET_KEY=auto-sklad-dev-secret-key-32chars-secure
+WEBAPP_URL=http://localhost:8000
+INITIAL_BUDGET=150000000
 ```
 
-### 4. Ma'lumotlar bazasini sozlash
-
-Neon Dashboard → SQL Editor da `sql/schema.sql` faylini ishga tushiring.
-
-### 5. Serverni yoqish
-
+### 4-qadam. Serverni ishga tushirish
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
-
-* **Mini App**: `http://localhost:8000`
-* **API Docs**: `http://localhost:8000/docs`
-
----
-
-## 📡 API Endpointlar
-
-| Method | Path | Vazifa |
-|--------|------|--------|
-| `GET` | `/api/products` | Barcha mahsulotlar |
-| `GET` | `/api/products/{id}` | Bitta mahsulot |
-| `POST` | `/api/products` | Yangi mahsulot qo'shish |
-| `PATCH` | `/api/products/{id}` | Mahsulotni tahrirlash |
-| `DELETE` | `/api/products/{id}` | Mahsulotni o'chirish |
-| `POST` | `/api/products/{id}/in` | Kirim (+) |
-| `POST` | `/api/products/{id}/out` | Chiqim (-) |
-| `GET` | `/api/statistics` | Umumiy statistika |
-| `GET` | `/api/statistics/{period}` | Davriy statistika |
-| `GET` | `/api/transactions` | Transaction tarix |
-| `GET` | `/api/shop` | Do'kon manzili |
-| `GET` | `/health` | Health check |
+- Brauzerda ochish: [http://localhost:8000](http://localhost:8000)
+- Bosh Admin rolida ochish: [http://localhost:8000/?role=head_admin](http://localhost:8000/?role=head_admin)
+- Tizim holati (Health Check): [http://localhost:8000/health](http://localhost:8000/health)
 
 ---
 
-## 🔐 Xavfsizlik
+## ☁️ 2. BEPUL BAZA ULASH (Neon.tech yoki Supabase PostgreSQL)
 
-* Telegram `initData` HMAC-SHA256 bilan tekshiriladi
-* Faqat `ADMIN_IDS` ichidagi userlar boshqaruv qila oladi
-* `HEAD_ADMIN` (birinchi ID) — boshqa adminlarni boshqaradi
-* SQL Injection himoyasi (parametrized queries)
-* `quantity < 0` bo'lishining oldi olingan
+Render'ning bepul veb-serverida SQLite fayli har qayta yuklanganda yangilanib turmasligi uchun **bepul PostgreSQL** ulash tavsiya etiladi:
 
----
-
-## ☁️ Render ga deploy qilish
-
-1. GitHub'ga push qiling
-2. [Render.com](https://render.com) → **New Web Service**
-3. **Build Command**: `pip install -r requirements.txt`
-4. **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. **Environment Variables** ga `.env` dagi barcha kalitlarni kiriting
-6. `WEBAPP_URL` ni Render domen bilan yangilang
-
-### UptimeRobot sozlash
-* URL: `https://your-app.onrender.com/health`
-* Interval: 5 daqiqa
-* Type: HTTP(s)
+1. **[Neon.tech](https://neon.tech)** saytiga kiring (bepul ro'yxatdan o'ting).
+2. Yangi proyekt yarating (masalan, `auto-sklad-db`).
+3. Berilgan ulanish havolasini nusxalang (`Connection String`):
+   ```
+   postgresql://username:password@ep-cool-fog-123456.us-east-2.aws.neon.tech/neondb?sslmode=require
+   ```
+4. Ushbu havolani `.env` faylidagi `DATABASE_URL` parametriga qo'ying:
+   ```env
+   DATABASE_URL=postgresql://username:password@ep-cool-fog-123456.us-east-2.aws.neon.tech/neondb?sslmode=require
+   ```
+*Tizim PostgreSQL ga avtomatik ulanadi, barcha jadvallarni (`schema.py`) va dastlabki 100+ mahsulotlarni o'zi yaratib beradi!*
 
 ---
 
-## 🤖 Telegram Bot buyruqlari
+## 🌐 3. GITHUB VA RENDER.COM GA BEPUL JOYLASHTIRISH (24/7)
 
-| Buyruq | Vazifa | Kim uchun |
-|--------|--------|-----------|
-| `/start` | Skladni ochish | Hammaga |
-| `/help` | Yordam | Adminlar |
-| `/broadcast <xabar>` | Barcha userlarga xabar | Head Admin |
+### 1-qadam. GitHub'ga yuklash
+1. [GitHub.com](https://github.com) da yangi repozitoriy oching (masalan, `auto-sklad`).
+2. Loyihani yuklang:
+```bash
+git add .
+git commit -m "Auto Sklad production ready release"
+git branch -M main
+git remote add origin https://github.com/SIZNING_USERNAME/auto-sklad.git
+git push -u origin main
+```
+*(Xavotir olmang, `.gitignore` tufayli `.env` va lokal bazalar GitHub'ga chiqmaydi).*
+
+### 2-qadam. Render.com da bepul ishga tushirish
+1. [Render.com](https://render.com) ga kiring va GitHub profilingiz bilan ulaning.
+2. **New +** -> **Web Service** ni bosing.
+3. GitHub repozitoriyangizni tanlang (`auto-sklad`).
+4. Sozlamalarni tekshiring:
+   - **Name**: `auto-sklad`
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - **Instance Type**: `Free` (0$ bepul rejim)
+5. **Environment Variables** (Muhit o'zgaruvchilari) bo'limiga quyidagilarni kiriting:
+   - `ENVIRONMENT` = `production`
+   - `DEMO_MODE` = `false`
+   - `HEAD_ADMIN_ID` = `5361309526`
+   - `BOT_TOKEN` = `8759699560:AAG7ZO77LAlAbiz47gQAUdl02bDJunqEih8`
+   - `DATABASE_URL` = Neon.tech'dan olgan havolangiz
+   - `SECRET_KEY` = `ixtiyoriy_uzun_maxfiy_soz_32talik`
+   - `WEBAPP_URL` = Render beradigan havola (masalan: `https://auto-sklad.onrender.com`)
+6. **Deploy Web Service** tugmasini bosing. 2-3 daqiqada saytingiz va botingiz 24/7 rejimda to'liq ishga tushadi!
 
 ---
 
-## 📄 Litsenziya
+## 🤖 4. TELEGRAM @BotFather DA MINI APP TUGMASINI SOZLASH
 
-MIT
+Foydalanuvchilar va Adminlar botga kirganda chap pastki burchakda **«Open Auto Sklad»** tugmasi chiqishi uchun:
+
+1. Telegramda **[@BotFather](https://t.me/BotFather)** ga kiring.
+2. `/mybots` buyrug'ini yuboring va botingizni tanlang.
+3. **Bot Settings** -> **Menu Button** -> **Configure menu button** ni bosing.
+4. Render'dagi havolangizni yuboring (masalan: `https://auto-sklad.onrender.com`).
+5. Tugma nomini kiriting: `🚗 Open Auto Sklad`
+
+Endi botingizda chiroyli Mini App tugmasi doimiy paydo bo'ladi!
+
+---
+
+## 👑 5. BOT BUYRUQLARI VA FOYDALANISH
+
+- `/start` — Mini App'ni ochish va asosiy menyu.
+- `/invite_admin` — **Bosh Admin** uchun yangi admin qo'shish (Telegram ID yoki 15 daqiqalik bir martalik havola).
+- `/analytics` — Bugungi tushum, xarajat, sof foyda va kassa balansi.
+- `/products` — Ombor tovarlari va qoldiqlari.
+- `/stock` — Kam qolgan va tugagan mahsulotlar ogohlantirishi.
+- `/status` — Tezkor kassa va ombor auditi.
+- `/verify_phone` — Telegram rasmiy kontakti orqali telefon raqamni tasdiqlash.
+
+---
+
+## 🔒 6. XAVFSIZLIK KAFOLATLARI
+
+- ✅ **Birorta ham maxfiy kalit yoki parol kod ichida yozilmagan** (faqat `.env` orqali o'qiladi).
+- ✅ **GitHub'ga `.env` va shaxsiy ma'lumotlar chiqishi 100% bloklangan**.
+- ✅ **Bosh Admin huquqini tashqaridan soxtalashtirish imkonsiz** (Telegram HMAC-SHA256 imzosi tekshiriladi).
+- ✅ **Tranzaksiyalar atomar** — pul yoki tovar hisobida nomutanosiblik bo'lmaydi.

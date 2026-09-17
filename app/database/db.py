@@ -77,13 +77,46 @@ class Database:
         converted = converted.replace("BIGSERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")
         converted = converted.replace("SERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")
         # Replace NOW() with datetime('now', '+5 hours') or CURRENT_TIMESTAMP
+        # Replace NOW() with CURRENT_TIMESTAMP
         converted = converted.replace("NOW()", "CURRENT_TIMESTAMP")
-        return converted, new_args
+        
+        # SQLite: format datetime objects to string
+        from datetime import datetime, date
+        final_args = []
+        for a in new_args:
+            if isinstance(a, (datetime, date)):
+                final_args.append(a.strftime("%Y-%m-%d %H:%M:%S") if isinstance(a, datetime) else a.isoformat())
+            else:
+                final_args.append(a)
+        return converted, final_args
+
+    def _sanitize_pg(self, query: str, args: tuple) -> tuple[str, list]:
+        """PostgreSQL moslashtirish: SUBSTR va string sana argumentlarini datetime ga o'tkazish."""
+        q = query.replace("SUBSTR(created_at,", "SUBSTR(created_at::text,")
+        q = q.replace("substr(created_at,", "substr(created_at::text,")
+
+        from datetime import datetime, timezone
+        cleaned_args = []
+        for a in args:
+            if isinstance(a, str):
+                s = a.strip()
+                if len(s) in (10, 19, 20, 23, 25, 26, 29) and len(s) >= 10 and s[4] == '-' and s[7] == '-':
+                    try:
+                        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        cleaned_args.append(dt)
+                        continue
+                    except Exception:
+                        pass
+            cleaned_args.append(a)
+        return q, cleaned_args
 
     async def execute(self, query: str, *args: Any) -> Any:
         if self.is_pg:
+            q, clean_args = self._sanitize_pg(query, args)
             async with self.pg_pool.acquire() as conn:
-                return await conn.execute(query, *args)
+                return await conn.execute(q, *clean_args)
         else:
             conv_q, conv_args = self._convert_query(query, args)
             cursor = await self.sqlite_conn.execute(conv_q, conv_args)
@@ -93,8 +126,9 @@ class Database:
 
     async def fetch(self, query: str, *args: Any) -> list[dict]:
         if self.is_pg:
+            q, clean_args = self._sanitize_pg(query, args)
             async with self.pg_pool.acquire() as conn:
-                rows = await conn.fetch(query, *args)
+                rows = await conn.fetch(q, *clean_args)
                 return [dict(r) for r in rows]
         else:
             conv_q, conv_args = self._convert_query(query, args)
@@ -104,8 +138,9 @@ class Database:
 
     async def fetchrow(self, query: str, *args: Any) -> Optional[dict]:
         if self.is_pg:
+            q, clean_args = self._sanitize_pg(query, args)
             async with self.pg_pool.acquire() as conn:
-                row = await conn.fetchrow(query, *args)
+                row = await conn.fetchrow(q, *clean_args)
                 return dict(row) if row else None
         else:
             conv_q, conv_args = self._convert_query(query, args)
@@ -115,8 +150,9 @@ class Database:
 
     async def fetchval(self, query: str, *args: Any) -> Any:
         if self.is_pg:
+            q, clean_args = self._sanitize_pg(query, args)
             async with self.pg_pool.acquire() as conn:
-                return await conn.fetchval(query, *args)
+                return await conn.fetchval(q, *clean_args)
         else:
             conv_q, conv_args = self._convert_query(query, args)
             cursor = await self.sqlite_conn.execute(conv_q, conv_args)

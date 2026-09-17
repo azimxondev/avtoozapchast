@@ -65,7 +65,7 @@ async def get_car_metadata():
 @router.get("")
 async def list_products(
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
     q: Optional[str] = Query(None, description="Qidiruv (nom, SKU, brend, model)"),
     category_id: Optional[int] = Query(None),
     car_brand: Optional[str] = Query(None),
@@ -181,6 +181,7 @@ async def list_products(
 
     return {
         "items": items,
+        "products": items,
         "total": total,
         "page": page,
         "limit": limit,

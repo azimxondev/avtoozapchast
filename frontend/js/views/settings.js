@@ -26,7 +26,7 @@ const SettingsView = {
 
         <!-- Cash Adjustment Card (Transparent Accounting Rule) -->
         ${State.isSuperAdmin() ? `
-        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:20px">
+        <div class="card mb-3">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <div>
               <strong style="font-size:15px;color:var(--text-main)">💰 Kassa Balansini Rasmiy Tuzatish</strong>
@@ -44,7 +44,7 @@ const SettingsView = {
 
         <!-- Shop Info Form -->
         ${State.isAdmin() ? `
-        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:20px">
+        <div class="card mb-3">
           <h3 style="font-size:15px;font-weight:700;color:var(--text-main);margin-bottom:14px">📍 Do'kon Rekvizitlari</h3>
           <form onsubmit="SettingsView.saveShopInfo(event)">
             <div class="form-group">

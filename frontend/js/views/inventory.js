@@ -21,58 +21,64 @@ const InventoryView = {
     }
 
     container.innerHTML = `
-      <div class="inventory-view-container" style="padding: 14px; max-width: 720px; margin: 0 auto;">
+      <div class="inventory-view-container" style="padding: 12px 14px; max-width: 760px; margin: 0 auto;">
         
         <!-- Inventory Valuation KPIs -->
-        <div class="kpi-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
-          <div class="kpi-card" style="background:#121826; border: 1px solid #1e293b; border-radius:10px; padding:12px;">
-            <div style="font-size:11px; color:#94a3b8;">Jami Tovar Soni</div>
-            <div id="inv-total-qty" style="font-size:18px; font-weight:700; color:#f8fafc; margin-top:2px;">...</div>
-            <div id="inv-total-types" style="font-size:11px; color:#60a5fa; margin-top:2px;">... tur</div>
+        <div class="kpi-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px;">
+          <div class="card" style="padding:14px; border-radius:14px; background:linear-gradient(145deg, rgba(18,26,44,0.85) 0%, rgba(12,18,32,0.85) 100%);">
+            <div style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Jami Tovar Soni</div>
+            <div id="inv-total-qty" style="font-size:20px; font-weight:800; color:#fff; margin-top:4px;">...</div>
+            <div id="inv-total-types" style="font-size:11px; color:var(--primary); font-weight:600; margin-top:2px;">... tur</div>
           </div>
-          <div class="kpi-card" style="background:#121826; border: 1px solid #1e293b; border-radius:10px; padding:12px;">
-            <div style="font-size:11px; color:#94a3b8;">Kam Qolgan / Tugagan</div>
-            <div id="inv-alert-count" style="font-size:18px; font-weight:700; color:#ef4444; margin-top:2px;">...</div>
-            <div style="font-size:11px; color:#f59e0b; margin-top:2px;">zudlik bilan kirim</div>
+          <div class="card" style="padding:14px; border-radius:14px; background:linear-gradient(145deg, rgba(18,26,44,0.85) 0%, rgba(12,18,32,0.85) 100%);">
+            <div style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Kam Qolgan / Tugagan</div>
+            <div id="inv-alert-count" style="font-size:20px; font-weight:800; color:var(--danger); margin-top:4px;">...</div>
+            <div style="font-size:11px; color:var(--warning); font-weight:600; margin-top:2px;">zudlik bilan kirim</div>
           </div>
-          <div class="kpi-card" style="background:#121826; border: 1px solid #1e293b; border-radius:10px; padding:12px;">
-            <div style="font-size:11px; color:#94a3b8;">Ombor Tannarxi</div>
-            <div id="inv-cost-val" style="font-size:14px; font-weight:700; color:#38bdf8; margin-top:2px;">...</div>
-            <div style="font-size:10px; color:#64748b;">xarid narxida</div>
+          <div class="card" style="padding:14px; border-radius:14px; background:linear-gradient(145deg, rgba(18,26,44,0.85) 0%, rgba(12,18,32,0.85) 100%);">
+            <div style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Ombor Tannarxi</div>
+            <div id="inv-cost-val" style="font-size:16px; font-weight:800; color:var(--info); margin-top:4px;">...</div>
+            <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">xarid narxida</div>
           </div>
-          <div class="kpi-card" style="background:#121826; border: 1px solid #1e293b; border-radius:10px; padding:12px;">
-            <div style="font-size:11px; color:#94a3b8;">Kutilayotgan Foyda</div>
-            <div id="inv-projected-profit" style="font-size:14px; font-weight:700; color:#22c55e; margin-top:2px;">...</div>
-            <div style="font-size:10px; color:#64748b;">to'liq sotilganda</div>
+          <div class="card" style="padding:14px; border-radius:14px; background:linear-gradient(145deg, rgba(18,26,44,0.85) 0%, rgba(12,18,32,0.85) 100%);">
+            <div style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Kutilayotgan Foyda</div>
+            <div id="inv-projected-profit" style="font-size:16px; font-weight:800; color:var(--success); margin-top:4px;">...</div>
+            <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">to'liq sotilganda</div>
           </div>
         </div>
 
         <!-- Action & Filter Bar -->
-        <div style="display:flex; gap:8px; margin-bottom: 12px;">
-          <input id="inv-search-input" type="text" placeholder="Qidirish (nomi, artikul, model)..." 
-            style="flex:1; background:#0b0f19; border:1px solid #334155; color:#f8fafc; font-size:12px; padding:8px 12px; border-radius:8px;"
-            oninput="InventoryView.onSearch(this.value)" />
-          <button class="btn btn-primary btn-sm" onclick="StockModal.open('kirim')">
-            + Kirim Qilish
+        <div style="display:flex; gap:10px; margin-bottom: 12px; align-items:center;">
+          <div style="flex:1; position:relative;">
+            <input id="inv-search-input" type="text" class="form-control" placeholder="Qidirish (nomi, artikul, model)..." 
+              style="padding-left:12px; font-size:13px;"
+              oninput="InventoryView.onSearch(this.value)" />
+          </div>
+          <button class="btn btn-primary" style="flex-shrink:0;" onclick="StockModal.open('kirim')">
+            + Kirim
           </button>
         </div>
 
         <!-- Filter Tabs -->
-        <div style="display:flex; gap:6px; margin-bottom: 14px; overflow-x:auto;">
-          <button id="tab-inv-all" class="btn btn-secondary btn-sm" onclick="InventoryView.setFilter('all')" style="border-radius:20px; font-size:11px;">
+        <div style="display:flex; gap:8px; margin-bottom: 14px; overflow-x:auto; padding-bottom:4px;">
+          <button id="tab-inv-all" class="btn btn-secondary btn-sm" onclick="InventoryView.setFilter('all')" style="border-radius:20px; font-size:12px;">
             Barchasi
           </button>
-          <button id="tab-inv-low" class="btn btn-ghost btn-sm" onclick="InventoryView.setFilter('low')" style="border-radius:20px; font-size:11px; color:#fbbf24;">
+          <button id="tab-inv-low" class="btn btn-ghost btn-sm" onclick="InventoryView.setFilter('low')" style="border-radius:20px; font-size:12px; color:var(--warning);">
             ⚠️ Kam Qolganlar
           </button>
-          <button id="tab-inv-out" class="btn btn-ghost btn-sm" onclick="InventoryView.setFilter('out')" style="border-radius:20px; font-size:11px; color:#ef4444;">
+          <button id="tab-inv-out" class="btn btn-ghost btn-sm" onclick="InventoryView.setFilter('out')" style="border-radius:20px; font-size:12px; color:var(--danger);">
             🔴 Tugaganlar
           </button>
         </div>
 
         <!-- Product List -->
         <div id="inv-items-list">
-          <div style="text-align:center; padding: 24px; color:#94a3b8;">Ombor ma'lumotlari yuklanmoqda...</div>
+          <div style="text-align:center; padding: 30px; color:var(--text-muted);">
+            <div class="skeleton" style="height:60px; margin-bottom:8px; border-radius:12px;"></div>
+            <div class="skeleton" style="height:60px; margin-bottom:8px; border-radius:12px;"></div>
+            <div class="skeleton" style="height:60px; border-radius:12px;"></div>
+          </div>
         </div>
 
       </div>
@@ -106,7 +112,7 @@ const InventoryView = {
   async loadInventoryData() {
     try {
       const res = await API.get("/products", { limit: 200 });
-      this.rawProducts = res.products || [];
+      this.rawProducts = res.items || res.products || [];
 
       // Compute valuations
       let totalQty = 0;
@@ -115,10 +121,10 @@ const InventoryView = {
       let alertCount = 0;
 
       this.rawProducts.forEach(p => {
-        const q = p.quantity || 0;
-        const bp = p.purchase_price || 0;
-        const sp = p.selling_price || 0;
-        const minQ = p.min_stock || 2;
+        const q = Number(p.quantity) || 0;
+        const bp = Number(p.purchase_price) || 0;
+        const sp = Number(p.selling_price) || 0;
+        const minQ = Number(p.min_stock) || 2;
 
         totalQty += q;
         totalCost += (q * bp);
@@ -144,7 +150,7 @@ const InventoryView = {
       this.renderItems();
     } catch (e) {
       const list = document.getElementById("inv-items-list");
-      if (list) list.innerHTML = `<div style="text-align:center; padding:20px; color:#ef4444;">Xatolik: ${e.message}</div>`;
+      if (list) list.innerHTML = `<div style="text-align:center; padding:20px; color:var(--danger);">Xatolik: ${Utils.escapeHtml(e.message)}</div>`;
     }
   },
 
@@ -153,8 +159,8 @@ const InventoryView = {
     if (!listEl) return;
 
     let filtered = this.rawProducts.filter(p => {
-      const q = p.quantity || 0;
-      const minQ = p.min_stock || 2;
+      const q = Number(p.quantity) || 0;
+      const minQ = Number(p.min_stock) || 2;
 
       if (this.currentFilter === "low" && !(q > 0 && q <= minQ)) return false;
       if (this.currentFilter === "out" && q !== 0) return false;
@@ -168,56 +174,60 @@ const InventoryView = {
 
     if (!filtered.length) {
       listEl.innerHTML = `
-        <div style="text-align:center; padding: 32px 16px; color:#94a3b8;">
-          <div style="font-size:24px; margin-bottom:8px;">📦</div>
-          <div style="font-size:13px; font-weight:600;">Hech qanday tovar topilmadi</div>
+        <div class="empty-state">
+          <div class="empty-icon">📦</div>
+          <div class="empty-title">Hech qanday tovar topilmadi</div>
+          <div class="empty-desc">Tanlangan mezonlar bo'yicha mahsulot mavjud emas.</div>
         </div>
       `;
       return;
     }
 
     listEl.innerHTML = filtered.map(p => {
-      const q = p.quantity || 0;
-      const minQ = p.min_stock || 2;
-      let badge = `<span style="background:rgba(34,197,94,0.15); color:#22c55e; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600;">Mavjud: ${q} dona</span>`;
+      const q = Number(p.quantity) || 0;
+      const minQ = Number(p.min_stock) || 2;
+      let stockClass = "badge-success";
+      let stockText = `Mavjud: ${q} dona`;
       if (q === 0) {
-        badge = `<span style="background:rgba(239,68,68,0.15); color:#ef4444; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600;">Tugagan (0 dona)</span>`;
+        stockClass = "badge-danger";
+        stockText = `Tugagan (0 dona)`;
       } else if (q <= minQ) {
-        badge = `<span style="background:rgba(251,191,36,0.15); color:#fbbf24; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600;">Kam qoldi: ${q} dona</span>`;
+        stockClass = "badge-warning";
+        stockText = `Kam qoldi: ${q} dona`;
       }
 
-      const shelf = p.shelf_location ? `<span style="color:#64748b; font-size:11px; margin-left:6px;">📍 ${Utils.escapeHtml(p.shelf_location)}</span>` : '';
+      const shelf = p.shelf_location ? `<span style="color:var(--text-dim); font-size:11px; margin-left:6px;">📍 ${Utils.escapeHtml(p.shelf_location)}</span>` : '';
 
       return `
-        <div class="card mb-2" style="padding:12px; border-radius:10px; background:#121826; border:1px solid #1e293b;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-            <div style="flex:1;">
-              <div style="font-size:13px; font-weight:600; color:#f8fafc; line-height:1.3;">
+        <div class="card mb-2" style="padding:14px; border-radius:12px; transition:transform 0.15s ease;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+            <div style="flex:1; padding-right:8px;">
+              <div style="font-size:14px; font-weight:700; color:#fff; line-height:1.35;">
                 ${Utils.escapeHtml(p.name)}
               </div>
-              <div style="font-size:11px; color:#94a3b8; margin-top:2px;">
-                <span>${Utils.escapeHtml(p.car_model || '')}</span> · 
-                <code style="background:#0b0f19; padding:1px 4px; border-radius:4px; font-size:10px;">${Utils.escapeHtml(p.sku)}</code>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:3px; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+                ${p.car_model ? `<span class="badge" style="background:rgba(59,130,246,0.12); color:#60a5fa; padding:1px 6px; font-size:10px;">${Utils.escapeHtml(p.car_model)}</span>` : ''}
+                <code style="background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; font-size:11px; color:#cbd5e1; font-family:monospace;">${Utils.escapeHtml(p.sku)}</code>
                 ${shelf}
               </div>
             </div>
             <div>
-              ${badge}
+              <span class="badge ${stockClass}">${stockText}</span>
             </div>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:8px; border-top:1px solid rgba(51,65,85,0.4);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:10px; border-top:1px solid var(--border-color);">
             <div>
-              <div style="font-size:10px; color:#64748b;">Tannarx / Sotuv:</div>
-              <div style="font-size:12px; font-weight:600; color:#f8fafc;">
-                ${Utils.formatCurrency(p.purchase_price)} <span style="color:#64748b;">→</span> <span style="color:#22c55e;">${Utils.formatCurrency(p.selling_price)}</span>
+              <div style="font-size:10px; color:var(--text-dim); font-weight:600; text-transform:uppercase;">Tannarx / Sotuv</div>
+              <div style="font-size:13px; font-weight:700; color:var(--text-main); margin-top:2px;">
+                ${Utils.formatCurrency(p.purchase_price)} <span style="color:var(--text-dim);">→</span> <span style="color:var(--success);">${Utils.formatCurrency(p.selling_price)}</span>
               </div>
             </div>
             <div style="display:flex; gap:6px;">
-              <button class="btn btn-ghost btn-sm" style="font-size:11px; padding:4px 8px;" onclick="StockModal.openWithProduct(${p.id}, 'kirim')">
+              <button class="btn btn-secondary btn-sm" onclick="StockModal.open('in', ${p.id})">
                 + Kirim
               </button>
-              <button class="btn btn-secondary btn-sm" style="font-size:11px; padding:4px 8px;" onclick="StockModal.openWithProduct(${p.id}, 'chiqim')">
+              <button class="btn btn-success btn-sm" onclick="StockModal.open('out', ${p.id})">
                 Sotish
               </button>
             </div>

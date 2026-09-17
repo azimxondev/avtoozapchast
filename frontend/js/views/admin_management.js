@@ -19,54 +19,52 @@ const AdminManagementView = {
     }
 
     container.innerHTML = `
-      <div class="admin-mgmt-container" style="padding: 16px; max-width: 640px; margin: 0 auto;">
+      <div class="admin-mgmt-container">
         
-        <!-- Header -->
-        <div class="card mb-3" style="background: linear-gradient(135deg, rgba(37,99,235,0.15), rgba(15,23,42,0.6)); border: 1px solid rgba(59,130,246,0.3);">
-          <div style="display:flex; align-items:center; gap: 12px; margin-bottom: 8px;">
-            <div style="width: 42px; height: 42px; border-radius: 10px; background: #2563eb; display:flex; align-items:center; justify-content:center; font-size: 20px;">
-              🔑
-            </div>
-            <div>
-              <h2 style="font-size: 16px; font-weight: 700; margin: 0; color: #f8fafc;">Adminlar Boshqaruvi</h2>
-              <span style="font-size: 12px; color: #94a3b8;">Yagona Bosh Admin boshqaruv markazi</span>
+        <!-- Head Admin VIP Banner Card -->
+        <div class="admin-hero-card">
+          <div class="admin-hero-header">
+            <div class="admin-hero-icon">👑</div>
+            <div class="admin-hero-title">
+              <h2>Adminlar Boshqaruvi</h2>
+              <span>Bosh Admin Markazi (Head Admin)</span>
             </div>
           </div>
-          <p style="font-size: 12px; color: #cbd5e1; margin: 0; line-height: 1.5;">
-            Yangi operatsion adminlarni 15 daqiqalik bir martalik havola orqali yoki Telegram ID orqali qo'shishingiz mumkin.
+          <p class="admin-hero-desc">
+            Yangi operatsion adminlarni 15 daqiqalik bir martalik xavfsiz havola orqali yoki Telegram ID orqali qo'shishingiz mumkin.
           </p>
         </div>
 
         <!-- 15-Minute Invite Generator Card -->
-        <div class="card mb-3">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-            <h3 style="font-size: 14px; font-weight: 600; margin: 0; color: #f8fafc;">
-              ⏱ 15 Daqiqalik Taklif Havolasi
-            </h3>
-            <span class="badge badge-info" style="font-size: 11px;">Bir martalik</span>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>⏱</span> 15 Daqiqalik Taklif Havolasi
+            </div>
+            <span class="badge badge-info">Bir martalik</span>
           </div>
 
-          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">
             Yaratilgan havola faqat 15 daqiqa davomida amal qiladi va nomzod Telegram orqali kirishi bilan avtomatik Admin huquqini oladi.
           </p>
 
           <button id="btn-create-invite" class="btn btn-primary btn-block" onclick="AdminManagementView.createInvite()">
-            ➕ Yangi Taklif Havolasi Yaratish
+            <span>➕</span> Yangi Taklif Havolasi Yaratish
           </button>
 
           <!-- Active Invite Box -->
-          <div id="active-invite-box" style="display: none; margin-top: 14px; padding: 12px; background: rgba(15,23,42,0.8); border: 1px solid rgba(59,130,246,0.4); border-radius: 8px;">
+          <div id="active-invite-box" class="invite-active-box" style="display: none;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-              <span style="font-size: 12px; font-weight: 600; color: #60a5fa;">Faol taklif havolasi:</span>
-              <span id="invite-countdown" style="font-size: 12px; font-weight: 700; color: #fbbf24; background: rgba(251,191,36,0.1); padding: 2px 6px; border-radius: 4px;">15:00</span>
+              <span style="font-size: 12px; font-weight: 600; color: #38BDF8;">Faol taklif havolasi:</span>
+              <span id="invite-countdown" class="invite-timer-pill">15:00</span>
             </div>
 
-            <div style="display:flex; gap: 8px; margin-bottom: 10px;">
-              <input id="invite-url-input" type="text" readonly style="flex:1; background: #0b0f19; border: 1px solid #334155; color: #f8fafc; font-size: 11px; padding: 6px 10px; border-radius: 6px;" />
+            <div class="invite-url-field">
+              <input id="invite-url-input" type="text" readonly />
               <button class="btn btn-secondary btn-sm" onclick="AdminManagementView.copyInviteUrl()">Нусха</button>
             </div>
 
-            <div style="display:flex; gap: 8px;">
+            <div class="invite-action-buttons">
               <button id="btn-share-invite" class="btn btn-primary btn-sm" style="flex:1;" onclick="AdminManagementView.shareInvite()">
                 ✈️ Telegramda Ulashish
               </button>
@@ -78,13 +76,16 @@ const AdminManagementView = {
         </div>
 
         <!-- Add Admin by Telegram ID Card -->
-        <div class="card mb-3">
-          <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #f8fafc;">
-            🆔 Telegram ID Orqali Qo'shish
-          </h3>
-          <div style="display:flex; gap: 8px; margin-bottom: 8px;">
-            <input id="manual-admin-id" type="number" placeholder="Telegram ID (masalan: 123456789)" style="flex:1; background: #0b0f19; border: 1px solid #334155; color: #f8fafc; font-size: 12px; padding: 8px 10px; border-radius: 6px;" />
-            <input id="manual-admin-name" type="text" placeholder="Ismi" style="width: 110px; background: #0b0f19; border: 1px solid #334155; color: #f8fafc; font-size: 12px; padding: 8px 10px; border-radius: 6px;" />
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>🆔</span> Telegram ID Orqali Qo'shish
+            </div>
+            <span class="badge badge-primary">Tezkor</span>
+          </div>
+          <div style="display:flex; gap: 8px; margin-bottom: 10px;">
+            <input id="manual-admin-id" type="number" placeholder="Telegram ID (masalan: 123456789)" style="flex:1;" />
+            <input id="manual-admin-name" type="text" placeholder="Ismi" style="width: 120px;" />
           </div>
           <button class="btn btn-secondary btn-block btn-sm" onclick="AdminManagementView.addAdminById()">
             Admin Etib Belgilash
@@ -93,14 +94,14 @@ const AdminManagementView = {
 
         <!-- Admins List Card -->
         <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-            <h3 style="font-size: 14px; font-weight: 600; margin: 0; color: #f8fafc;">
-              👥 Amaldagi Adminlar Ro'yxati
-            </h3>
+          <div class="card-header">
+            <div class="card-title">
+              <span>👥</span> Amaldagi Adminlar Ro'yxati
+            </div>
             <button class="btn btn-ghost btn-sm" onclick="AdminManagementView.loadAdminsList()">Yangilash</button>
           </div>
           <div id="admins-list-container">
-            <div style="text-align:center; padding: 20px; color: #94a3b8; font-size: 12px;">Yuklanmoqda...</div>
+            <div style="text-align:center; padding: 24px; color: var(--text-dim); font-size: 12px;">Yuklanmoqda...</div>
           </div>
         </div>
 
@@ -242,24 +243,32 @@ const AdminManagementView = {
         const isHead = a.role === "HEAD_ADMIN";
         const name = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.username || `Admin ${a.telegram_id}`;
         const uTag = a.username ? `@${a.username}` : `ID: ${a.telegram_id}`;
+        const initial = (a.first_name || a.username || 'A')[0].toUpperCase();
         const statusBadge = a.status === "ACTIVE" 
-          ? `<span style="color:#22c55e; font-size:11px; font-weight:600;">● Faol</span>`
-          : `<span style="color:#ef4444; font-size:11px; font-weight:600;">● Bekor qilingan</span>`;
+          ? `<span class="badge badge-success"><span class="status-dot-active"></span> Faol</span>`
+          : `<span class="badge badge-danger"><span class="status-dot-revoked"></span> Bekor qilingan</span>`;
 
         return `
-          <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px 0; border-bottom: 1px solid rgba(51,65,85,0.4);">
-            <div>
-              <div style="font-size: 13px; font-weight: 600; color: #f8fafc;">
-                ${isHead ? '👑 ' : '👨‍💼 '}${Utils.escapeHtml(name)}
-                ${isHead ? '<span class="badge badge-primary" style="font-size:10px; margin-left:4px;">Bosh Admin</span>' : ''}
+          <div class="admin-roster-item">
+            <div class="admin-user-cell">
+              <div class="admin-avatar-circle ${isHead ? 'admin-avatar-head' : 'admin-avatar-regular'}">
+                ${isHead ? '👑' : initial}
               </div>
-              <div style="font-size: 11px; color: #94a3b8;">
-                ${Utils.escapeHtml(uTag)} · ${statusBadge}
+              <div>
+                <div class="admin-meta-title">
+                  <span>${Utils.escapeHtml(name)}</span>
+                  ${isHead ? '<span class="badge badge-warning" style="font-size:10px;">Bosh Admin</span>' : ''}
+                </div>
+                <div class="admin-meta-sub">
+                  <span>${Utils.escapeHtml(uTag)}</span>
+                  <span>·</span>
+                  ${statusBadge}
+                </div>
               </div>
             </div>
             <div>
               ${!isHead && a.status === "ACTIVE" ? `
-                <button class="btn btn-ghost btn-sm" style="color:#ef4444; font-size:11px; padding:4px 8px;" onclick="AdminManagementView.revokeAdmin(${a.telegram_id})">
+                <button class="btn btn-ghost btn-sm" style="color:#ef4444; font-size:11px;" onclick="AdminManagementView.revokeAdmin(${a.telegram_id})">
                   O'chirish
                 </button>
               ` : ''}

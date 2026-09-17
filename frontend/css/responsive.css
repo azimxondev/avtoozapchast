@@ -9,21 +9,21 @@
     padding-right: max(0px, env(safe-area-inset-right));
   }
   nav.bottom-nav {
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
     height: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
   }
 }
 
-/* Tablet & Desktop Layout */
+/* Tablet & Desktop Layout (768px+) */
 @media (min-width: 768px) {
   :root {
     --header-height: 64px;
-    --nav-height: 0px; /* Hide bottom nav, use top bar on large screens if desired */
+    --nav-height: 72px;
   }
 
   .app-container {
-    padding: 24px;
-    padding-bottom: 40px;
+    max-width: 900px;
+    padding: 24px 20px 100px 20px;
   }
 
   .hero-balance-amount {
@@ -35,13 +35,19 @@
   }
 
   .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   }
 }
 
+/* Mobile Devices (max 480px) */
 @media (max-width: 480px) {
+  .app-container {
+    padding: 12px 12px 90px 12px;
+  }
+
   .hero-balance-amount {
-    font-size: 26px;
+    font-size: 28px;
+    letter-spacing: -0.5px;
   }
 
   .quick-actions-grid {
@@ -49,7 +55,14 @@
   }
 
   .action-card-btn {
-    padding: 10px 6px;
+    padding: 12px 6px;
+    border-radius: var(--radius-md);
+  }
+
+  .action-icon-circle {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
   }
 
   .action-label {
@@ -58,10 +71,71 @@
 
   .metrics-grid {
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 10px;
+  }
+
+  .metric-card {
+    padding: 12px;
+  }
+
+  .metric-value {
+    font-size: 17px;
   }
 
   .products-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .card {
+    padding: 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .admin-hero-card {
+    padding: 16px;
+  }
+
+  .admin-hero-title h2 {
+    font-size: 15px;
+  }
+
+  .invite-url-field {
+    flex-direction: column;
+  }
+
+  .invite-url-field input {
+    width: 100%;
+  }
+
+  .invite-url-field button {
+    width: 100%;
+  }
+}
+
+/* Ultra-compact screens (under 360px) */
+@media (max-width: 360px) {
+  .hero-balance-amount {
+    font-size: 24px;
+  }
+
+  .hero-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .quick-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-card-btn {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 10px 14px;
+  }
+
+  .metrics-grid {
     grid-template-columns: 1fr;
   }
 }

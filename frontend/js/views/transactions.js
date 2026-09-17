@@ -77,7 +77,8 @@ const TransactionsView = {
       }
 
       listContainer.innerHTML = `
-        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+        <!-- Desktop Table View -->
+        <div class="desktop-table-view" style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
           <div style="overflow-x:auto">
             <table style="width:100%;border-collapse:collapse;font-size:13px;text-align:left">
               <thead>
@@ -138,6 +139,47 @@ const TransactionsView = {
               </tbody>
             </table>
           </div>
+        </div>
+
+        <!-- Mobile Card View -->
+        <div class="mobile-tx-cards">
+          ${items.map(t => {
+            let badgeClass = "badge-primary";
+            let amountColor = "var(--text-main)";
+            let sign = "";
+            if (t.type === "chiqim") {
+              badgeClass = "badge-success";
+              amountColor = "#34D399";
+              sign = "+";
+            } else if (t.type === "kirim") {
+              badgeClass = "badge-danger";
+              amountColor = "#F87171";
+              sign = "-";
+            } else if (t.type === "tuzatish") {
+              badgeClass = "badge-warning";
+            }
+
+            return `
+              <div class="card p-3 mb-2" onclick="TransactionsView.openDetail(${t.id})" style="cursor:pointer">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span class="badge ${badgeClass}">${t.type_label}</span>
+                    <span style="font-size:11px;font-family:monospace;color:var(--text-dim)">${t.tx_number}</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:800;color:${amountColor}">
+                    ${sign}${Utils.formatUZS(t.total_amount)}
+                  </div>
+                </div>
+                <div style="font-size:13px;font-weight:700;color:var(--text-main);margin-bottom:4px;line-height:1.3">
+                  ${Utils.escapeHtml(t.product_name || 'Kassa amali')}
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-dim);border-top:1px solid var(--border);padding-top:8px;margin-top:6px">
+                  <span>${Utils.formatDateTime(t.created_at)} · ${t.quantity} ${t.unit || 'dona'}</span>
+                  <span>Kassa: <strong style="color:var(--text-main)">${Utils.formatUZS(t.new_balance)}</strong></span>
+                </div>
+              </div>
+            `;
+          }).join('')}
         </div>
 
         <!-- Pagination -->

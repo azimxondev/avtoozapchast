@@ -11,7 +11,7 @@ services:
       - key: DEMO_MODE
         value: "false"
       - key: HEAD_ADMIN_ID
-        value: "5361309526"
+        sync: false
       - key: BOT_TOKEN
         sync: false
       - key: SECRET_KEY

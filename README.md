@@ -20,7 +20,7 @@ Loyihada **Backend**, **Frontend**, **Ma'lumotlar bazasi** va **Telegram Bot** 1
    - Kunlik, Haftalik (Dushanba - Yakshanba), Oylik va Yillik kalendar davrlari.
    - Tushum yoki Xarajat kartochkasi bosilganda ochiladigan batafsil tranzaksiyalar oynasi (Drill-down).
 4. **Bosh Admin (Head Admin) & Xavfsiz Takliflar**:
-   - Yagona Bosh Admin: `HEAD_ADMIN_ID=5361309526`.
+   - Yagona Bosh Admin: `.env` dagi `HEAD_ADMIN_ID` orqali belgilanadi.
    - 15 daqiqalik bir martalik taklif havolalari (Single-use Invite Link).
    - Rollar: `HEAD_ADMIN`, `ADMIN`, `USER`.
    - Yuqori o'ng burchakdagi **«Bezovta qilinmasin» (🔔 / 🔕)** ilova rejimi.
@@ -38,12 +38,12 @@ pip install -r requirements.txt
 ```
 
 ### 3-qadam. .env fayli
-Loyiha papkasida `.env` fayli mavjud va sizning bot tokeningiz unga kiritilgan:
+Loyiha papkasida `.env` fayli mavjud bo'lib, unga o'z shaxsiy parametr va tokenlaringizni kiritasiz:
 ```env
 ENVIRONMENT=development
 DEMO_MODE=true
-HEAD_ADMIN_ID=5361309526
-BOT_TOKEN=8759699560:AAG7ZO77LAlAbiz47gQAUdl02bDJunqEih8
+HEAD_ADMIN_ID=SIZNING_TELEGRAM_ID
+BOT_TOKEN=SIZNING_BOT_TOKEN
 SECRET_KEY=auto-sklad-dev-secret-key-32chars-secure
 WEBAPP_URL=http://localhost:8000
 INITIAL_BUDGET=150000000
@@ -102,13 +102,13 @@ git push -u origin main
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `python main.py`  *(yoki `uvicorn app.main:app --host 0.0.0.0 --port $PORT`)*
    - **Instance Type**: `Free` (0$ bepul rejim)
-5. **Environment Variables** (Muhit o'zgaruvchilari) bo'limiga quyidagilarni kiriting:
+5. **Environment Variables** (Muhit o'zgaruvchilari) bo'limiga quyidagilarni o'z maxfiy ma'lumotlaringiz asosida kiriting:
    - `ENVIRONMENT` = `production`
    - `DEMO_MODE` = `false`
-   - `HEAD_ADMIN_ID` = `5361309526`
-   - `BOT_TOKEN` = `8759699560:AAG7ZO77LAlAbiz47gQAUdl02bDJunqEih8`
-   - `DATABASE_URL` = `postgresql://neondb_owner:npg_n1ztxXR3FJyr@ep-dark-forest-b5lu1g3c-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require`
-   - `SECRET_KEY` = `auto-sklad-prod-secure-token-32chars-ok`
+   - `HEAD_ADMIN_ID` = `SIZNING_TELEGRAM_ID`
+   - `BOT_TOKEN` = `SIZNING_BOT_TOKENINGIZ`
+   - `DATABASE_URL` = `postgresql://username:password@host/neondb?sslmode=require`
+   - `SECRET_KEY` = `sizning_32_belgili_maxfiy_kalitingiz`
    - `WEBAPP_URL` = `https://avtoozapchast.onrender.com`
 6. **Deploy Web Service** tugmasini bosing. 2-3 daqiqada saytingiz va botingiz 24/7 rejimda to'liq ishga tushadi!
 

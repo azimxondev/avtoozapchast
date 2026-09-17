@@ -24,10 +24,10 @@ else:
     DEMO_MODE: bool = os.getenv("DEMO_MODE", "true").strip().lower() in ("true", "1", "yes")
 
 # 3. Telegram Head Admin
-# Loaded from environment with safe numeric cleanup.
-_raw_head_admin = os.getenv("HEAD_ADMIN_ID", "5361309526").strip()
+# Strictly loaded from environment variable (.env) without hardcoded fallback.
+_raw_head_admin = os.getenv("HEAD_ADMIN_ID", "").strip()
 _clean_digits = re.findall(r"\d+", _raw_head_admin)
-HEAD_ADMIN_ID: int = int(_clean_digits[0]) if _clean_digits else 5361309526
+HEAD_ADMIN_ID: int = int(_clean_digits[0]) if _clean_digits else 0
 
 # Optional co-admin IDs from environment (comma-separated, e.g. "123,456")
 _raw_admin_ids = os.getenv("ADMIN_IDS", "").strip()

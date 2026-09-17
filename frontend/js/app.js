@@ -118,6 +118,38 @@ const App = {
     }
   },
 
+  async refreshData() {
+    const btn = document.getElementById("app-refresh-btn");
+    if (btn) btn.style.transform = "rotate(360deg)";
+    try {
+      // Re-verify auth
+      const authRes = await API.get("/auth/me");
+      State.currentUser = authRes.user;
+      State.initRole(authRes.user.role);
+      this.updateRoleBadge();
+      this.renderNav();
+
+      // Re-fetch categories & shop settings
+      const [catRes, setRes] = await Promise.all([
+        API.get("/categories").catch(() => ({ categories: [] })),
+        API.get("/settings").catch(() => ({ settings: {} }))
+      ]);
+      if (catRes.categories) State.categories = catRes.categories;
+      if (setRes.settings) State.shopSettings = setRes.settings;
+
+      // Re-render active view
+      this.navigate(State.currentTab);
+      Utils.showToast("🔄 Ma'lumotlar yangilandi!", "success");
+    } catch (e) {
+      console.error("Refresh error:", e);
+      Utils.showToast("Yangilashda xatolik yuz berdi", "error");
+    } finally {
+      setTimeout(() => {
+        if (btn) btn.style.transform = "none";
+      }, 500);
+    }
+  },
+
   onRoleChange(newRole) {
     State.setRole(newRole);
     this.updateRoleBadge();

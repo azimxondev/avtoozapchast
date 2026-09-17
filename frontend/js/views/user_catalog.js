@@ -18,17 +18,14 @@ const UserCatalogView = {
 
     container.innerHTML = `
       ${State.isUserPreview ? `
-      <!-- Admin Preview Banner -->
-      <div style="background:linear-gradient(135deg, rgba(37,99,235,0.2) 0%, rgba(16,185,129,0.2) 100%);border:1px solid rgba(59,130,246,0.5);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:0 4px 16px rgba(37,99,235,0.2);">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:22px">👁️</span>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:#93c5fd">Mijoz Ko'rinishi Faol (Preview Rejimi)</div>
-            <div style="font-size:11px;color:var(--text-muted)">Do'koningiz xaridorlarga qanday ko'rinishini tekshirmoqdasiz. Tannarxlar va ombor operatsiyalari yashirilgan.</div>
-          </div>
+      <!-- Compact Admin Preview Bar -->
+      <div style="background:rgba(37,99,235,0.12);border:1px solid rgba(59,130,246,0.35);border-radius:8px;padding:6px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;font-size:11px">
+        <div style="display:flex;align-items:center;gap:6px;color:#93c5fd">
+          <span>👁️</span>
+          <span><b>Mijoz ko'rinishi (Preview)</b></span>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="App.toggleUserPreview()" style="font-weight:700;box-shadow:0 0 12px rgba(37,99,235,0.4)">
-          👑 Boshqaruvga qaytish
+        <button class="btn btn-primary btn-sm" onclick="App.toggleUserPreview()" style="padding:2px 8px;font-size:10px;font-weight:700;border-radius:6px">
+          👑 Qaytish
         </button>
       </div>
       ` : ''}

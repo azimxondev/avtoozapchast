@@ -38,6 +38,9 @@ def webapp_head_admin_keyboard() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="➕ Taklif Havolasi", callback_data="cmd:invite"),
                 InlineKeyboardButton(text="📋 Barcha Takliflar", callback_data="cmd:invites")
+            ],
+            [
+                InlineKeyboardButton(text="🔄 Yangilash", callback_data="cmd:refresh")
             ]
         ]
     )
@@ -64,6 +67,9 @@ def webapp_admin_keyboard() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="📥 Xaridlar", callback_data="cmd:purchases"),
                 InlineKeyboardButton(text="🔍 Qidirish", callback_data="cmd:search_hint")
+            ],
+            [
+                InlineKeyboardButton(text="🔄 Yangilash", callback_data="cmd:refresh")
             ]
         ]
     )
@@ -89,6 +95,9 @@ def webapp_customer_keyboard() -> InlineKeyboardMarkup:
                     text="📞 Sotuvchi bilan bog'lanish",
                     url=f"https://t.me/{tg_contact}"
                 )
+            ],
+            [
+                InlineKeyboardButton(text="🔄 Yangilash", callback_data="cmd:refresh")
             ]
         ]
     )

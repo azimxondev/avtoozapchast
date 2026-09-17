@@ -101,11 +101,27 @@ async def lifespan(app: FastAPI):
     else:
         print("[MODE] BOT_TOKEN berilmagan — Demo Standalone rejimida to'liq ishlamoqda.")
 
+    # 3. Background keep-alive heartbeat (keeps Render service active)
+    async def _keep_alive_ping():
+        await asyncio.sleep(45)
+        import urllib.request
+        while True:
+            try:
+                ping_url = f"{WEBAPP_URL}/health" if WEBAPP_URL and "http" in WEBAPP_URL else "http://127.0.0.1:8000/health"
+                await asyncio.to_thread(urllib.request.urlopen, ping_url, timeout=10)
+            except Exception:
+                pass
+            await asyncio.sleep(480) # 8 daqiqada bir marta
+
+    _keep_alive_task = asyncio.create_task(_keep_alive_ping())
+
     print("[READY] Tizim foydalanishga tayyor!")
     yield
 
     # SHUTDOWN
     print("[SHUTDOWN] Tizim to'xtatilmoqda...")
+    if _keep_alive_task:
+        _keep_alive_task.cancel()
     if _bot_task:
         try:
             from app.bot.bot import bot, dp

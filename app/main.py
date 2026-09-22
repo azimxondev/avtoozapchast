@@ -186,7 +186,7 @@ async def serve_frontend():
     index_path = FRONTEND_DIR / "index.html"
     if index_path.exists():
         return FileResponse(str(index_path))
-    return {"status": "Avto Sklad API ishlamoqda", "version": "2.5.0"}
+    return {"status": "Avto Sklad API ishlamoqda", "version": "3.0.0"}
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
@@ -205,5 +205,5 @@ async def health_check():
         "status": "healthy" if db_status == "connected" else "degraded",
         "database": db_status,
         "bot": bot_status,
-        "version": "2.5.0"
+        "version": "3.0.0"
     }

@@ -253,12 +253,13 @@ async def create_product(payload: ProductCreate, admin: CurrentUser = Depends(re
     if not cat_exists:
         raise HTTPException(status_code=400, detail="Bunday toifa mavjud emas.")
 
-    prod_id = await db.execute("""
+    prod_id = await db.fetchval("""
         INSERT INTO products (
             name, sku, category_id, brand, car_brand, car_model, compatible_years,
             description, image_url, condition, purchase_price, selling_price,
             quantity, min_stock, unit, shelf_location, barcode, is_active, is_deleted
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 1, 0)
+        RETURNING id
     """,
         payload.name.strip(), payload.sku.strip(), payload.category_id,
         payload.brand.strip() if payload.brand else "",
@@ -303,7 +304,7 @@ async def create_product(payload: ProductCreate, admin: CurrentUser = Depends(re
     await db.execute("""
         INSERT INTO audit_logs (user_id, user_name, action, target_entity, target_id, old_values, new_values)
         VALUES ($1, $2, 'CREATE_PRODUCT', 'product', $3, '', $4)
-    """, admin.telegram_id, admin.full_name, prod_id or 0, f"Qo'shildi: {payload.name} ({payload.sku})")
+    """, admin.telegram_id, admin.full_name, str(prod_id or 0), f"Qo'shildi: {payload.name} ({payload.sku})")
 
     return {"message": "Mahsulot muvaffaqiyatli saqlandi", "id": prod_id}
 
@@ -358,7 +359,7 @@ async def update_product(product_id: int, payload: ProductUpdate, admin: Current
     await db.execute("""
         INSERT INTO audit_logs (user_id, user_name, action, target_entity, target_id, old_values, new_values)
         VALUES ($1, $2, 'UPDATE_PRODUCT', 'product', $3, $4, $5)
-    """, admin.telegram_id, admin.full_name, product_id, f"Eski narx: {current['selling_price']}", change_summary)
+    """, admin.telegram_id, admin.full_name, str(product_id), f"Eski narx: {current['selling_price']}", change_summary)
 
     return {"message": "Mahsulot yangilandi"}
 
@@ -376,6 +377,6 @@ async def delete_product(product_id: int, admin: CurrentUser = Depends(require_a
     await db.execute("""
         INSERT INTO audit_logs (user_id, user_name, action, target_entity, target_id, old_values, new_values)
         VALUES ($1, $2, 'SOFT_DELETE_PRODUCT', 'product', $3, $4, 'Mahsulot arxivlandi (tarix saqlandi)')
-    """, admin.telegram_id, admin.full_name, product_id, current["name"])
+    """, admin.telegram_id, admin.full_name, str(product_id), current["name"])
 
     return {"message": "Mahsulot xavfsiz arxivlandi. Moliyaviy tranzaksiyalar tarixi to'liq saqlandi."}

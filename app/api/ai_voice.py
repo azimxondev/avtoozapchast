@@ -44,4 +44,5 @@ async def api_assistant_chat(
     - Foydalanuvchi roliga qarab ruxsatlarni tekshiradi.
     """
     result = await process_assistant_query(payload.message, user)
+    result["voice_text"] = None  # Speech/Voice audio permanently disabled
     return result

@@ -462,28 +462,60 @@ async def search_products_full_db(query_text: str, entities: Dict[str, Any]) -> 
     """
     Exhaustively searches the products database for matching parts with ranking.
     Returns up to 4 closest matching products.
+    Strictly adheres to car_model if specified by user to avoid wrong part recommendations.
     """
     car_model = entities.get("car_model")
     car_brand = entities.get("car_brand")
     part_key = entities.get("part_key")
     brand_or_model = car_model or car_brand
 
-    # Tier 1: Search brand/model + part keyword in name or description
-    if brand_or_model and part_key:
-        rows = await db.fetch("""
-            SELECT p.*, c.name as category_name
-            FROM products p
-            LEFT JOIN categories c ON c.id = p.category_id
-            WHERE p.is_deleted = 0
-              AND (LOWER(p.car_model) LIKE LOWER($1) OR LOWER(p.car_brand) LIKE LOWER($1) OR LOWER(p.name) LIKE LOWER($1))
-              AND (LOWER(p.name) LIKE LOWER($2) OR LOWER(p.description) LIKE LOWER($2))
-            ORDER BY (p.quantity > 0) DESC, p.quantity DESC, p.id DESC
-            LIMIT 4
-        """, f"%{brand_or_model}%", f"%{part_key}%")
-        if rows:
-            return [dict(r) for r in rows]
+    stop_words = {
+        "nechta", "necta", "nchta", "qoldi", "topib", "ber", "bor", "bormi", "bomi", "menga", 
+        "narxi", "narhi", "qancha", "qanca", "pul", "so'm", "som", "yana", "iltimos", "kerak",
+        "dona", "ta", "nechi", "necha", "skolko", "stoit", "how", "many", "much", "mahsulot",
+        "disam", "desam", "haqida", "malumot", "bosa", "bo'lsa", "agar"
+    }
+    raw_words = [w for w in re.findall(r"[\w']+", query_text.lower()) if len(w) >= 3 and not w.isdigit() and w not in stop_words]
 
-    # Tier 2: Search by part_key alone
+    # CASE A: A specific car model or brand was specified (e.g. Spark, Nexia, Cobalt, Gentra, Damas, Matiz, Tracker, Malibu)
+    if brand_or_model and brand_or_model.lower() != "umumiy":
+        # 1. Search brand/model + part_key
+        if part_key:
+            rows = await db.fetch("""
+                SELECT p.*, c.name as category_name
+                FROM products p
+                LEFT JOIN categories c ON c.id = p.category_id
+                WHERE p.is_deleted = 0
+                  AND (LOWER(p.car_model) LIKE LOWER($1) OR LOWER(p.car_brand) LIKE LOWER($1) OR LOWER(p.name) LIKE LOWER($1))
+                  AND (LOWER(p.name) LIKE LOWER($2) OR LOWER(p.description) LIKE LOWER($2))
+                ORDER BY (p.quantity > 0) DESC, p.quantity DESC, p.id DESC
+                LIMIT 4
+            """, f"%{brand_or_model}%", f"%{part_key}%")
+            if rows:
+                return [dict(r) for r in rows]
+
+        # 2. Search brand/model + other meaningful query words
+        for w in raw_words:
+            if w.lower() in brand_or_model.lower() or brand_or_model.lower() in w.lower():
+                continue
+            rows = await db.fetch("""
+                SELECT p.*, c.name as category_name
+                FROM products p
+                LEFT JOIN categories c ON c.id = p.category_id
+                WHERE p.is_deleted = 0
+                  AND (LOWER(p.car_model) LIKE LOWER($1) OR LOWER(p.car_brand) LIKE LOWER($1) OR LOWER(p.name) LIKE LOWER($1))
+                  AND (LOWER(p.name) LIKE LOWER($2) OR LOWER(p.description) LIKE LOWER($2) OR LOWER(p.sku) LIKE LOWER($2))
+                ORDER BY (p.quantity > 0) DESC, p.quantity DESC, p.id DESC
+                LIMIT 4
+            """, f"%{brand_or_model}%", f"%{w}%")
+            if rows:
+                return [dict(r) for r in rows]
+
+        # If user explicitly asked for a specific car model, but NO part matched for that car model,
+        # NEVER return parts from another car model (e.g. do not return Nexia bakavoy for Spark)!
+        return []
+
+    # CASE B: No specific car model was requested (general part search)
     if part_key:
         rows = await db.fetch("""
             SELECT p.*, c.name as category_name
@@ -497,13 +529,6 @@ async def search_products_full_db(query_text: str, entities: Dict[str, Any]) -> 
         if rows:
             return [dict(r) for r in rows]
 
-    # Tier 3: Search with non-stop meaningful words
-    stop_words = {
-        "nechta", "necta", "nchta", "qoldi", "topib", "ber", "bor", "bormi", "bomi", "menga", 
-        "narxi", "narhi", "qancha", "qanca", "pul", "so'm", "som", "yana", "iltimos", "kerak",
-        "dona", "ta", "nechi", "necha", "skolko", "stoit", "how", "many", "much", "mahsulot"
-    }
-    raw_words = [w for w in re.findall(r"[\w']+", query_text.lower()) if len(w) >= 3 and not w.isdigit() and w not in stop_words]
     for w in raw_words:
         rows = await db.fetch("""
             SELECT p.*, c.name as category_name
@@ -1077,17 +1102,27 @@ async def process_assistant_query(query: str, current_user: CurrentUser) -> Dict
             }
 
     # 15. Fallback: Product not found or general inquiry
+    req_model = entities.get("car_model") or entities.get("car_brand")
+    req_part = entities.get("part_name")
+    if req_model and req_model.lower() != "umumiy" and req_part:
+        part_desc = f"<b>{req_model}</b> uchun <i>{req_part}</i>"
+    elif req_model and req_model.lower() != "umumiy":
+        part_desc = f"<b>{req_model}</b> uchun so'ralgan ehtiyot qism"
+    elif req_part:
+        part_desc = f"<i>{req_part}</i>"
+    else:
+        part_desc = f"<i>\"{q}\"</i>"
+
     ans = (
-        f"Kechirasiz, omborimizda <i>\"{q}\"</i> bo'yicha ehtiyot qism hozirda topilmadi yoki tugagan.\n\n"
-        f"📦 <b>Buyurtma berish yoki aniqlashtirish uchun:</b>\n"
+        f"Kechirasiz, omborimizda {part_desc} hozirda mavjud emas yoki tugagan. ❌\n\n"
+        f"📦 <b>Buyurtma berish yoki keltirish vaqtini aniqlashtirish uchun:</b>\n"
         f"📞 Telefon: <b>{SHOP_PHONE}</b>\n"
         f"💬 Telegram: <b>{SHOP_TELEGRAM}</b>\n"
         f"🕒 Ish vaqti: <b>{SHOP_WORK_HOURS}</b>"
     )
-    v_ans = "Kechirasiz, omborimizda bu mahsulot hozircha topilmadi. Administrator bilan bog'lanishingiz mumkin."
     return {
         "answer": ans,
-        "voice_text": v_ans,
+        "voice_text": None,
         "action": {
             "type": "NAVIGATE_TAB",
             "tab": "products",

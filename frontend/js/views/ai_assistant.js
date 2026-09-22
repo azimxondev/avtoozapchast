@@ -1,7 +1,14 @@
 /**
- * Avto Sklad — AI Voice Assistant View
- * Conversational dialogue, Text-to-Speech (TTS), intent execution, and safe system actions.
+ * Avto Sklad — AI Assistant View (Text-Only Mode)
  */
+
+// Permanently disable SpeechSynthesis audio across the entire page
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  try {
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak = function() { return false; };
+  } catch (e) {}
+}
 
 const AIAssistantView = {
   recognition: null,

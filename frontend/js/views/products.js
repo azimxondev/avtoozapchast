@@ -339,7 +339,23 @@ const ProductsView = {
   /**
    * Add Product Modal
    */
-  openAddModal() {
+  async openAddModal() {
+    // Ensure categories are loaded
+    if (!State.categories || State.categories.length === 0) {
+      try {
+        const catRes = await API.get("/categories");
+        if (catRes.categories && catRes.categories.length > 0) {
+          State.categories = catRes.categories;
+        }
+      } catch (e) {
+        console.warn("Categories fetch error:", e);
+      }
+    }
+
+    const categoriesList = State.categories && State.categories.length > 0 
+      ? State.categories 
+      : [{ id: 1, name: "Boshqa ehtiyot qismlar", icon: "📦" }];
+
     const modalRoot = document.getElementById("modal-root");
     modalRoot.innerHTML = `
       <div class="modal-sheet">
@@ -362,7 +378,7 @@ const ProductsView = {
               <div class="form-group">
                 <label class="form-label">Toifa *</label>
                 <select name="category_id" class="form-control" required>
-                  ${State.categories.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
+                  ${categoriesList.map(c => `<option value="${c.id}">${c.icon || '📦'} ${c.name}</option>`).join('')}
                 </select>
               </div>
             </div>
@@ -380,8 +396,8 @@ const ProductsView = {
 
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label">Tannarx (UZS) *</label>
-                <input type="number" name="purchase_price" class="form-control" required min="0" placeholder="30000">
+                <label class="form-label">Tannarx (UZS)</label>
+                <input type="number" name="purchase_price" class="form-control" min="0" placeholder="30000" value="0">
               </div>
               <div class="form-group">
                 <label class="form-label">Sotish Narxi (UZS) *</label>
@@ -417,8 +433,10 @@ const ProductsView = {
             <div class="form-group">
               <label class="form-label">Shtrix-kod / Barcode (Ixtiyoriy)</label>
               <div style="display:flex;gap:6px">
-                <input type="text" name="barcode" class="form-control" placeholder="4780001234567...">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="ScannerView.open()" title="Kameradan skanerlash">📷</button>
+                <input type="text" name="barcode" id="form-product-barcode" class="form-control" placeholder="4780001234567...">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="ScannerView.open(code => { const inp = document.getElementById('form-product-barcode'); if (inp) inp.value = code; })" title="Kameradan skanerlash">
+                  📷 Skanerlash
+                </button>
               </div>
             </div>
 
@@ -448,35 +466,65 @@ const ProductsView = {
     e.preventDefault();
     const form = e.target;
     const btn = document.getElementById("save-product-btn");
-    btn.disabled = true;
-    btn.textContent = "Saqlanmoqda...";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Saqlanmoqda...";
+    }
 
     const formData = new FormData(form);
+    const name = (formData.get("name") || "").trim();
+    const sku = (formData.get("sku") || "").trim();
+    const categoryId = parseInt(formData.get("category_id"), 10);
+    const purchasePrice = parseInt(formData.get("purchase_price") || 0, 10);
+    const sellingPrice = parseInt(formData.get("selling_price") || 0, 10);
+    const quantity = parseInt(formData.get("quantity") || 0, 10);
+    const minStock = parseInt(formData.get("min_stock") || 2, 10);
+
+    if (!name) {
+      Utils.showToast("Mahsulot nomini kiriting!", "warning");
+      if (btn) { btn.disabled = false; btn.textContent = "Saqlash"; }
+      return;
+    }
+    if (!sku) {
+      Utils.showToast("Artikul (SKU) kiriting!", "warning");
+      if (btn) { btn.disabled = false; btn.textContent = "Saqlash"; }
+      return;
+    }
+    if (isNaN(categoryId) || categoryId <= 0) {
+      Utils.showToast("Iltimos, mahsulot toifasini tanlang!", "warning");
+      if (btn) { btn.disabled = false; btn.textContent = "Saqlash"; }
+      return;
+    }
+
     const payload = {
-      name: formData.get("name"),
-      sku: formData.get("sku"),
-      category_id: parseInt(formData.get("category_id")),
-      brand: formData.get("brand") || "",
-      car_model: formData.get("car_model") || "",
-      purchase_price: parseInt(formData.get("purchase_price")),
-      selling_price: parseInt(formData.get("selling_price")),
-      quantity: parseInt(formData.get("quantity") || 0),
-      min_stock: parseInt(formData.get("min_stock") || 2),
-      shelf_location: formData.get("shelf_location") || "",
-      barcode: formData.get("barcode") || "",
+      name,
+      sku,
+      category_id: categoryId,
+      brand: (formData.get("brand") || "").trim(),
+      car_model: (formData.get("car_model") || "").trim(),
+      purchase_price: isNaN(purchasePrice) ? 0 : Math.max(0, purchasePrice),
+      selling_price: isNaN(sellingPrice) ? 0 : Math.max(0, sellingPrice),
+      quantity: isNaN(quantity) ? 0 : Math.max(0, quantity),
+      min_stock: isNaN(minStock) ? 2 : Math.max(0, minStock),
+      shelf_location: (formData.get("shelf_location") || "").trim(),
+      barcode: (formData.get("barcode") || "").trim(),
       condition: formData.get("condition") || "NEW",
-      image_url: formData.get("image_url") || "",
-      description: formData.get("description") || ""
+      image_url: (formData.get("image_url") || "").trim(),
+      description: (formData.get("description") || "").trim()
     };
 
     try {
       await API.post("/products", payload);
-      Utils.showToast("Mahsulot omborga muvaffaqiyatli qo'shildi!", "success");
+      Utils.showToast(`✅ '${payload.name}' omborga muvaffaqiyatli qo'shildi!`, "success");
       ProductsView.closeModal();
       ProductsView.render();
     } catch (err) {
-      btn.disabled = false;
-      btn.textContent = "Saqlash";
+      // Error message is handled by API.request showToast
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Saqlash";
+      }
     }
   },
 

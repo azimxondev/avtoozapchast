@@ -28,6 +28,10 @@ def webapp_head_admin_keyboard() -> InlineKeyboardMarkup:
                 )
             ],
             [
+                InlineKeyboardButton(text="📷 Skaner", callback_data="cmd:scanner"),
+                InlineKeyboardButton(text="🎙️ AI Yordamchi", callback_data="cmd:ai_hint")
+            ],
+            [
                 InlineKeyboardButton(text="📊 Holat", callback_data="cmd:status"),
                 InlineKeyboardButton(text="⚠️ Kam qolganlar", callback_data="cmd:stock")
             ],
@@ -56,6 +60,10 @@ def webapp_admin_keyboard() -> InlineKeyboardMarkup:
                     text="📦 Ombor & Buxgalteriya (ERP)",
                     web_app=WebAppInfo(url=app_url)
                 )
+            ],
+            [
+                InlineKeyboardButton(text="📷 Skaner", callback_data="cmd:scanner"),
+                InlineKeyboardButton(text="🎙️ AI Yordamchi", callback_data="cmd:ai_hint")
             ],
             [
                 InlineKeyboardButton(text="📊 Holat", callback_data="cmd:status"),
@@ -87,6 +95,10 @@ def webapp_customer_keyboard() -> InlineKeyboardMarkup:
                     text="🚗 Ehtiyot Qismlar Katalogi",
                     web_app=WebAppInfo(url=app_url)
                 )
+            ],
+            [
+                InlineKeyboardButton(text="📷 Skaner", callback_data="cmd:scanner"),
+                InlineKeyboardButton(text="🎙️ AI Yordamchi", callback_data="cmd:ai_hint")
             ],
             [
                 InlineKeyboardButton(text="📍 Manzil & Ish vaqti", callback_data="cmd:info"),

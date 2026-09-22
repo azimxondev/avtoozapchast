@@ -224,9 +224,17 @@ const App = {
           <span class="nav-icon">🛒</span>
           <span>Katalog</span>
         </button>
+        <button class="nav-item" onclick="ScannerView.open()">
+          <span class="nav-icon">📷</span>
+          <span>Skaner</span>
+        </button>
+        <button class="nav-item" onclick="AIAssistantView.open()">
+          <span class="nav-icon">🤖</span>
+          <span>AI</span>
+        </button>
         <button class="nav-item" onclick="UserCatalogView.openLocationModal()">
           <span class="nav-icon">📍</span>
-          <span>Do'kon & Manzil</span>
+          <span>Do'kon</span>
         </button>
         ${State.isUserPreview ? `
           <button class="nav-item" onclick="App.toggleUserPreview()" style="color:#FBBF24; font-weight:700;">

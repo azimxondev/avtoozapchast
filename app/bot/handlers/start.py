@@ -425,6 +425,30 @@ async def cb_profile(query: CallbackQuery):
     await query.answer()
     await cmd_profile(query.message)
 
+@router.callback_query(F.data == "cmd:scanner")
+async def cb_scanner(query: CallbackQuery):
+    await query.answer()
+    await cmd_scanner(query.message)
+
+@router.callback_query(F.data == "cmd:ai_hint")
+async def cb_ai_hint(query: CallbackQuery):
+    await query.answer()
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+    from app.config import WEBAPP_URL
+    role = await get_user_role(query.from_user.id)
+    url = f"{WEBAPP_URL}/?role={role.lower()}" if WEBAPP_URL else "http://localhost:8000"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎙️ AI Ovozli Yordamchini ochish", web_app=WebAppInfo(url=url))]
+    ])
+    await query.message.answer(
+        "🤖 <b>Avto Sklad AI Ovozli Yordamchi</b>\n\n"
+        "• <b>Ovoz orqali tovar qo'shish:</b> Mini App ichidagi 🎙️ Ovozli tugmasini bosing yoki ovozli xabar yuboring.\n"
+        "• <b>Savollar berish:</b> Botda <code>/ai &lt;savolingiz&gt;</code> deb yozing.\n"
+        "<i>Masalan: /ai BMW bamperdan nechta qoldi?</i>\n\n"
+        "To'liq interaktiv ovozli suhbat uchun quyidagi tugmani bosing:",
+        reply_markup=kb
+    )
+
 # ==============================================================================
 # AI VOICE & SCANNER BOT EXTENSIONS
 # ==============================================================================

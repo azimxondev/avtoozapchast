@@ -10,15 +10,16 @@ const ScannerView = {
   scanInterval: null,
   isScanning: false,
   facingMode: "environment", // prefer rear camera
-  hasTorch: false,
-  torchOn: false,
+  onScanCallback: null,
 
-  open() {
+  open(callback = null) {
+    this.onScanCallback = typeof callback === "function" ? callback : null;
     this.renderUI();
     this.startCamera();
   },
 
   close() {
+    this.onScanCallback = null;
     this.stopCamera();
     const overlay = document.getElementById("scanner-modal-overlay");
     if (overlay) overlay.remove();
@@ -215,12 +216,21 @@ const ScannerView = {
   },
 
   async handleDetectedCode(code) {
-    if (!this.isScanning && !code) return;
+    if (!code) return;
     this.isScanning = false; // pause scanning
 
     // Sound effect or haptic feedback if supported in Telegram / Mobile
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.notificationOccurred("success");
+    }
+
+    // If scanner was invoked as an input picker callback
+    if (this.onScanCallback) {
+      const cb = this.onScanCallback;
+      this.close();
+      cb(code);
+      Utils.showToast(`Skanerlandi: ${code}`, "success");
+      return;
     }
 
     const hint = document.getElementById("scanner-status-hint");

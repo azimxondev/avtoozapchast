@@ -30,7 +30,19 @@ const API = {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        const errorMsg = data.detail || "Kutilmagan xatolik yuz berdi.";
+        let errorMsg = "Kutilmagan xatolik yuz berdi.";
+        if (typeof data.detail === "string") {
+          errorMsg = data.detail;
+        } else if (Array.isArray(data.detail)) {
+          errorMsg = data.detail.map(d => {
+            const loc = Array.isArray(d.loc) ? d.loc.filter(x => x !== 'body').join('.') : '';
+            return loc ? `${loc}: ${d.msg || 'Noto\'g\'ri qiymat'}` : (d.msg || JSON.stringify(d));
+          }).join("; ");
+        } else if (data.message) {
+          errorMsg = data.message;
+        } else if (response.statusText) {
+          errorMsg = `Server xatosi (${response.status}): ${response.statusText}`;
+        }
         Utils.showToast(errorMsg, "error");
         throw new Error(errorMsg);
       }

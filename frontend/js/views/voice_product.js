@@ -10,7 +10,17 @@ const VoiceProductAssistant = {
   detectedLang: "uz-UZ",
   currentParsedData: null,
 
-  open() {
+  async open() {
+    if (!State.categories || State.categories.length === 0) {
+      try {
+        const catRes = await API.get("/categories");
+        if (catRes.categories && catRes.categories.length > 0) {
+          State.categories = catRes.categories;
+        }
+      } catch (e) {
+        console.warn("Categories fetch error:", e);
+      }
+    }
     this.renderUI();
   },
 
@@ -384,19 +394,28 @@ const VoiceProductAssistant = {
     e.preventDefault();
     const form = e.target;
     const btn = document.getElementById("confirm-save-prod-btn");
-    btn.disabled = true;
-    btn.textContent = "Saqlanmoqda...";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Saqlanmoqda...";
+    }
 
     const formData = new FormData(form);
-    const p = this.currentParsedData.product;
+    const p = (this.currentParsedData && this.currentParsedData.product) || {};
+
+    const name = (formData.get("name") || "").trim();
+    const sku = (formData.get("sku") || "").trim();
+    const categoryId = parseInt(formData.get("category_id"), 10) || 1;
+    const quantity = Math.max(0, parseInt(formData.get("quantity") || 0, 10));
+    const sellingPrice = Math.max(0, parseInt(formData.get("selling_price") || 0, 10));
+    const purchasePrice = Math.max(0, parseInt(formData.get("purchase_price") || 0, 10));
 
     const payload = {
-      name: formData.get("name").trim(),
-      sku: formData.get("sku").trim(),
-      category_id: parseInt(formData.get("category_id")),
-      quantity: parseInt(formData.get("quantity")),
-      selling_price: parseInt(formData.get("selling_price")),
-      purchase_price: parseInt(formData.get("purchase_price") || 0),
+      name,
+      sku,
+      category_id: categoryId,
+      quantity,
+      selling_price: sellingPrice,
+      purchase_price: purchasePrice,
       brand: p.brand || "",
       car_brand: p.car_brand || "",
       car_model: p.car_model || "",
@@ -410,10 +429,14 @@ const VoiceProductAssistant = {
       await API.post("/products", payload);
       Utils.showToast(`✅ '${payload.name}' mahsuloti omborga muvaffaqiyatli saqlandi!`, "success");
       VoiceProductAssistant.close();
-      if (typeof ProductsView !== "undefined") ProductsView.render();
+      if (typeof ProductsView !== "undefined" && ProductsView.render) ProductsView.render();
     } catch (err) {
-      btn.disabled = false;
-      btn.textContent = "✅ Tasdiqlash va Saqlash";
+      // Toast displayed by API client
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "✅ Tasdiqlash va Saqlash";
+      }
     }
   }
 };

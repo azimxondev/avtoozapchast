@@ -24,6 +24,26 @@ const SettingsView = {
       container.innerHTML = `
         <h2 style="font-size:18px;font-weight:700;color:var(--text-main);margin-bottom:16px">⚙️ Tizim va Do'kon Sozlamalari</h2>
 
+        <!-- System Status & Version Card -->
+        <div class="card mb-3" style="background:var(--bg-surface);border:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:18px">🚀</span>
+                <strong style="font-size:15px;color:var(--text-main)">Avto Sklad Tizimi</strong>
+                <span class="badge badge-primary" style="background:rgba(37,99,235,0.2);color:var(--brand-blue);border:1px solid rgba(37,99,235,0.4)">v3.0.0</span>
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
+                AI Voice Product Assistant • QR & Barcode Skaner • AI Ovozli Yordamchi (UZ/RU/EN)
+              </div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-secondary btn-sm" onclick="ScannerView.open()">📷 Skaner</button>
+              <button class="btn btn-secondary btn-sm" onclick="AIAssistantView.open()">🤖 AI Yordamchi</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Cash Adjustment Card (Transparent Accounting Rule) -->
         ${State.isSuperAdmin() ? `
         <div class="card mb-3">

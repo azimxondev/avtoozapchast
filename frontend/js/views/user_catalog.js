@@ -48,9 +48,17 @@ const UserCatalogView = {
 
       <!-- Search & Filters -->
       <div class="catalog-toolbar">
-        <div class="search-box-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="user-search-input" class="search-input" placeholder="Kerakli ehtiyot qism yoki avtomobilni qidiring..." value="${Utils.escapeHtml(this.state.q)}">
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="search-box-wrapper" style="flex:1">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="user-search-input" class="search-input" placeholder="Kerakli ehtiyot qism yoki avtomobilni qidiring..." value="${Utils.escapeHtml(this.state.q)}">
+          </div>
+          <button class="btn btn-secondary" style="flex-shrink:0;padding:8px 12px" onclick="ScannerView.open()" title="Shtrix-kod yoki QR skanerlash">
+            <span>📷</span> Skaner
+          </button>
+          <button class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;background:rgba(37,99,235,0.15);color:var(--brand-blue);border:1px solid rgba(37,99,235,0.3)" onclick="AIAssistantView.open()" title="AI Ovozli Yordamchi">
+            <span>🤖</span> AI
+          </button>
         </div>
 
         <!-- Car Model Filter Chips -->

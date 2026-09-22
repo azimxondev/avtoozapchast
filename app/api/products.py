@@ -4,14 +4,37 @@ Advanced search, automotive filters, server-side pagination, CRUD, soft delete, 
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 import json
+import re
 
 from app.database.db import db
 from app.api.auth import require_admin, require_staff_or_admin, CurrentUser, get_current_user
 
 router = APIRouter(prefix="/products", tags=["Products"])
+
+def detect_car_brand(car_model: str = "", name: str = "") -> str:
+    """Avtomobil modeli yoki nomidan brendni aniqlash."""
+    text = f"{car_model} {name}".lower()
+    
+    if any(k in text for k in ["cobalt", "gentra", "nexia", "spark", "matiz", "damas", "labo", "malibu", "tracker", "onix", "captiva", "epica", "lacetti", "cruze", "tahoe", "equinox", "traverse"]):
+        return "Chevrolet"
+    if any(k in text for k in ["k5", "seltos", "sportage", "sonet", "k8", "carnival", "rio", "cerato", "sorento", "kia"]):
+        return "Kia"
+    if any(k in text for k in ["sonata", "elantra", "santa fe", "tucson", "creta", "accent", "palisade", "hyundai"]):
+        return "Hyundai"
+    if any(k in text for k in ["bmw", "e39", "e46", "e60", "e90", "f10", "f30", "g30", "x5", "x6", "x7"]):
+        return "BMW"
+    if any(k in text for k in ["mercedes", "benz", "w210", "w211", "w212", "w213", "w221", "w222", "amg"]):
+        return "Mercedes-Benz"
+    if any(k in text for k in ["byd", "chazor", "song", "han", "tang", "yuan"]):
+        return "BYD"
+    if any(k in text for k in ["toyota", "corolla", "camry", "rav4", "prado", "land cruiser", "hilux", "yaris"]):
+        return "Toyota"
+    if any(k in text for k in ["lada", "vesta", "granta", "largus", "niva", "priora", "2107", "2106", "vaz"]):
+        return "Lada"
+    return ""
 
 class ProductCreate(BaseModel):
     name: str = Field(..., min_length=2)
@@ -24,13 +47,32 @@ class ProductCreate(BaseModel):
     description: Optional[str] = ""
     image_url: Optional[str] = ""
     condition: Optional[str] = "NEW" # NEW or USED
-    purchase_price: int = Field(0, ge=0)
-    selling_price: int = Field(..., ge=0)
-    quantity: int = Field(0, ge=0)
+    purchase_price: Optional[int] = 0
+    selling_price: Optional[int] = 0
+    quantity: Optional[int] = 0
     min_stock: Optional[int] = 2
     unit: Optional[str] = "dona"
     shelf_location: Optional[str] = ""
     barcode: Optional[str] = ""
+
+    @field_validator("purchase_price", "selling_price", "quantity", "min_stock", mode="before")
+    @classmethod
+    def sanitize_int(cls, v):
+        if v is None or v == "":
+            return 0
+        try:
+            val = int(float(str(v).strip()))
+            return max(0, val)
+        except (ValueError, TypeError):
+            return 0
+
+    @field_validator("category_id", mode="before")
+    @classmethod
+    def sanitize_category(cls, v):
+        try:
+            return int(v)
+        except (ValueError, TypeError):
+            return 1
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
@@ -50,6 +92,16 @@ class ProductUpdate(BaseModel):
     shelf_location: Optional[str] = None
     barcode: Optional[str] = None
     is_active: Optional[bool] = None
+
+    @field_validator("purchase_price", "selling_price", "min_stock", mode="before")
+    @classmethod
+    def sanitize_update_int(cls, v):
+        if v is None or v == "":
+            return None
+        try:
+            return max(0, int(float(str(v).strip())))
+        except (ValueError, TypeError):
+            return None
 
 @router.get("/meta/cars")
 async def get_car_metadata():
@@ -243,15 +295,43 @@ async def get_product_detail(product_id: int, user: CurrentUser = Depends(get_cu
 @router.post("")
 async def create_product(payload: ProductCreate, admin: CurrentUser = Depends(require_admin)):
     """Yangi mahsulot qo'shish (Admin)."""
+    sku_clean = payload.sku.strip()
+    name_clean = payload.name.strip()
+    barcode_clean = payload.barcode.strip() if payload.barcode else ""
+
     # Check SKU uniqueness
-    existing_sku = await db.fetchval("SELECT id FROM products WHERE sku = $1 AND is_deleted = 0", payload.sku.strip())
+    existing_sku = await db.fetchval("SELECT id FROM products WHERE sku = $1 AND is_deleted = 0", sku_clean)
     if existing_sku:
-        raise HTTPException(status_code=400, detail=f"'{payload.sku}' artikulli mahsulot omborda allaqachon mavjud.")
+        raise HTTPException(status_code=400, detail=f"'{sku_clean}' artikulli mahsulot omborda allaqachon mavjud.")
+
+    # Check barcode uniqueness if provided
+    if barcode_clean:
+        existing_bar = await db.fetchrow("SELECT id, name FROM products WHERE barcode = $1 AND is_deleted = 0", barcode_clean)
+        if existing_bar:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ushbu shtrix-kod ({barcode_clean}) allaqachon '{existing_bar['name']}' mahsulotiga biriktirilgan."
+            )
 
     # Check category
     cat_exists = await db.fetchval("SELECT id FROM categories WHERE id = $1", payload.category_id)
     if not cat_exists:
-        raise HTTPException(status_code=400, detail="Bunday toifa mavjud emas.")
+        # Fallback to first category if invalid
+        first_cat = await db.fetchval("SELECT id FROM categories ORDER BY id ASC LIMIT 1")
+        category_id = first_cat if first_cat else 1
+    else:
+        category_id = payload.category_id
+
+    # Auto-detect car brand if omitted
+    car_brand = payload.car_brand.strip() if payload.car_brand else ""
+    car_model = payload.car_model.strip() if payload.car_model else ""
+    if not car_brand and car_model:
+        car_brand = detect_car_brand(car_model, name_clean)
+
+    purchase_price = max(0, payload.purchase_price or 0)
+    selling_price = max(0, payload.selling_price or 0)
+    quantity = max(0, payload.quantity or 0)
+    min_stock = max(0, payload.min_stock or 2)
 
     prod_id = await db.fetchval("""
         INSERT INTO products (
@@ -261,52 +341,82 @@ async def create_product(payload: ProductCreate, admin: CurrentUser = Depends(re
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 1, 0)
         RETURNING id
     """,
-        payload.name.strip(), payload.sku.strip(), payload.category_id,
+        name_clean, sku_clean, category_id,
         payload.brand.strip() if payload.brand else "",
-        payload.car_brand.strip() if payload.car_brand else "",
-        payload.car_model.strip() if payload.car_model else "",
+        car_brand,
+        car_model,
         payload.compatible_years.strip() if payload.compatible_years else "",
         payload.description.strip() if payload.description else "",
         payload.image_url.strip() if payload.image_url else "",
-        payload.condition, payload.purchase_price, payload.selling_price,
-        payload.quantity, payload.min_stock or 2, payload.unit or "dona",
+        payload.condition or "NEW",
+        purchase_price,
+        selling_price,
+        quantity,
+        min_stock,
+        payload.unit or "dona",
         payload.shelf_location.strip() if payload.shelf_location else "",
-        payload.barcode.strip() if payload.barcode else ""
+        barcode_clean
     )
 
     # If initial quantity > 0 and purchase price > 0, record initial stock-in transaction
-    if payload.quantity > 0:
-        total_cost = payload.quantity * payload.purchase_price
-        tx_count = await db.fetchval("SELECT COUNT(*) FROM transactions") or 0
-        tx_num = f"TX-{10001 + tx_count}"
-        last_bal = await db.fetchval("SELECT new_balance FROM transactions ORDER BY id DESC LIMIT 1") or 0
-        new_bal = last_bal - total_cost
+    if quantity > 0:
+        try:
+            total_cost = quantity * purchase_price
+            max_id = await db.fetchval("SELECT COALESCE(MAX(id), 0) FROM transactions") or 0
+            tx_num = f"TX-{10001 + max_id}"
+            while await db.fetchval("SELECT id FROM transactions WHERE tx_number = $1", tx_num):
+                max_id += 1
+                tx_num = f"TX-{10001 + max_id}"
 
-        await db.execute("""
-            INSERT INTO transactions (
-                tx_number, product_id, product_name, type, quantity, unit_price, cost_price,
-                total_amount, profit, prev_stock, new_stock, prev_balance, new_balance,
-                admin_id, admin_name, customer_or_supplier, reason, note
-            ) VALUES (
-                $1, $2, $3, 'kirim', $4, $5, $5, $6, 0, 0, $4, $7, $8,
-                $9, $10, 'Boshlang''ich qoldiq', 'Mahsulot yaratish', 'Dastlabki ombor hisobi'
-            )
-        """, tx_num, prod_id, payload.name, payload.quantity, payload.purchase_price,
-            total_cost, last_bal, new_bal, admin.telegram_id, admin.full_name)
+            last_bal_val = await db.fetchval("SELECT new_balance FROM transactions ORDER BY id DESC LIMIT 1")
+            if last_bal_val is None:
+                init_b = await db.fetchval("SELECT value FROM shop_settings WHERE key = 'initial_budget'")
+                last_bal = int(init_b) if init_b else 50000000
+            else:
+                last_bal = int(last_bal_val)
+            new_bal = last_bal - total_cost
 
-        tx_id = await db.fetchval("SELECT id FROM transactions WHERE tx_number = $1", tx_num)
-        await db.execute("""
-            INSERT INTO cash_ledger (transaction_id, entry_type, amount, balance_after, description)
-            VALUES ($1, 'CREDIT', $2, $3, $4)
-        """, tx_id, total_cost, new_bal, f"{payload.name} boshlang'ich qoldiq xaridi")
+            admin_id = admin.telegram_id if (admin and admin.telegram_id) else 0
+            admin_name = admin.full_name if (admin and admin.full_name) else "Admin"
+
+            await db.execute("""
+                INSERT INTO transactions (
+                    tx_number, product_id, product_name, type, quantity, unit_price, cost_price,
+                    total_amount, profit, prev_stock, new_stock, prev_balance, new_balance,
+                    admin_id, admin_name, customer_or_supplier, reason, note
+                ) VALUES (
+                    $1, $2, $3, 'kirim', $4, $5, $5, $6, 0, 0, $4, $7, $8,
+                    $9, $10, 'Boshlang''ich qoldiq', 'Mahsulot yaratish', 'Dastlabki ombor hisobi'
+                )
+            """, tx_num, prod_id, name_clean, quantity, purchase_price,
+                total_cost, last_bal, new_bal, admin_id, admin_name)
+
+            tx_id = await db.fetchval("SELECT id FROM transactions WHERE tx_number = $1", tx_num)
+            if tx_id:
+                await db.execute("""
+                    INSERT INTO cash_ledger (transaction_id, entry_type, amount, balance_after, description)
+                    VALUES ($1, 'CREDIT', $2, $3, $4)
+                """, tx_id, total_cost, new_bal, f"{name_clean} boshlang'ich qoldiq xaridi")
+        except Exception as tx_err:
+            print(f"[Warning] Boshlang'ich tranzaksiya yozishda xatolik: {tx_err}")
 
     # Audit log
-    await db.execute("""
-        INSERT INTO audit_logs (user_id, user_name, action, target_entity, target_id, old_values, new_values)
-        VALUES ($1, $2, 'CREATE_PRODUCT', 'product', $3, '', $4)
-    """, admin.telegram_id, admin.full_name, str(prod_id or 0), f"Qo'shildi: {payload.name} ({payload.sku})")
+    try:
+        admin_id = admin.telegram_id if (admin and admin.telegram_id) else 0
+        admin_name = admin.full_name if (admin and admin.full_name) else "Admin"
+        await db.execute("""
+            INSERT INTO audit_logs (user_id, user_name, action, target_entity, target_id, old_values, new_values)
+            VALUES ($1, $2, 'CREATE_PRODUCT', 'product', $3, '', $4)
+        """, admin_id, admin_name, str(prod_id or 0), f"Qo'shildi: {name_clean} ({sku_clean})")
+    except Exception as audit_err:
+        print(f"[Warning] Audit log yozishda xatolik: {audit_err}")
 
-    return {"message": "Mahsulot muvaffaqiyatli saqlandi", "id": prod_id}
+    return {
+        "message": "Mahsulot muvaffaqiyatli saqlandi",
+        "id": prod_id,
+        "sku": sku_clean,
+        "name": name_clean
+    }
 
 @router.put("/{product_id}")
 async def update_product(product_id: int, payload: ProductUpdate, admin: CurrentUser = Depends(require_admin)):

@@ -146,6 +146,8 @@ class Database:
             conv_q, conv_args = self._convert_query(query, args)
             cursor = await self.sqlite_conn.execute(conv_q, conv_args)
             row = await cursor.fetchone()
+            if not self._in_transaction and any(conv_q.strip().upper().startswith(cmd) for cmd in ("INSERT", "UPDATE", "DELETE", "REPLACE")):
+                await self.sqlite_conn.commit()
             return dict(row) if row else None
 
     async def fetchval(self, query: str, *args: Any) -> Any:
@@ -157,6 +159,8 @@ class Database:
             conv_q, conv_args = self._convert_query(query, args)
             cursor = await self.sqlite_conn.execute(conv_q, conv_args)
             row = await cursor.fetchone()
+            if not self._in_transaction and any(conv_q.strip().upper().startswith(cmd) for cmd in ("INSERT", "UPDATE", "DELETE", "REPLACE")):
+                await self.sqlite_conn.commit()
             return row[0] if row else None
 
     @asynccontextmanager

@@ -10,7 +10,7 @@ const AIAssistantView = {
   messages: [
     {
       sender: "bot",
-      text: "Assalomu alaykum! Men Avto Sklad AI ovozli yordamchisiman. Mahsulotlar qoldig'i, sotuvlar, skaner yoki ombor bo'yicha savollaringiz bo'lsa, mikrofonni bosib gapiring yoki yozing.",
+      text: "Assalomu alaykum! Men Avto Sklad AI aqlli yordamchisiman. Mahsulotlar qoldig'i, narxlar, obshiy stock yoki ombor bo'yicha savollaringiz bo'lsa, bemalol yozing.",
       action: null
     }
   ],
@@ -21,6 +21,9 @@ const AIAssistantView = {
 
   close() {
     this.stopVoice();
+    if ("speechSynthesis" in window) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
     const drawer = document.getElementById("ai-assistant-drawer");
     if (drawer) drawer.remove();
   },
@@ -45,7 +48,7 @@ const AIAssistantView = {
             <div>
               <div style="font-weight:700;color:var(--text-main);font-size:16px">Avto Sklad AI Yordamchi</div>
               <div style="font-size:12px;color:var(--accent-emerald);display:flex;align-items:center;gap:4px">
-                <span style="width:6px;height:6px;background:var(--accent-emerald);border-radius:50%;display:inline-block"></span> Onlayn (Ovozli muloqot)
+                <span style="width:6px;height:6px;background:var(--accent-emerald);border-radius:50%;display:inline-block"></span> Onlayn (AI Chat)
               </div>
             </div>
           </div>
@@ -85,16 +88,38 @@ const AIAssistantView = {
     const container = document.getElementById("ai-chat-messages");
     if (!container) return;
 
-    container.innerHTML = this.messages.map((m, idx) => `
-      <div class="ai-msg ${m.sender}">
-        <div>${m.text}</div>
-        ${m.action ? `
-          <button class="ai-msg-action-btn" onclick="AIAssistantView.triggerAction(${idx})">
-            ${Utils.escapeHtml(m.action.label || 'Davom etish')}
-          </button>
-        ` : ''}
-      </div>
-    `).join("");
+    container.innerHTML = this.messages.map((m, idx) => {
+      if (m.sender === "user") {
+        return `
+          <div class="ai-msg-wrapper user">
+            <div class="ai-msg user">${m.text}</div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="ai-msg-wrapper bot">
+            <div class="ai-bot-sender-badge">
+              <span class="badge-icon">✨</span>
+              <span>AI Yordamchi</span>
+            </div>
+            <div class="ai-msg bot">
+              ${m.isThinking ? `
+                <div class="ai-typing-indicator">
+                  <span></span><span></span><span></span>
+                </div>
+              ` : `
+                <div class="ai-msg-content">${m.text}</div>
+                ${m.action ? `
+                  <button type="button" class="ai-msg-action-btn" onclick="AIAssistantView.triggerAction(${idx})">
+                    <span>🚀</span> ${Utils.escapeHtml(m.action.label || 'Davom etish')}
+                  </button>
+                ` : ''}
+              `}
+            </div>
+          </div>
+        `;
+      }
+    }).join("");
 
     container.scrollTop = container.scrollHeight;
   },
@@ -118,9 +143,9 @@ const AIAssistantView = {
     this.messages.push({ sender: "user", text: Utils.escapeHtml(query) });
     this.renderMessages();
 
-    // Placeholder bot thinking message
+    // Modern typing pulse indicator
     const thinkingIdx = this.messages.length;
-    this.messages.push({ sender: "bot", text: "⏳ O'ylanmoqda...", action: null });
+    this.messages.push({ sender: "bot", text: "", isThinking: true, action: null });
     this.renderMessages();
 
     try {
@@ -130,19 +155,18 @@ const AIAssistantView = {
       this.messages[thinkingIdx] = {
         sender: "bot",
         text: answer,
+        isThinking: false,
         action: res.action,
         voice_text: res.voice_text
       };
       this.renderMessages();
 
-      // Speak answer using Text-to-Speech
-      if (res.voice_text) {
-        this.speakAnswer(res.voice_text);
-      }
+      // Voice/audio speech synthesis is disabled (text-only mode)
     } catch (err) {
       this.messages[thinkingIdx] = {
         sender: "bot",
-        text: "Kechirasiz, xatolik yuz berdi. Iltimos, keyinroq qayta so'rang.",
+        text: "Kechirasiz, xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.",
+        isThinking: false,
         action: null
       };
       this.renderMessages();
@@ -213,17 +237,9 @@ const AIAssistantView = {
   },
 
   speakAnswer(text) {
-    if (!("speechSynthesis" in window)) return;
-    try {
-      window.speechSynthesis.cancel(); // cancel previous speech
-      // Strip html tags
-      const cleanText = text.replace(/<[^>]*>/g, "");
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.rate = 1.05;
-      utterance.pitch = 1.0;
-      window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      console.warn("TTS error:", e);
+    // Text-to-speech audio reading is permanently disabled
+    if ("speechSynthesis" in window) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
     }
   },
 

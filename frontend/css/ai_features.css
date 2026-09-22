@@ -539,52 +539,147 @@
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  scroll-behavior: smooth;
 }
 
-.ai-msg {
-  max-width: 85%;
-  padding: 12px 16px;
-  border-radius: var(--radius-lg);
-  font-size: 14px;
-  line-height: 1.45;
-  animation: fadeIn 0.2s ease-out;
+/* User Message */
+.ai-msg-wrapper {
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.22s ease-out;
+}
+
+.ai-msg-wrapper.user {
+  align-self: flex-end;
+  align-items: flex-end;
+  max-width: 82%;
 }
 
 .ai-msg.user {
-  align-self: flex-end;
-  background: var(--brand-blue);
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
   color: #FFFFFF;
-  border-bottom-right-radius: 4px;
+  padding: 11px 16px;
+  border-radius: 18px 18px 4px 18px;
+  font-size: 14px;
+  line-height: 1.45;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+  word-break: break-word;
+}
+
+/* Bot Message Wrapper */
+.ai-msg-wrapper.bot {
+  align-self: flex-start;
+  align-items: flex-start;
+  max-width: 94%;
+}
+
+.ai-bot-sender-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94A3B8;
+  margin-bottom: 5px;
+  padding-left: 2px;
+}
+
+.ai-bot-sender-badge .badge-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
 }
 
 .ai-msg.bot {
-  align-self: flex-start;
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border);
-  color: var(--text-main);
-  border-bottom-left-radius: 4px;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-radius: 4px 18px 18px 18px;
+  padding: 14px 16px;
+  color: #F1F5F9;
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre-wrap; /* Critical for multi-line bot responses and lists */
+  word-break: break-word;
+  position: relative;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
+.ai-msg.bot b, .ai-msg.bot strong {
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.ai-msg.bot code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.ai-msg.bot i {
+  color: #94A3B8;
+}
+
+/* Action button inside bot message */
 .ai-msg-action-btn {
-  margin-top: 10px;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid var(--brand-blue);
-  color: #60A5FA;
+  margin-top: 12px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(124, 58, 237, 0.2));
+  border: 1px solid rgba(96, 165, 250, 0.4);
+  color: #93C5FD;
   font-size: 13px;
   font-weight: 600;
-  padding: 8px 14px;
-  border-radius: var(--radius-full);
+  padding: 8px 16px;
+  border-radius: 20px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .ai-msg-action-btn:hover {
-  background: var(--brand-blue);
+  background: linear-gradient(135deg, #2563EB, #7C3AED);
   color: #FFFFFF;
+  border-color: transparent;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+/* Typing wave loader */
+.ai-typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 2px;
+}
+
+.ai-typing-indicator span {
+  width: 7px;
+  height: 7px;
+  background: #60A5FA;
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.ai-typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+.ai-typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+.ai-typing-indicator span:nth-child(3) { animation-delay: 0s; }
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1.1); opacity: 1; }
 }
 
 .ai-chat-input-bar {

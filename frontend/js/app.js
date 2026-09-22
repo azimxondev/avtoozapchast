@@ -284,6 +284,7 @@ const App = {
     // Close any open modals
     const overlay = document.getElementById("modal-overlay");
     if (overlay) overlay.classList.remove("active");
+    document.body.classList.remove("modal-open");
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
     const content = document.getElementById("tab-content");

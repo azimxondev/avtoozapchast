@@ -15,6 +15,7 @@ const StockModal = {
     const modalRoot = document.getElementById("modal-root");
     modalRoot.innerHTML = `<div class="modal-sheet"><div style="padding:30px;text-align:center">Yuklanmoqda...</div></div>`;
     document.getElementById("modal-overlay").classList.add("active");
+    document.body.classList.add("modal-open");
 
     try {
       // Load active products for selector
@@ -38,7 +39,7 @@ const StockModal = {
         <div class="modal-sheet">
           <div class="modal-header">
             <div class="modal-title">${title}</div>
-            <button class="modal-close-btn" onclick="StockModal.close()">✕</button>
+            <button type="button" class="modal-close-btn" onclick="StockModal.close()" aria-label="Yopish">✕</button>
           </div>
           <form id="stock-operation-form" onsubmit="StockModal.submit(event)">
             <div class="modal-body">
@@ -277,6 +278,8 @@ const StockModal = {
   },
 
   close() {
-    document.getElementById("modal-overlay").classList.remove("active");
+    const overlay = document.getElementById("modal-overlay");
+    if (overlay) overlay.classList.remove("active");
+    document.body.classList.remove("modal-open");
   }
 };

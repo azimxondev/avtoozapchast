@@ -258,7 +258,7 @@ const ProductsView = {
             <div class="modal-title">
               <span>${product.category_icon || '📦'}</span> ${Utils.escapeHtml(product.name)}
             </div>
-            <button class="modal-close-btn" onclick="ProductsView.closeModal()">✕</button>
+            <button type="button" class="modal-close-btn" onclick="ProductsView.closeModal()" aria-label="Yopish">✕</button>
           </div>
           <div class="modal-body">
             <div style="height:190px;border-radius:var(--radius-md);overflow:hidden;margin-bottom:16px;background:linear-gradient(180deg, #131d31 0%, #0a0f1d 100%)">
@@ -361,9 +361,9 @@ const ProductsView = {
       <div class="modal-sheet">
         <div class="modal-header">
           <div class="modal-title">➕ Yangi Mahsulot Qo'shish</div>
-          <button class="modal-close-btn" onclick="ProductsView.closeModal()">✕</button>
+          <button type="button" class="modal-close-btn" onclick="ProductsView.closeModal()" aria-label="Yopish">✕</button>
         </div>
-        <form id="add-product-form" onsubmit="ProductsView.submitAddProduct(event)">
+        <form id="add-product-form" novalidate onsubmit="ProductsView.submitAddProduct(event)">
           <div class="modal-body">
             <div class="form-group">
               <label class="form-label">Mahsulot Nomi *</label>
@@ -401,7 +401,7 @@ const ProductsView = {
               </div>
               <div class="form-group">
                 <label class="form-label">Sotish Narxi (UZS) *</label>
-                <input type="number" name="selling_price" class="form-control" required min="0" placeholder="50000">
+                <input type="number" name="selling_price" class="form-control" min="0" placeholder="Masalan, 50000">
               </div>
             </div>
 
@@ -459,17 +459,18 @@ const ProductsView = {
       </div>
     `;
 
-    document.getElementById("modal-overlay").classList.add("active");
+    const overlay = document.getElementById("modal-overlay");
+    if (overlay) overlay.classList.add("active");
+    document.body.classList.add("modal-open");
   },
 
   async submitAddProduct(e) {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const form = e.target;
     const btn = document.getElementById("save-product-btn");
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = "Saqlanmoqda...";
-    }
 
     const formData = new FormData(form);
     const name = (formData.get("name") || "").trim();
@@ -482,18 +483,30 @@ const ProductsView = {
 
     if (!name) {
       Utils.showToast("Mahsulot nomini kiriting!", "warning");
-      if (btn) { btn.disabled = false; btn.textContent = "Saqlash"; }
+      const inp = form.querySelector('[name="name"]');
+      if (inp) inp.focus();
       return;
     }
     if (!sku) {
       Utils.showToast("Artikul (SKU) kiriting!", "warning");
-      if (btn) { btn.disabled = false; btn.textContent = "Saqlash"; }
+      const inp = form.querySelector('[name="sku"]');
+      if (inp) inp.focus();
       return;
     }
     if (isNaN(categoryId) || categoryId <= 0) {
       Utils.showToast("Iltimos, mahsulot toifasini tanlang!", "warning");
-      if (btn) { btn.disabled = false; btn.textContent = "Saqlash"; }
       return;
+    }
+    if (isNaN(sellingPrice) || sellingPrice <= 0) {
+      Utils.showToast("Iltimos, sotish narxini kiriting!", "warning");
+      const inp = form.querySelector('[name="selling_price"]');
+      if (inp) inp.focus();
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Saqlanmoqda...";
     }
 
     const payload = {
@@ -541,9 +554,9 @@ const ProductsView = {
         <div class="modal-sheet">
           <div class="modal-header">
             <div class="modal-title">✏️ Mahsulotni Tahrirlash</div>
-            <button class="modal-close-btn" onclick="ProductsView.closeModal()">✕</button>
+            <button type="button" class="modal-close-btn" onclick="ProductsView.closeModal()" aria-label="Yopish">✕</button>
           </div>
-          <form id="edit-product-form" onsubmit="ProductsView.submitEditProduct(event, ${productId})">
+          <form id="edit-product-form" novalidate onsubmit="ProductsView.submitEditProduct(event, ${productId})">
             <div class="modal-body">
               <div class="form-group">
                 <label class="form-label">Mahsulot Nomi *</label>
@@ -558,7 +571,11 @@ const ProductsView = {
                 <div class="form-group">
                   <label class="form-label">Toifa *</label>
                   <select name="category_id" class="form-control" required>
-                    ${State.categories.map(c => `<option value="${c.id}" ${c.id === p.category_id ? 'selected' : ''}>${c.icon} ${c.name}</option>`).join('')}
+                    ${(State.categories || []).map(c => `
+                      <option value="${c.id}" ${c.id === p.category_id ? 'selected' : ''}>
+                        ${c.icon || '📦'} ${c.name}
+                      </option>
+                    `).join('')}
                   </select>
                 </div>
               </div>
@@ -566,31 +583,28 @@ const ProductsView = {
               <div class="form-row">
                 <div class="form-group">
                   <label class="form-label">Tannarx (UZS)</label>
-                  <input type="number" name="purchase_price" class="form-control" min="0" value="${p.purchase_price}">
+                  <input type="number" name="purchase_price" class="form-control" value="${p.purchase_price || 0}">
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Sotish Narxi (UZS)</label>
-                  <input type="number" name="selling_price" class="form-control" min="0" value="${p.selling_price}">
+                  <label class="form-label">Sotish Narxi (UZS) *</label>
+                  <input type="number" name="selling_price" class="form-control" required value="${p.selling_price || 0}">
                 </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group">
-                  <label class="form-label">Tokcha / Joylashuv</label>
+                  <label class="form-label">Tokcha (Polka)</label>
                   <input type="text" name="shelf_location" class="form-control" value="${Utils.escapeHtml(p.shelf_location || '')}">
                 </div>
                 <div class="form-group">
                   <label class="form-label">Min. Qoldiq</label>
-                  <input type="number" name="min_stock" class="form-control" value="${p.min_stock}">
+                  <input type="number" name="min_stock" class="form-control" value="${p.min_stock || 2}">
                 </div>
               </div>
 
               <div class="form-group">
                 <label class="form-label">Shtrix-kod / Barcode</label>
-                <div style="display:flex;gap:6px">
-                  <input type="text" name="barcode" class="form-control" value="${Utils.escapeHtml(p.barcode || '')}">
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="ScannerView.open()" title="Skaner">📷</button>
-                </div>
+                <input type="text" name="barcode" class="form-control" value="${Utils.escapeHtml(p.barcode || '')}">
               </div>
 
               <div class="form-group">
@@ -599,31 +613,63 @@ const ProductsView = {
               </div>
             </div>
 
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" onclick="ProductsView.closeModal()">Bekor qilish</button>
-              <button type="submit" class="btn btn-primary" id="edit-save-btn">Saqlash</button>
+            <div class="modal-footer" style="justify-content:space-between">
+              <button type="button" class="btn btn-danger btn-sm" onclick="ProductsView.confirmDelete(${productId}, '${Utils.escapeHtml(p.name).replace(/'/g, "\\'")}')">
+                🗑️ O'chirish
+              </button>
+              <div style="display:flex;gap:8px">
+                <button type="button" class="btn btn-secondary" onclick="ProductsView.closeModal()">Bekor qilish</button>
+                <button type="submit" class="btn btn-primary" id="save-edit-product-btn">Saqlash</button>
+              </div>
             </div>
           </form>
         </div>
       `;
+
+      const overlay = document.getElementById("modal-overlay");
+      if (overlay) overlay.classList.add("active");
+      document.body.classList.add("modal-open");
     } catch (err) {
-      Utils.showToast("Xatolik: " + err.message, "error");
+      Utils.showToast("Mahsulotni yuklab bo'lmadi", "error");
     }
   },
 
   async submitEditProduct(e, productId) {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const form = e.target;
-    const btn = document.getElementById("edit-save-btn");
-    btn.disabled = true;
+    const btn = document.getElementById("save-edit-product-btn");
+    if (btn) btn.disabled = true;
 
     const formData = new FormData(form);
+    const name = (formData.get("name") || "").trim();
+    const sku = (formData.get("sku") || "").trim();
+    const sellingPrice = parseInt(formData.get("selling_price") || 0, 10);
+
+    if (!name) {
+      Utils.showToast("Mahsulot nomini kiriting!", "warning");
+      if (btn) btn.disabled = false;
+      return;
+    }
+    if (!sku) {
+      Utils.showToast("Artikul (SKU) kiriting!", "warning");
+      if (btn) btn.disabled = false;
+      return;
+    }
+    if (isNaN(sellingPrice) || sellingPrice <= 0) {
+      Utils.showToast("Iltimos, sotish narxini kiriting!", "warning");
+      if (btn) btn.disabled = false;
+      return;
+    }
+
     const payload = {
-      name: formData.get("name"),
-      sku: formData.get("sku"),
+      name,
+      sku,
       category_id: parseInt(formData.get("category_id")),
-      purchase_price: parseInt(formData.get("purchase_price")),
-      selling_price: parseInt(formData.get("selling_price")),
+      purchase_price: parseInt(formData.get("purchase_price") || 0),
+      selling_price: sellingPrice,
       shelf_location: formData.get("shelf_location") || "",
       barcode: formData.get("barcode") || "",
       min_stock: parseInt(formData.get("min_stock") || 2),
@@ -636,15 +682,35 @@ const ProductsView = {
       ProductsView.closeModal();
       ProductsView.loadProducts();
     } catch (err) {
-      btn.disabled = false;
+      if (btn) btn.disabled = false;
     }
   },
 
-  async confirmDelete(productId, productName) {
-    if (!confirm(`Haqiqatan ham '${productName}' mahsulotini arxivlamoqchimisiz? Barcha moliyaviy tranzaksiyalar tarixi saqlanadi.`)) {
-      return;
-    }
+  /**
+   * In-App Delete Confirmation Modal (Guaranteed to work on Telegram WebApp mobile)
+   */
+  confirmDelete(productId, productName) {
+    const modalRoot = document.getElementById("modal-root");
+    if (!modalRoot) return;
+    modalRoot.innerHTML = `
+      <div class="modal-sheet" style="max-width:390px;text-align:center;padding:24px 20px">
+        <div style="font-size:44px;margin-bottom:12px">🗑️</div>
+        <div class="modal-title" style="justify-content:center;font-size:18px;margin-bottom:8px">Mahsulotni o'chirish</div>
+        <p style="font-size:14px;color:var(--text-muted);margin-bottom:22px;line-height:1.5">
+          Haqiqatan ham <b>'${Utils.escapeHtml(productName)}'</b> mahsulotini ombordan arxivlamoqchimisiz? Barcha moliyaviy tranzaksiyalar tarixi saqlanadi.
+        </p>
+        <div style="display:flex;gap:12px;justify-content:center">
+          <button type="button" class="btn btn-secondary" onclick="ProductsView.closeModal()" style="flex:1;padding:12px 16px">Bekor qilish</button>
+          <button type="button" class="btn btn-danger" onclick="ProductsView.executeDelete(${productId})" style="flex:1;padding:12px 16px;background:var(--danger,#EF4444);color:#fff">O'chirish</button>
+        </div>
+      </div>
+    `;
+    const overlay = document.getElementById("modal-overlay");
+    if (overlay) overlay.classList.add("active");
+    document.body.classList.add("modal-open");
+  },
 
+  async executeDelete(productId) {
     try {
       await API.delete(`/products/${productId}`);
       Utils.showToast("Mahsulot xavfsiz arxivlandi!", "info");
@@ -662,6 +728,8 @@ const ProductsView = {
   },
 
   closeModal() {
-    document.getElementById("modal-overlay").classList.remove("active");
+    const overlay = document.getElementById("modal-overlay");
+    if (overlay) overlay.classList.remove("active");
+    document.body.classList.remove("modal-open");
   }
 };

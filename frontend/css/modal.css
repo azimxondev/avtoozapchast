@@ -7,7 +7,7 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(4px);
-  z-index: 200;
+  z-index: 1050;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.25s ease, visibility 0.25s ease;
@@ -19,6 +19,31 @@
 .modal-overlay.active {
   opacity: 1;
   visibility: visible;
+}
+
+/* Hide floating quick actions when any modal is open */
+.modal-overlay.active ~ .floating-fab-group,
+body.modal-open .floating-fab-group {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Modal Root Container */
+#modal-root {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+@media (min-width: 768px) {
+  #modal-root {
+    justify-content: center;
+  }
 }
 
 /* Modal Content / Sheet */
@@ -79,20 +104,27 @@
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border);
   color: var(--text-muted);
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 700;
   transition: var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  flex-shrink: 0;
 }
 
-.modal-close-btn:hover {
+.modal-close-btn:hover,
+.modal-close-btn:active {
   background: var(--bg-hover);
   color: var(--text-main);
+  transform: scale(0.95);
 }
 
 /* Modal Body */

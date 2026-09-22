@@ -261,6 +261,12 @@ def normalize_phonetic_uzbek(text: str) -> str:
         (r"\blabavoy\b", "lobovoy"),
         (r"\bbakovoy\b", "bakavoy"),
         (r"\bbokovoy\b", "bakavoy"),
+        (r"\bopwi\b", "obshiy"),
+        (r"\bopshi\b", "obshiy"),
+        (r"\bobwi\b", "obshiy"),
+        (r"\bstok\b", "stock"),
+        (r"\bproduc?tlar?\b", "mahsulotlar"),
+        (r"\btovarlar\b", "mahsulotlar"),
     ]
     for pattern, repl in replacements:
         t = re.sub(pattern, repl, t, flags=re.IGNORECASE)
@@ -861,7 +867,56 @@ async def process_assistant_query(query: str, current_user: CurrentUser) -> Dict
             "action": None
         }
 
-    # 12. Intent: LOW STOCK LOOKUP ("Qaysi productdan stock kam?", "Что заканчивается?")
+    # 12. Intent: OVERALL INVENTORY STATS & STORE OVERVIEW ("Productlar soni", "Opwi stock", "Botda nechta product bor")
+    if re.search(
+        r"\b(mahsulotlar\s*soni|tovarlar\s*soni|productlar\s*soni|nechta\s*product|nechta\s*tovar|nechta\s*mahsulot|"
+        r"obshiy\s*stock|opwi\s*stock|umumiy\s*stock|obshiy\s*stok|opwi\s*stok|umumiy\s*stok|umumiy\s*qoldiq|jami\s*qoldiq|jami\s*tovar|jami\s*mahsulot|"
+        r"qancha\s*product|qancha\s*tovar|qancha\s*mahsulot|botda\s*nima\s*bor|bazada\s*nima\s*bor|bazada\s*nimalar\s*bor|baza\s*haqida|"
+        r"ombor\s*holati|sklad\s*holati|statistika|assortiment|skolko\s*vsego|skolko\s*tovarov|obshiy\s*ostatok|total\s*stock|total\s*products)\b",
+        q_lower
+    ) or q_lower in ("mahsulotlar soni", "productlar soni", "tovarlar soni", "mahsulotlar", "productlar", "tovarlar", "obshiy stock", "opwi stock", "stock", "stok", "qoldiq"):
+        stats = await db.fetchrow("""
+            SELECT 
+                COUNT(*) as total_products,
+                COALESCE(SUM(quantity), 0) as total_stock,
+                COALESCE(SUM(quantity * selling_price), 0) as total_value,
+                COUNT(CASE WHEN quantity = 0 THEN 1 END) as out_of_stock,
+                COUNT(CASE WHEN quantity <= min_stock AND quantity > 0 THEN 1 END) as low_stock
+            FROM products
+            WHERE is_deleted = 0
+        """)
+        cats_count = await db.fetchval("SELECT COUNT(*) FROM categories") or 11
+
+        tot_prods = stats["total_products"] if stats else 0
+        tot_qty = stats["total_stock"] if stats else 0
+        tot_val = int(stats["total_value"]) if stats and stats["total_value"] else 0
+        low_qty = stats["low_stock"] if stats else 0
+        out_qty = stats["out_of_stock"] if stats else 0
+        in_stock_types = tot_prods - out_qty
+
+        ans = (
+            f"📊 <b>Avto Sklad — Umumiy mahsulotlar va qoldiq ko'rsatkichlari:</b>\n\n"
+            f"• 📦 <b>Jami mahsulot turlari:</b> <b>{tot_prods} xil</b> ehtiyot qism\n"
+            f"• 📈 <b>Umumiy ombor qoldig'i (Obshiy stock):</b> <b>{tot_qty:,} dona</b>\n"
+            f"• 💰 <b>Tovarlarning umumiy qiymati:</b> <b>{tot_val:,} UZS</b>\n"
+            f"• 🏷️ <b>Kategoriyalar soni:</b> <b>{cats_count} ta</b> bo'lim\n"
+            f"• 🟢 <b>Omborda yetarli mavjud:</b> <b>{in_stock_types} xil</b> tovar\n"
+            f"• ⚠️ <b>Kam qolgan yoki tugagan:</b> <b>{low_qty + out_qty} xil</b>\n\n"
+            f"Katalogimizda <b>Spark, Nexia 1-2-3, Cobalt, Gentra, Damas, Matiz, Tracker, Malibu</b> va xorijiy avtomobillar uchun kuzov, optika, oynalar, motor, tormoz va xodovoy qismlari to'liq mavjud.\n\n"
+            f"<i>Biror aniq detal kerakmi? Masalan: \"Spark oyna nechta bor?\" deb so'rashingiz mumkin!</i>"
+        )
+        v_ans = f"Omborimizda jami {tot_prods} xil mahsulot va {tot_qty} dona umumiy qoldiq mavjud. Tovarlarning umumiy qiymati {tot_val:,} so'm."
+        return {
+            "answer": ans,
+            "voice_text": v_ans,
+            "action": {
+                "type": "NAVIGATE_TAB",
+                "tab": "products",
+                "label": "📦 Katalogga o'tish"
+            }
+        }
+
+    # 13. Intent: LOW STOCK LOOKUP ("Qaysi productdan stock kam?", "Что заканчивается?")
     if re.search(r"\b(kam\s*qolgan|tugagan|qoldiq\s*kam|kam\s*tovar|заканчивается|мало|дефицит|low\s*stock|out\s*of\s*stock)\b", q_lower):
         low_items = await db.fetch("""
             SELECT name, quantity, min_stock, unit, selling_price, sku

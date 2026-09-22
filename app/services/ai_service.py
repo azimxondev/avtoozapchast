@@ -14,6 +14,10 @@ from app.api.auth import CurrentUser
 # 1. AUTOMOTIVE KNOWLEDGE BASE & CATEGORY MAPPINGS
 # ==============================================================================
 
+from app.config import (
+    SHOP_NAME, SHOP_PHONE, SHOP_TELEGRAM, SHOP_ADDRESS, SHOP_WORK_HOURS
+)
+
 CAR_BRANDS = [
     "BMW", "MERCEDES", "AUDI", "CHEVROLET", "DAEWOO", "TOYOTA", "HYUNDAI",
     "KIA", "VOLKSWAGEN", "NISSAN", "HONDA", "LADA", "BYD", "GEELY", "CHERY"
@@ -21,23 +25,50 @@ CAR_BRANDS = [
 
 CAR_MODELS = {
     "COBALT": ("Chevrolet", "Cobalt"),
+    "KOBALT": ("Chevrolet", "Cobalt"),
     "GENTRA": ("Chevrolet", "Gentra"),
-    "NEXIA": ("Chevrolet", "Nexia 3"),
-    "NEXIA 3": ("Chevrolet", "Nexia 3"),
-    "NEXIA 2": ("Daewoo", "Nexia 2"),
+    "JENTRA": ("Chevrolet", "Gentra"),
     "NEXIA 1": ("Daewoo", "Nexia 1"),
+    "NEKSIA 1": ("Daewoo", "Nexia 1"),
+    "NEKSIYA 1": ("Daewoo", "Nexia 1"),
+    "NEXIA1": ("Daewoo", "Nexia 1"),
+    "NEKSIA1": ("Daewoo", "Nexia 1"),
+    "NEKSIYA1": ("Daewoo", "Nexia 1"),
+    "NEXIA 2": ("Daewoo", "Nexia 2"),
+    "NEKSIA 2": ("Daewoo", "Nexia 2"),
+    "NEKSIYA 2": ("Daewoo", "Nexia 2"),
+    "NEXIA2": ("Daewoo", "Nexia 2"),
+    "NEKSIA2": ("Daewoo", "Nexia 2"),
+    "NEKSIYA2": ("Daewoo", "Nexia 2"),
+    "NEXIA 3": ("Chevrolet", "Nexia 3"),
+    "NEKSIA 3": ("Chevrolet", "Nexia 3"),
+    "NEKSIYA 3": ("Chevrolet", "Nexia 3"),
+    "NEXIA3": ("Chevrolet", "Nexia 3"),
+    "NEKSIA3": ("Chevrolet", "Nexia 3"),
+    "NEKSIYA3": ("Chevrolet", "Nexia 3"),
+    "NEXIA": ("Chevrolet", "Nexia"),
+    "NEKSIA": ("Chevrolet", "Nexia"),
+    "NEKSIYA": ("Chevrolet", "Nexia"),
     "TRACKER": ("Chevrolet", "Tracker 2"),
     "TRACKER 2": ("Chevrolet", "Tracker 2"),
+    "TREKER": ("Chevrolet", "Tracker 2"),
     "MALIBU": ("Chevrolet", "Malibu 2"),
     "MALIBU 2": ("Chevrolet", "Malibu 2"),
+    "MOLIBU": ("Chevrolet", "Malibu 2"),
     "ONIX": ("Chevrolet", "Onix"),
     "SPARK": ("Chevrolet", "Spark"),
+    "SPARC": ("Chevrolet", "Spark"),
+    "SHPARK": ("Chevrolet", "Spark"),
     "DAMAS": ("Chevrolet", "Damas"),
+    "DOMAS": ("Chevrolet", "Damas"),
     "LABO": ("Chevrolet", "Labo"),
     "MATIZ": ("Daewoo", "Matiz"),
+    "MOTIZ": ("Daewoo", "Matiz"),
     "CAPTIVA": ("Chevrolet", "Captiva"),
     "EPICA": ("Chevrolet", "Epica"),
     "LACETTI": ("Chevrolet", "Lacetti"),
+    "LASETTI": ("Chevrolet", "Lacetti"),
+    "LASETI": ("Chevrolet", "Lacetti"),
     "E39": ("BMW", "E39"),
     "E34": ("BMW", "E34"),
     "E46": ("BMW", "E46"),
@@ -57,63 +88,111 @@ CAR_MODELS = {
     "ELANTRA": ("Hyundai", "Elantra"),
     "K5": ("Kia", "K5"),
     "SPORTAGE": ("Kia", "Sportage"),
+    "CHAZOR": ("BYD", "Chazor"),
+    "SONG": ("BYD", "Song Plus")
 }
 
 PART_KEYWORDS = {
+    # Yon ko'zgu & Bakavoy
+    "bakavoy": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
+    "bakovoy": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
+    "bokovoy": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
+    "zerkalo": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
+    "zerkala": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
+    "ko'zgu": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
+    "ko'zgusi": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
+    "kozgu": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
+    "kuzgu": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
+    "боковое": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
+    "зеркало": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
+    
+    # Oynalar
+    "oyna": ("Oyna", ["oyna", "shisha", "glass"]),
+    "oynasi": ("Oyna", ["oyna", "shisha", "glass"]),
+    "shisha": ("Oyna", ["oyna", "shisha", "glass"]),
+    "lobovoy": ("Oldi Oyna (Lobovoy)", ["oyna", "shisha", "glass"]),
+    "labavoy": ("Oldi Oyna (Lobovoy)", ["oyna", "shisha", "glass"]),
+    "стекло": ("Oyna", ["oyna", "shisha", "glass"]),
+    "лобовое": ("Oldi Oyna (Lobovoy)", ["oyna", "shisha", "glass"]),
+    "glass": ("Oyna", ["oyna", "shisha", "glass"]),
+    
+    # Bamper
     "bamper": ("Bamper", ["kuzov", "body", "bamper"]),
+    "bamperi": ("Bamper", ["kuzov", "body", "bamper"]),
     "bumper": ("Bamper", ["kuzov", "body", "bamper"]),
     "бампер": ("Bamper", ["kuzov", "body", "bamper"]),
+    
+    # Fara & Optika
     "fara": ("Fara", ["optika", "optics", "chiroq", "fara"]),
+    "farasi": ("Fara", ["optika", "optics", "chiroq", "fara"]),
     "фара": ("Fara", ["optika", "optics", "chiroq", "fara"]),
     "headlight": ("Fara", ["optika", "optics", "chiroq", "fara"]),
     "chiroq": ("Chiroq", ["optika", "optics", "chiroq"]),
     "stop": ("Stop signal", ["optika", "optics"]),
     "фонарь": ("Stop chiroq", ["optika", "optics"]),
+    "tumanka": ("Tumanka Fara", ["optika", "optics", "fara"]),
+    "туманка": ("Tumanka Fara", ["optika", "optics", "fara"]),
+    
+    # Kuzov
     "kapot": ("Kapot", ["kuzov", "body"]),
+    "kapoti": ("Kapot", ["kuzov", "body"]),
     "капот": ("Kapot", ["kuzov", "body"]),
     "hood": ("Kapot", ["kuzov", "body"]),
     "krilo": ("Krilo", ["kuzov", "body"]),
+    "qanot": ("Krilo (Qanot)", ["kuzov", "body"]),
     "крыло": ("Krilo", ["kuzov", "body"]),
     "fender": ("Krilo", ["kuzov", "body"]),
     "eshik": ("Eshik", ["kuzov", "body"]),
     "дверь": ("Eshik", ["kuzov", "body"]),
     "door": ("Eshik", ["kuzov", "body"]),
-    "oyna": ("Oyna", ["oyna", "shisha", "glass"]),
-    "стекло": ("Oyna", ["oyna", "shisha", "glass"]),
-    "glass": ("Oyna", ["oyna", "shisha", "glass"]),
-    "radiator": ("Radiator", ["sovutish", "radiator", "cooling"]),
-    "радиатор": ("Radiator", ["sovutish", "radiator", "cooling"]),
+    "panjara": ("Panjara (Reshyotka)", ["kuzov", "body"]),
+    "gril": ("Panjara (Gril)", ["kuzov", "body"]),
+    
+    # Tormoz
     "kalodka": ("Tormoz kalodkasi", ["tormoz", "brake"]),
+    "kolodka": ("Tormoz kalodkasi", ["tormoz", "brake"]),
+    "kalotka": ("Tormoz kalodkasi", ["tormoz", "brake"]),
     "колодки": ("Tormoz kalodkasi", ["tormoz", "brake"]),
     "pads": ("Tormoz kalodkasi", ["tormoz", "brake"]),
     "tormoz": ("Tormoz qismi", ["tormoz", "brake"]),
     "тормоз": ("Tormoz qismi", ["tormoz", "brake"]),
+    "disk": ("Tormoz diski", ["tormoz", "brake"]),
+    "diski": ("Tormoz diski", ["tormoz", "brake"]),
+    
+    # Xodovoy & Podveska
     "amortizator": ("Amortizator", ["xodovoy", "podveska", "suspension"]),
     "амортизатор": ("Amortizator", ["xodovoy", "podveska", "suspension"]),
     "strut": ("Amortizator", ["xodovoy", "podveska", "suspension"]),
+    "prujina": ("Prujina", ["xodovoy", "podveska"]),
+    "sharavoy": ("Sharavoy", ["xodovoy", "podveska"]),
+    "tyaga": ("Tyaga", ["xodovoy", "podveska"]),
+    "stoyka": ("Stoyka", ["xodovoy", "podveska"]),
+    "granata": ("Granata (SHRUS)", ["transmissiya", "shrus"]),
+    "shrus": ("Granata (SHRUS)", ["transmissiya", "shrus"]),
+    
+    # Dvigatel & Sovutish
+    "radiator": ("Radiator", ["sovutish", "radiator", "cooling"]),
+    "радиатор": ("Radiator", ["sovutish", "radiator", "cooling"]),
     "filtr": ("Filtr", ["filtr", "filter"]),
     "filter": ("Filtr", ["filtr", "filter"]),
     "фильтр": ("Filtr", ["filtr", "filter"]),
     "moy": ("Motor moyi", ["moy", "oil"]),
+    "moyi": ("Motor moyi", ["moy", "oil"]),
+    "maslo": ("Motor moyi", ["moy", "oil"]),
     "масло": ("Motor moyi", ["moy", "oil"]),
     "oil": ("Motor moyi", ["moy", "oil"]),
     "akkumulyator": ("Akkumulyator", ["elektr", "battery"]),
+    "akb": ("Akkumulyator", ["elektr", "battery"]),
     "аккумулятор": ("Akkumulyator", ["elektr", "battery"]),
-    "battery": ("Akkumulyator", ["elektr", "battery"]),
     "generator": ("Generator", ["elektr", "generator"]),
-    "генератор": ("Generator", ["elektr", "generator"]),
     "starter": ("Starter", ["elektr", "starter"]),
-    "стартер": ("Starter", ["elektr", "starter"]),
     "remen": ("Tasma / Remen", ["dvigatel", "belt"]),
     "ремень": ("Tasma / Remen", ["dvigatel", "belt"]),
     "porshen": ("Porshen", ["dvigatel", "engine"]),
-    "поршень": ("Porshen", ["dvigatel", "engine"]),
-    "glushitel": ("Glushitel", ["kuzov", "exhaust"]),
-    "глушитель": ("Glushitel", ["kuzov", "exhaust"]),
     "svecha": ("Svecha", ["elektr", "spark"]),
     "свеча": ("Svecha", ["elektr", "spark"]),
+    "pompa": ("Pompa (Suv nasosi)", ["sovutish", "pump"]),
     "nasos": ("Nasos / Pompa", ["dvigatel", "pump"]),
-    "насос": ("Nasos / Pompa", ["dvigatel", "pump"]),
 }
 
 # Prompt injection blocklist
@@ -131,8 +210,61 @@ PROMPT_INJECTION_PATTERNS = [
 ]
 
 # ==============================================================================
-# 2. VOICE PRODUCT NLP PARSER
+# 2. VOICE PRODUCT NLP PARSER & PHONETIC NORMALIZER
 # ==============================================================================
+
+def normalize_phonetic_uzbek(text: str) -> str:
+    """
+    Normalizes common Uzbek phonetic typos, SMS slang, and Cyrillic variants.
+    e.g. 'necta' -> 'nechta', 'nech pul' -> 'narxi', 'sparc' -> 'spark',
+    'neksia 1' -> 'nexia 1', 'bakavoy' -> 'bakavoy'.
+    """
+    if not text:
+        return ""
+    t = text.lower()
+    replacements = [
+        (r"\bnec[ht]+a\b", "nechta"),
+        (r"\bncta\b", "nechta"),
+        (r"\bnchta\b", "nechta"),
+        (r"\bqanca\b", "qancha"),
+        (r"\bqancadan\b", "qanchadan"),
+        (r"\bnec?h?\s*pul\b", "narxi"),
+        (r"\bnec?h?\s*so'm\b", "narxi"),
+        (r"\bnarhi\b", "narxi"),
+        (r"\bnarh\b", "narx"),
+        (r"\bbomi\b", "bormi"),
+        (r"\bbor\s*mi\b", "bormi"),
+        (r"\bbomasa\b", "bo'lmasa"),
+        (r"\bsparc\b", "spark"),
+        (r"\bshpark\b", "spark"),
+        (r"\bneksia\s*1\b", "nexia 1"),
+        (r"\bneksiya\s*1\b", "nexia 1"),
+        (r"\bnexia1\b", "nexia 1"),
+        (r"\bneksia1\b", "nexia 1"),
+        (r"\bneksia\s*2\b", "nexia 2"),
+        (r"\bneksiya\s*2\b", "nexia 2"),
+        (r"\bnexia2\b", "nexia 2"),
+        (r"\bneksia2\b", "nexia 2"),
+        (r"\bneksia\s*3\b", "nexia 3"),
+        (r"\bneksiya\s*3\b", "nexia 3"),
+        (r"\bnexia3\b", "nexia 3"),
+        (r"\bneksia3\b", "nexia 3"),
+        (r"\bneksia\b", "nexia"),
+        (r"\bneksiya\b", "nexia"),
+        (r"\bkobalt\b", "cobalt"),
+        (r"\bjentra\b", "gentra"),
+        (r"\bdomas\b", "damas"),
+        (r"\bmotiz\b", "matiz"),
+        (r"\btreker\b", "tracker"),
+        (r"\bmolibu\b", "malibu"),
+        (r"\boniks\b", "onix"),
+        (r"\blabavoy\b", "lobovoy"),
+        (r"\bbakovoy\b", "bakavoy"),
+        (r"\bbokovoy\b", "bakavoy"),
+    ]
+    for pattern, repl in replacements:
+        t = re.sub(pattern, repl, t, flags=re.IGNORECASE)
+    return t
 
 def detect_language(text: str) -> str:
     """Detect primarily uzbek, russian, or english."""
@@ -254,11 +386,13 @@ def detect_is_stock_update(text: str) -> bool:
 def extract_entities(text: str) -> Dict[str, Any]:
     """
     Extracts automotive entities (brand, model, part type, raw name).
+    Uses phonetic normalization to catch typos.
     """
-    t = text.lower()
+    t = normalize_phonetic_uzbek(text)
     detected_brand = ""
     detected_model = ""
     detected_part = ""
+    detected_part_key = ""
     matched_category_hint = []
 
     # Detect Car Brand
@@ -279,6 +413,7 @@ def extract_entities(text: str) -> Dict[str, Any]:
     for p_key, (part_canonical, cat_hints) in PART_KEYWORDS.items():
         if re.search(r"\b" + re.escape(p_key.lower()) + r"\b", t):
             detected_part = part_canonical
+            detected_part_key = p_key
             matched_category_hint.extend(cat_hints)
             break
 
@@ -312,62 +447,79 @@ def extract_entities(text: str) -> Dict[str, Any]:
         "car_brand": detected_brand,
         "car_model": detected_model or "Umumiy",
         "part_name": detected_part,
+        "part_key": detected_part_key,
         "sku": sku,
         "category_hints": matched_category_hint
     }
 
-async def find_matching_product(query_text: str, entities: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+async def search_products_full_db(query_text: str, entities: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
-    Search DB for existing products that closely match the detected entities.
+    Exhaustively searches the products database for matching parts with ranking.
+    Returns up to 4 closest matching products.
     """
     car_model = entities.get("car_model")
     car_brand = entities.get("car_brand")
-    part_name = entities.get("part_name")
-
-    # 1. Search with both car model/brand and part name
+    part_key = entities.get("part_key")
     brand_or_model = car_model or car_brand
-    if brand_or_model and part_name:
-        row = await db.fetchrow("""
+
+    # Tier 1: Search brand/model + part keyword in name or description
+    if brand_or_model and part_key:
+        rows = await db.fetch("""
             SELECT p.*, c.name as category_name
             FROM products p
             LEFT JOIN categories c ON c.id = p.category_id
             WHERE p.is_deleted = 0
               AND (LOWER(p.car_model) LIKE LOWER($1) OR LOWER(p.car_brand) LIKE LOWER($1) OR LOWER(p.name) LIKE LOWER($1))
               AND (LOWER(p.name) LIKE LOWER($2) OR LOWER(p.description) LIKE LOWER($2))
-            ORDER BY p.id DESC LIMIT 1
-        """, f"%{brand_or_model}%", f"%{part_name}%")
-        if row:
-            return dict(row)
+            ORDER BY (p.quantity > 0) DESC, p.quantity DESC, p.id DESC
+            LIMIT 4
+        """, f"%{brand_or_model}%", f"%{part_key}%")
+        if rows:
+            return [dict(r) for r in rows]
 
-    # 2. Search by part name
-    if part_name:
-        row = await db.fetchrow("""
+    # Tier 2: Search by part_key alone
+    if part_key:
+        rows = await db.fetch("""
             SELECT p.*, c.name as category_name
             FROM products p
             LEFT JOIN categories c ON c.id = p.category_id
             WHERE p.is_deleted = 0
-              AND LOWER(p.name) LIKE LOWER($1)
-            ORDER BY p.id DESC LIMIT 1
-        """, f"%{part_name}%")
-        if row:
-            return dict(row)
+              AND (LOWER(p.name) LIKE LOWER($1) OR LOWER(p.description) LIKE LOWER($1))
+            ORDER BY (p.quantity > 0) DESC, p.quantity DESC, p.id DESC
+            LIMIT 4
+        """, f"%{part_key}%")
+        if rows:
+            return [dict(r) for r in rows]
 
-    # 3. Fuzzy search with words
-    stop_words = {"nechta", "qoldi", "topib", "ber", "bor", "bormi", "menga", "narxi", "qancha", "yana"}
-    words = [w for w in re.findall(r"\w+", query_text) if len(w) >= 3 and not w.isdigit() and w.lower() not in stop_words]
-    for w in words[:3]:
-        row = await db.fetchrow("""
+    # Tier 3: Search with non-stop meaningful words
+    stop_words = {
+        "nechta", "necta", "nchta", "qoldi", "topib", "ber", "bor", "bormi", "bomi", "menga", 
+        "narxi", "narhi", "qancha", "qanca", "pul", "so'm", "som", "yana", "iltimos", "kerak",
+        "dona", "ta", "nechi", "necha", "skolko", "stoit", "how", "many", "much", "mahsulot"
+    }
+    raw_words = [w for w in re.findall(r"[\w']+", query_text.lower()) if len(w) >= 3 and not w.isdigit() and w not in stop_words]
+    for w in raw_words:
+        rows = await db.fetch("""
             SELECT p.*, c.name as category_name
             FROM products p
             LEFT JOIN categories c ON c.id = p.category_id
             WHERE p.is_deleted = 0
-              AND (LOWER(p.name) LIKE LOWER($1) OR LOWER(p.sku) LIKE LOWER($1))
-            ORDER BY p.id DESC LIMIT 1
+              AND (LOWER(p.name) LIKE LOWER($1) OR LOWER(p.car_model) LIKE LOWER($1) OR LOWER(p.sku) LIKE LOWER($1) OR LOWER(p.barcode) LIKE LOWER($1) OR LOWER(p.description) LIKE LOWER($1))
+            ORDER BY (p.quantity > 0) DESC, p.quantity DESC, p.id DESC
+            LIMIT 4
         """, f"%{w}%")
-        if row:
-            return dict(row)
+        if rows:
+            return [dict(r) for r in rows]
 
-    return None
+    return []
+
+async def find_matching_product(query_text: str, entities: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Search DB for existing products that closely match the detected entities.
+    Wrapper around search_products_full_db for backwards compatibility.
+    """
+    matches = await search_products_full_db(query_text, entities)
+    return matches[0] if matches else None
 
 async def match_category_id(hints: List[str]) -> int:
     """Match hints against categories table in DB."""
@@ -531,8 +683,8 @@ async def parse_voice_product_input(text: str, current_user: CurrentUser) -> Dic
 async def process_assistant_query(query: str, current_user: CurrentUser) -> Dict[str, Any]:
     """
     Main conversational agent for warehouse & shop assistance.
-    Handles user queries, stock lookups, sales data, navigation triggers,
-    with strict role-based permission gating and prompt-injection defense.
+    Understands phonetic/colloquial Uzbek with typos, answers any store/auto FAQ,
+    and searches the entire products database with deep intent awareness.
     """
     if not query or not query.strip():
         return {
@@ -541,7 +693,8 @@ async def process_assistant_query(query: str, current_user: CurrentUser) -> Dict
         }
 
     q = query.strip()
-    q_lower = q.lower()
+    norm_q = normalize_phonetic_uzbek(q)
+    q_lower = norm_q.lower()
     lang = detect_language(q)
 
     # 1. Prompt Injection & Security Barrier
@@ -596,7 +749,119 @@ async def process_assistant_query(query: str, current_user: CurrentUser) -> Dict
             }
         }
 
-    # 4. Intent: LOW STOCK LOOKUP ("Qaysi productdan stock kam?", "Что заканчивается?", "What is low on stock?")
+    # 4. Intent: STORE LOCATION / ADDRESS
+    if re.search(r"\b(manzil|adres|qayerda|qatta|lokatsiya|lokasiya|joylashgan|address|где\s*находитесь|где\s*магазин)\b", q_lower):
+        ans = (
+            f"📍 <b>Do'konimiz manzili:</b>\n\n"
+            f"• Manzil: <b>{SHOP_ADDRESS}</b>\n"
+            f"• Mo'ljal: Avtomobil ehtiyot qismlari markazi\n"
+            f"• Ish vaqti: <b>{SHOP_WORK_HOURS}</b>\n"
+            f"• Telefon: <b>{SHOP_PHONE}</b>"
+        )
+        return {
+            "answer": ans,
+            "voice_text": f"Do'konimiz manzili: {SHOP_ADDRESS}. Ish vaqti: {SHOP_WORK_HOURS}",
+            "action": None
+        }
+
+    # 5. Intent: STORE PHONE / CONTACT
+    if re.search(r"\b(telefon|tel|nomer|nomeringiz|aloqa|bog'lanish|kontakt|contact|номер|телефон|admin\s*nomer)\b", q_lower):
+        ans = (
+            f"📞 <b>Do'kon ma'muriyati bilan aloqa:</b>\n\n"
+            f"• Telefon: <b>{SHOP_PHONE}</b>\n"
+            f"• Telegram: <b>{SHOP_TELEGRAM}</b>\n"
+            f"• Ish tartibi: <b>{SHOP_WORK_HOURS}</b>\n\n"
+            f"Istalgan savol yoki buyurtma bo'yicha bemalol qo'ng'iroq qilishingiz mumkin."
+        )
+        return {
+            "answer": ans,
+            "voice_text": f"Bizning telefon raqamimiz: {SHOP_PHONE}, telegram: {SHOP_TELEGRAM}",
+            "action": None
+        }
+
+    # 6. Intent: WORKING HOURS
+    if re.search(r"\b(ish\s*vaqti|rejim|soat|ochiq|ishlaysiz|vaqt|soat\s*nechagacha|график|часы\s*работы)\b", q_lower):
+        ans = (
+            f"🕒 <b>Do'konimiz ish vaqti:</b>\n\n"
+            f"• <b>{SHOP_WORK_HOURS}</b>\n"
+            f"• Dushanbadan yakshanbagacha dam olish kunlarisiz xizmatingizdamiz!"
+        )
+        return {
+            "answer": ans,
+            "voice_text": f"Do'konimiz har kuni {SHOP_WORK_HOURS} gacha ishlaydi.",
+            "action": None
+        }
+
+    # 7. Intent: DELIVERY / SHIPPING
+    if re.search(r"\b(dostavka|yetkazib|yetkazish|pochta|taksi|viloyatga|доставка|отправка|delivery|shipping)\b", q_lower):
+        ans = (
+            f"🚚 <b>Yetkazib berish (Dostavka) xizmati:</b>\n\n"
+            f"• <b>Toshkent shahrida:</b> Yandex Delivery orqali tezkor (1-2 soat ichida).\n"
+            f"• <b>Viloyatlarga:</b> BTS va Fargo pochta yoki taksi orqali 24 soatda yetkaziladi.\n"
+            f"• Buyurtma berish uchun telefon: <b>{SHOP_PHONE}</b>"
+        )
+        return {
+            "answer": ans,
+            "voice_text": "Shahar bo'ylab Yandex orqali, viloyatlarga esa pochta va taksi orqali tez yetkazib beramiz.",
+            "action": None
+        }
+
+    # 8. Intent: PAYMENT METHODS
+    if re.search(r"\b(to'lov|tolov|oplata|payment|payme|click|uzum|naqd|perevod|karta|оплата|карта)\b", q_lower):
+        ans = (
+            f"💳 <b>Qulay to'lov usullari:</b>\n\n"
+            f"• <b>Click, Payme, Uzum:</b> Onlayn ilova orqali tezkor to'lov\n"
+            f"• <b>Naqd pul:</b> Mahsulotni qabul qilishda\n"
+            f"• <b>Hisob raqam:</b> Yuridik shaxslar uchun shartnoma va schet-faktura bilan."
+        )
+        return {
+            "answer": ans,
+            "voice_text": "To'lovlarni Click, Payme, Uzum va naqd pulda qabul qilamiz.",
+            "action": None
+        }
+
+    # 9. Intent: GREETINGS
+    if re.search(r"\b(salom|assalom|assalomu\s*alaykum|privet|hello|hi|qale|qalesan|привет|салам)\b", q_lower):
+        ans = (
+            f"Assalomu alaykum! 🚗 Men <b>{SHOP_NAME}</b> sun'iy intellekt yordamchisiman.\n\n"
+            f"Sizga qanday ehtiyot qism kerak? Masalan:\n"
+            f"• <i>\"Spark oyna nechta bor?\"</i>\n"
+            f"• <i>\"Nexia 1 bakavoy nech pul?\"</i>\n"
+            f"• <i>\"Cobalt old farasi bormi?\"</i>\n\n"
+            f"deb so'rashingiz mumkin!"
+        )
+        return {
+            "answer": ans,
+            "voice_text": f"Assalomu alaykum! {SHOP_NAME} yordamchisiman. Sizga qanday ehtiyot qism kerak?",
+            "action": None
+        }
+
+    # 10. Intent: THANKS / PRAISE
+    if re.search(r"\b(rahmat|spasibo|raxmat|tashakkur|gap\s*yoq|gap\s*yo'q|zor|zo'r|yaxshi|malades|krasavchik|thanks)\b", q_lower):
+        ans = "Arzimaydi! Sizga yordam berganimdan mamnunman. Avtomobilingiz doim soz bo'lsin! 🛠️ Yana savollaringiz bo'lsa marhamat."
+        return {
+            "answer": ans,
+            "voice_text": "Arzimaydi! Yana qanday ehtiyot qism kerak bo'lsa so'rang.",
+            "action": None
+        }
+
+    # 11. Intent: BOT IDENTITY / HELP
+    if re.search(r"\b(sen\s*kimsan|kim\s*bu|botmisan|nima\s*qila\s*olasan|who\s*are\s*you|что\s*умеешь)\b", q_lower):
+        ans = (
+            f"Men <b>{SHOP_NAME}</b> aqlli AI yordamchisiman 🤖.\n\n"
+            f"Quyidagi masalalarda sizga yordam bera olaman:\n"
+            f"• Ehtiyot qismlar mavjudligi va narxlarini aniqlash\n"
+            f"• Ombordagi qoldiqlar va tokcha raqamini ko'rsatish\n"
+            f"• Shtrix-kod va QR kodlarni skanerlash\n"
+            f"• Do'kon manzili, ish vaqti va yetkazib berish haqida ma'lumot berish."
+        )
+        return {
+            "answer": ans,
+            "voice_text": f"Men {SHOP_NAME} yordamchisiman. Mahsulotlar narxi, ombor qoldig'i va do'kon haqida yordam beraman.",
+            "action": None
+        }
+
+    # 12. Intent: LOW STOCK LOOKUP ("Qaysi productdan stock kam?", "Что заканчивается?")
     if re.search(r"\b(kam\s*qolgan|tugagan|qoldiq\s*kam|kam\s*tovar|заканчивается|мало|дефицит|low\s*stock|out\s*of\s*stock)\b", q_lower):
         low_items = await db.fetch("""
             SELECT name, quantity, min_stock, unit, selling_price, sku
@@ -623,12 +888,12 @@ async def process_assistant_query(query: str, current_user: CurrentUser) -> Dict
             }
         }
 
-    # 5. Intent: SALES TODAY ("Bugun nechta mahsulot sotildi?", "Сколько сегодня продано?", "Sales today?")
+    # 13. Intent: SALES TODAY (Admins only)
     if re.search(r"\b(bugun|bugungi|sotildi|sotuvlar|tushum|сегодня|продано|продажи|sales|sold|today)\b", q_lower) and re.search(r"\b(nechta|qancha|qanaqa|сколько|how\s*many|how\s*much|summa)\b", q_lower):
         if not current_user.is_admin:
             return {
-                "answer": "Do'konimiz har kuni soat 08:30 dan 18:30 gacha xizmat ko'rsatadi. Mahsulotlar narxi va mavjudligini bemalol so'rashingiz mumkin.",
-                "voice_text": "Do'konimiz har kuni soat 08:30 dan 18:30 gacha xizmat ko'rsatadi.",
+                "answer": f"Do'konimiz har kuni soat {SHOP_WORK_HOURS} gacha xizmat ko'rsatadi. Mahsulotlar narxi va mavjudligini bemalol so'rashingiz mumkin.",
+                "voice_text": f"Do'konimiz har kuni soat {SHOP_WORK_HOURS} gacha xizmat ko'rsatadi.",
                 "action": None
             }
 
@@ -665,104 +930,112 @@ async def process_assistant_query(query: str, current_user: CurrentUser) -> Dict
             }
         }
 
-    # 6. Intent: SPECIFIC PRODUCT STOCK LOOKUP ("BMW bamperdan nechta qoldi?", "Cobalt fara bormi?")
-    # Extract entities and search in DB
-    entities = extract_entities(q)
-    matched = await find_matching_product(q, entities)
+    # 14. Intent: FULL DATABASE PRODUCT SEARCH & STOCK / PRICE INQUIRIES
+    entities = extract_entities(norm_q)
+    matches = await search_products_full_db(norm_q, entities)
 
-    if matched:
-        qty = matched["quantity"]
-        unit = matched.get("unit", "dona")
-        price = matched.get("selling_price", 0)
-        sku = matched.get("sku", "")
-        shelf = matched.get("shelf_location", "A-01")
+    is_qty_query = bool(re.search(r"\b(nechta|necta|nchta|qancha|qoldi|bor\s*mi|bormi|bomi|dona|skolko|how\s*many)\b", q_lower))
+    is_price_query = bool(re.search(r"\b(narxi|narhi|pul|so'm|som|qanchadan|stoit|price|cost|how\s*much)\b", q_lower))
 
-        if qty == 0:
-            status_text = "🔴 Hozirda qolmagan (Tugagan)"
-            v_status = "hozirda omborda tugagan"
-        elif qty <= matched.get("min_stock", 2):
-            status_text = f"🟡 Kam qoldi ({qty} {unit})"
-            v_status = f"kam qolgan, {qty} {unit} mavjud"
+    if matches:
+        if len(matches) == 1:
+            p = matches[0]
+            qty = p.get("quantity", 0)
+            price = p.get("selling_price", 0)
+            unit = p.get("unit", "dona")
+            sku = p.get("sku", "")
+            shelf = p.get("shelf_location", "A-01")
+
+            if qty == 0:
+                status_text = "🔴 Hozirda tugagan (0 dona)"
+                v_status = "omborda hozircha qolmagan"
+            elif qty <= p.get("min_stock", 2):
+                status_text = f"🟡 Kam qoldi ({qty} {unit})"
+                v_status = f"kam qolgan, {qty} {unit} mavjud"
+            else:
+                status_text = f"🟢 Omborda bor ({qty} {unit})"
+                v_status = f"omborda {qty} {unit} mavjud"
+
+            if is_qty_query:
+                ans = (
+                    f"📦 Omborda <b>{p['name']}</b> dan <b>{qty} {unit}</b> bor! {status_text}\n\n"
+                    f"• Narxi: <b>{price:,} UZS</b>\n"
+                    f"• Tokcha (Polka): <b>{shelf}</b>\n"
+                    f"• Artikul (SKU): <code>{sku}</code>"
+                )
+                v_ans = f"Omborda {p['name']} dan {qty} {unit} bor. Narxi {price:,} so'm."
+            elif is_price_query:
+                ans = (
+                    f"💰 <b>{p['name']}</b> narxi: <b>{price:,} UZS</b>.\n\n"
+                    f"• Ombordagi qoldiq: <b>{qty} {unit}</b> ({status_text})\n"
+                    f"• Tokcha (Polka): <b>{shelf}</b>\n"
+                    f"• Artikul (SKU): <code>{sku}</code>"
+                )
+                v_ans = f"{p['name']} narxi {price:,} so'm. Omborda {qty} {unit} mavjud."
+            else:
+                ans = (
+                    f"📦 <b>{p['name']}</b>\n\n"
+                    f"• Holati: <b>{status_text}</b>\n"
+                    f"• Narxi: <b>{price:,} UZS</b>\n"
+                    f"• Tokcha (Polka): <b>{shelf}</b>\n"
+                    f"• Artikul (SKU): <code>{sku}</code>"
+                )
+                v_ans = f"{p['name']}, {v_status}. Narxi {price:,} so'm."
+
+            return {
+                "answer": ans,
+                "voice_text": v_ans,
+                "action": {
+                    "type": "VIEW_PRODUCT",
+                    "product_id": p["id"],
+                    "label": "👁️ Mahsulotni ko'rish"
+                }
+            }
         else:
-            status_text = f"🟢 Omborda bor ({qty} {unit})"
-            v_status = f"omborda {qty} {unit} mavjud"
+            # Multiple matches found
+            items_list = []
+            for p in matches:
+                p_qty = p.get("quantity", 0)
+                p_price = p.get("selling_price", 0)
+                p_unit = p.get("unit", "dona")
+                p_shelf = p.get("shelf_location", "A-01")
+                st = "🟢" if p_qty > 2 else ("🟡" if p_qty > 0 else "🔴")
+                items_list.append(f"• <b>{p['name']}</b>\n  Narxi: <b>{p_price:,} UZS</b> | Qoldiq: <b>{p_qty} {p_unit}</b> {st} | Polka: <b>{p_shelf}</b>")
 
-        ans = (
-            f"📦 <b>{matched['name']}</b>\n\n"
-            f"• Holati: <b>{status_text}</b>\n"
-            f"• Narxi: <b>{price:,} UZS</b>\n"
-            f"• Artikul (SKU): <code>{sku}</code>\n"
-            f"• Tokcha (Polka): <b>{shelf}</b>"
-        )
-        v_ans = f"{matched['name']} {v_status}. Narxi {price:,} so'm."
-        return {
-            "answer": ans,
-            "voice_text": v_ans,
-            "action": {
-                "type": "VIEW_PRODUCT",
-                "product_id": matched["id"],
-                "label": "👁️ Mahsulotni ko'rish"
-            }
-        }
+            if is_price_query:
+                header = f"💰 <b>Topilgan mahsulotlar narxlari ({len(matches)} ta):</b>"
+            elif is_qty_query:
+                header = f"📦 <b>Topilgan mahsulotlar qoldig'i ({len(matches)} ta):</b>"
+            else:
+                header = f"🔍 <b>Topilgan mahsulotlar ({len(matches)} ta):</b>"
 
-    # 7. Intent: GENERAL SEARCH ("BMW mahsulotini topib ber", "Fara qidiring")
-    search_words = [w for w in re.findall(r"\w+", q_lower) if len(w) >= 3 and w not in ["nechta", "qoldi", "topib", "ber", "ko'rsat", "bormi", "bor", "menga"]]
-    if search_words:
-        keyword = search_words[0]
-        rows = await db.fetch("""
-            SELECT id, name, quantity, selling_price, unit
-            FROM products
-            WHERE is_deleted = 0
-              AND (name LIKE $1 OR car_model LIKE $1 OR sku LIKE $1)
-            ORDER BY id DESC LIMIT 4
-        """, f"%{keyword}%")
-
-        if rows:
-            items_str = "\n".join([f"• <b>{r['name']}</b> — {r['quantity']} {r['unit']} ({r['selling_price']:,} UZS)" for r in rows])
-            ans = f"🔍 <b>Topilgan mahsulotlar ({keyword}):</b>\n\n{items_str}"
-            v_ans = f"Topilgan mahsulotlar: " + ", ".join([r['name'] for r in rows[:2]])
+            ans = f"{header}\n\n" + "\n\n".join(items_list)
+            v_ans = f"Topilgan mahsulotlar: " + ", ".join([f"{p['name']} ({p['selling_price']:,} so'm)" for p in matches[:2]])
             return {
                 "answer": ans,
                 "voice_text": v_ans,
                 "action": {
-                    "type": "NAVIGATE_TAB",
-                    "tab": "products",
-                    "params": {"q": keyword},
-                    "label": "🔎 Katalogda ko'rish"
+                    "type": "VIEW_PRODUCT",
+                    "product_id": matches[0]["id"],
+                    "label": "👁️ Birinchisini ko'rish"
                 }
             }
 
-    # 8. Intent: RECENT PRODUCTS ("Oxirgi qo‘shilgan mahsulotlarni ko‘rsat")
-    if re.search(r"\b(oxirgi|yangi|so'nggi|oxirgi\s*qo'shilgan|последние|новые|recent|latest)\b", q_lower):
-        recent_rows = await db.fetch("""
-            SELECT id, name, quantity, selling_price, unit
-            FROM products
-            WHERE is_deleted = 0
-            ORDER BY id DESC LIMIT 4
-        """)
-        if recent_rows:
-            items_str = "\n".join([f"• <b>{r['name']}</b> — {r['quantity']} {r['unit']} ({r['selling_price']:,} UZS)" for r in recent_rows])
-            ans = f"✨ <b>Oxirgi qo'shilgan mahsulotlar:</b>\n\n{items_str}"
-            v_ans = "Oxirgi qo'shilgan mahsulotlar: " + ", ".join([r['name'] for r in recent_rows[:2]])
-            return {
-                "answer": ans,
-                "voice_text": v_ans,
-                "action": {
-                    "type": "NAVIGATE_TAB",
-                    "tab": "products",
-                    "label": "🏷️ Katalogga o'tish"
-                }
-            }
-
-    # 9. Fallback Help & Guidance
-    help_reply = {
-        "uz": "Savolingizni tushundim. Menga quyidagicha murojaat qilishingiz mumkin:\n\n• <i>\"BMW bamper nechta qoldi?\"</i>\n• <i>\"Bugun nechta mahsulot sotildi?\"</i>\n• <i>\"Kam qolgan tovarlarni ko'rsat\"</i>\n• <i>\"Scannerni och\"</i>\n• <i>\"Cobalt farasini topib ber\"</i>",
-        "ru": "Я понял ваш запрос. Вы можете спросить меня:\n\n• <i>\"Сколько бамперов BMW осталось?\"</i>\n• <i>\"Сколько продано сегодня?\"</i>\n• <i>\"Что заканчивается на складе?\"</i>\n• <i>\"Открой сканер\"</i>",
-        "en": "I understand. You can ask me things like:\n\n• <i>\"How many BMW bumpers in stock?\"</i>\n• <i>\"What's low on stock?\"</i>\n• <i>\"Open scanner\"</i>\n• <i>\"Sales today?\"</i>"
-    }
-    ans = help_reply.get(lang, help_reply["uz"])
+    # 15. Fallback: Product not found or general inquiry
+    ans = (
+        f"Kechirasiz, omborimizda <i>\"{q}\"</i> bo'yicha ehtiyot qism hozirda topilmadi yoki tugagan.\n\n"
+        f"📦 <b>Buyurtma berish yoki aniqlashtirish uchun:</b>\n"
+        f"📞 Telefon: <b>{SHOP_PHONE}</b>\n"
+        f"💬 Telegram: <b>{SHOP_TELEGRAM}</b>\n"
+        f"🕒 Ish vaqti: <b>{SHOP_WORK_HOURS}</b>"
+    )
+    v_ans = "Kechirasiz, omborimizda bu mahsulot hozircha topilmadi. Administrator bilan bog'lanishingiz mumkin."
     return {
         "answer": ans,
-        "voice_text": "Avto Sklad yordamchisiga istalgan ehtiyot qism, qoldiq yoki skaner bo'yicha savol berishingiz mumkin.",
-        "action": None
+        "voice_text": v_ans,
+        "action": {
+            "type": "NAVIGATE_TAB",
+            "tab": "products",
+            "label": "🏷️ Katalogda qidirish"
+        }
     }

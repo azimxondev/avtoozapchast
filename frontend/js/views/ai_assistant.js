@@ -57,10 +57,11 @@ const AIAssistantView = {
 
         <!-- Quick Suggestions Chips -->
         <div style="display:flex;gap:6px;overflow-x:auto;padding:8px 16px;scrollbar-width:none">
-          <button class="filter-chip" onclick="AIAssistantView.sendQuickPrompt('BMW bamperdan nechta qoldi?')">📦 BMW bamper</button>
-          <button class="filter-chip" onclick="AIAssistantView.sendQuickPrompt('Bugun nechta mahsulot sotildi?')">📊 Bugungi sotuv</button>
-          <button class="filter-chip" onclick="AIAssistantView.sendQuickPrompt('Qaysi tovarlar kam qolgan?')">⚠️ Kam qoldiq</button>
+          <button class="filter-chip" onclick="AIAssistantView.sendQuickPrompt('Spark oyna nechta bor?')">🔍 Spark oyna nechta?</button>
+          <button class="filter-chip" onclick="AIAssistantView.sendQuickPrompt('Nexia 1 bakavoy nech pul?')">💰 Nexia 1 bakavoy narxi?</button>
+          <button class="filter-chip" onclick="AIAssistantView.sendQuickPrompt('Do\'kon manzili va ish vaqti?')">📍 Manzil & Ish vaqti</button>
           <button class="filter-chip" onclick="AIAssistantView.sendQuickPrompt('Scannerni och')">📷 Skaner</button>
+          <button class="filter-chip" onclick="AIAssistantView.sendQuickPrompt('Dostavka xizmati bormi?')">🚚 Dostavka</button>
         </div>
 
         <!-- Input Bar -->

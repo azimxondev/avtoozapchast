@@ -92,23 +92,92 @@ const AdminManagementView = {
           </button>
         </div>
 
-        <!-- Admins List Card -->
+        <!-- Admins & Users Dual Card with Tabs -->
         <div class="card">
-          <div class="card-header">
-            <div class="card-title">
-              <span>👥</span> Amaldagi Adminlar Ro'yxati
+          <div class="card-header" style="flex-wrap: wrap; gap: 8px;">
+            <div style="display:flex; gap: 6px;">
+              <button id="admin-tab-btn-admins" class="btn btn-primary btn-sm" onclick="AdminManagementView.switchTab('admins')">
+                👑 Adminlar
+              </button>
+              <button id="admin-tab-btn-users" class="btn btn-secondary btn-sm" onclick="AdminManagementView.switchTab('users')">
+                👥 Barcha Foydalanuvchilar
+              </button>
             </div>
-            <button class="btn btn-ghost btn-sm" onclick="AdminManagementView.loadAdminsList()">Yangilash</button>
+            <button class="btn btn-ghost btn-sm" onclick="AdminManagementView.refreshActiveTab()">🔄 Yangilash</button>
           </div>
-          <div id="admins-list-container">
-            <div style="text-align:center; padding: 24px; color: var(--text-dim); font-size: 12px;">Yuklanmoqda...</div>
+
+          <!-- Admins Tab Container -->
+          <div id="admins-tab-content">
+            <div id="admins-list-container">
+              <div style="text-align:center; padding: 24px; color: var(--text-dim); font-size: 12px;">Yuklanmoqda...</div>
+            </div>
+          </div>
+
+          <!-- Users Tab Container -->
+          <div id="users-tab-content" style="display: none;">
+            <!-- Users Search & Stats -->
+            <div style="padding: 10px 0;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px; font-size:12px; color:var(--text-muted);">
+                <div id="users-stat-pill">Jami: <b>...</b> | Adminlar: <b>...</b> | Mijozlar: <b>...</b></div>
+              </div>
+              <div class="search-box-wrapper" style="margin-bottom: 12px;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="admin-users-search-input" class="search-input" placeholder="Ism, username yoki Telegram ID bo'yicha qidiring...">
+              </div>
+            </div>
+            <div id="all-users-list-container">
+              <div style="text-align:center; padding: 24px; color: var(--text-dim); font-size: 12px;">Yuklanmoqda...</div>
+            </div>
           </div>
         </div>
 
       </div>
     `;
 
+    this.activeSubTab = "admins";
     await this.loadAdminsList();
+    this.setupUsersSearch();
+  },
+
+  activeSubTab: "admins",
+
+  switchTab(tab) {
+    this.activeSubTab = tab;
+    const btnAdmins = document.getElementById("admin-tab-btn-admins");
+    const btnUsers = document.getElementById("admin-tab-btn-users");
+    const contAdmins = document.getElementById("admins-tab-content");
+    const contUsers = document.getElementById("users-tab-content");
+
+    if (tab === "admins") {
+      if (btnAdmins) btnAdmins.className = "btn btn-primary btn-sm";
+      if (btnUsers) btnUsers.className = "btn btn-secondary btn-sm";
+      if (contAdmins) contAdmins.style.display = "block";
+      if (contUsers) contUsers.style.display = "none";
+      this.loadAdminsList();
+    } else {
+      if (btnAdmins) btnAdmins.className = "btn btn-secondary btn-sm";
+      if (btnUsers) btnUsers.className = "btn btn-primary btn-sm";
+      if (contAdmins) contAdmins.style.display = "none";
+      if (contUsers) contUsers.style.display = "block";
+      this.loadUsersList();
+    }
+  },
+
+  refreshActiveTab() {
+    if (this.activeSubTab === "admins") {
+      this.loadAdminsList();
+    } else {
+      this.loadUsersList();
+    }
+  },
+
+  setupUsersSearch() {
+    const input = document.getElementById("admin-users-search-input");
+    if (input) {
+      input.addEventListener("input", Utils.debounce((e) => {
+        this.loadUsersList(e.target.value.trim());
+      }, 350));
+    }
   },
 
   currentInviteToken: null,
@@ -272,6 +341,66 @@ const AdminManagementView = {
                   O'chirish
                 </button>
               ` : ''}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+    } catch (e) {
+      listEl.innerHTML = `<div style="text-align:center; padding:16px; color:#ef4444; font-size:12px;">Yuklashda xatolik: ${e.message}</div>`;
+    }
+  },
+
+  async loadUsersList(q = "") {
+    const listEl = document.getElementById("all-users-list-container");
+    const statPill = document.getElementById("users-stat-pill");
+    if (!listEl) return;
+
+    try {
+      const url = q ? `/admin-management/users?q=${encodeURIComponent(q)}` : `/admin-management/users`;
+      const res = await API.get(url);
+      const users = res.users || [];
+      const counts = res.counts || {};
+
+      if (statPill && counts.total !== undefined) {
+        statPill.innerHTML = `📊 Jami: <b>${counts.total} ta</b> | 👑 Adminlar: <b>${counts.admins} ta</b> | 🛍️ Mijozlar: <b>${counts.customers} ta</b>`;
+      }
+
+      if (!users.length) {
+        listEl.innerHTML = `<div style="text-align:center; padding: 20px; color:#94a3b8; font-size:12px;">Foydalanuvchi topilmadi</div>`;
+        return;
+      }
+
+      listEl.innerHTML = users.map(u => {
+        const isHead = u.role === "HEAD_ADMIN";
+        const isAdmin = u.role === "ADMIN" || isHead;
+        const name = (u.full_name || "").trim() || u.username || `User ${u.telegram_id}`;
+        const uTag = u.username ? `@${u.username}` : `ID: ${u.telegram_id}`;
+        const initial = (u.full_name || u.username || 'U')[0].toUpperCase();
+        const roleLabel = isHead 
+          ? `<span class="badge badge-warning" style="font-size:10px;">👑 Bosh Admin</span>`
+          : (isAdmin ? `<span class="badge badge-primary" style="font-size:10px;">⚡ Admin</span>` : `<span class="badge" style="font-size:10px; background:rgba(148,163,184,0.15); color:#94A3B8;">🛍️ Mijoz</span>`);
+
+        const phone = u.phone_number ? `<span style="color:#38bdf8;">📞 ${Utils.escapeHtml(u.phone_number)}</span>` : '';
+        const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('uz-UZ') : '';
+
+        return `
+          <div class="admin-roster-item" style="padding: 10px 8px; border-bottom: 1px solid var(--border-light);">
+            <div class="admin-user-cell" style="gap: 10px;">
+              <div class="admin-avatar-circle ${isHead ? 'admin-avatar-head' : (isAdmin ? 'admin-avatar-regular' : '')}" style="${!isAdmin ? 'background:rgba(100,116,139,0.2); color:#94a3b8;' : ''}">
+                ${isHead ? '👑' : (isAdmin ? '⚡' : initial)}
+              </div>
+              <div>
+                <div class="admin-meta-title" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                  <span style="font-weight:600; color:var(--text-main);">${Utils.escapeHtml(name)}</span>
+                  ${roleLabel}
+                </div>
+                <div class="admin-meta-sub" style="display:flex; gap:6px; flex-wrap:wrap; font-size:11px; margin-top:2px;">
+                  <span style="color:var(--text-muted);">${Utils.escapeHtml(uTag)}</span>
+                  ${phone ? `<span>·</span> ${phone}` : ''}
+                  ${dateStr ? `<span>·</span> <span style="opacity:0.7;">📅 ${dateStr}</span>` : ''}
+                </div>
+              </div>
             </div>
           </div>
         `;

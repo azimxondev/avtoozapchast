@@ -38,6 +38,7 @@ async def init_database():
                 min_stock INT NOT NULL DEFAULT 2,
                 unit VARCHAR(20) DEFAULT 'dona',
                 shelf_location VARCHAR(100) DEFAULT '',
+                barcode VARCHAR(100) DEFAULT '',
                 is_active SMALLINT DEFAULT 1,
                 is_deleted SMALLINT DEFAULT 0,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -172,6 +173,7 @@ async def init_database():
                 min_stock INTEGER NOT NULL DEFAULT 2,
                 unit TEXT DEFAULT 'dona',
                 shelf_location TEXT DEFAULT '',
+                barcode TEXT DEFAULT '',
                 is_active INTEGER DEFAULT 1,
                 is_deleted INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -278,13 +280,15 @@ async def init_database():
         """)
         await db.sqlite_conn.commit()
 
-    # Auto-migrations for existing databases (phone_number, token_hash)
+    # Auto-migrations for existing databases (phone_number, token_hash, barcode)
     if db.is_pg:
         try:
             await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50) DEFAULT ''")
             await db.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_start_at TIMESTAMPTZ DEFAULT NOW()")
             await db.execute("ALTER TABLE admins ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50) DEFAULT ''")
             await db.execute("ALTER TABLE admin_invitations ADD COLUMN IF NOT EXISTS token_hash VARCHAR(64) DEFAULT ''")
+            await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR(100) DEFAULT ''")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)")
             
             # Migrate products boolean to smallint
             await db.execute("""
@@ -321,7 +325,9 @@ async def init_database():
         for alter_cmd in [
             "ALTER TABLE users ADD COLUMN phone_number TEXT DEFAULT ''",
             "ALTER TABLE admins ADD COLUMN phone_number TEXT DEFAULT ''",
-            "ALTER TABLE admin_invitations ADD COLUMN token_hash TEXT DEFAULT ''"
+            "ALTER TABLE admin_invitations ADD COLUMN token_hash TEXT DEFAULT ''",
+            "ALTER TABLE products ADD COLUMN barcode TEXT DEFAULT ''",
+            "CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)"
         ]:
             try:
                 await db.sqlite_conn.execute(alter_cmd)

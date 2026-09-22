@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="/static/css/admin.css">
   <link rel="stylesheet" href="/static/css/modal.css">
   <link rel="stylesheet" href="/static/css/responsive.css">
+  <link rel="stylesheet" href="/static/css/ai_features.css">
 </head>
 <body>
 
@@ -49,6 +50,12 @@
     </div>
     <div class="header-actions">
       <div id="header-role-badge"></div>
+      <button id="header-scanner-btn" class="btn btn-ghost btn-sm" onclick="ScannerView.open()" title="QR va Barcode Skaner" style="font-size:16px; padding: 4px 8px;">
+        📷
+      </button>
+      <button id="header-ai-btn" class="btn btn-ghost btn-sm" onclick="AIAssistantView.open()" title="AI Ovozli Yordamchi" style="font-size:16px; padding: 4px 8px;">
+        🤖
+      </button>
       <button id="app-refresh-btn" class="btn btn-ghost btn-sm" onclick="App.refreshData()" title="Ma'lumotlarni yangilash (Real-time Refresh)" style="font-size:15px; padding: 4px 8px;">
         🔄
       </button>
@@ -83,6 +90,11 @@
     <div id="modal-root" onclick="event.stopPropagation()"></div>
   </div>
 
+  <!-- Floating AI Assistant Trigger -->
+  <button class="ai-assistant-fab" onclick="AIAssistantView.open()" title="AI Ovozli Yordamchi" aria-label="AI Ovozli Yordamchi">
+    🎙️
+  </button>
+
   <style>
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
@@ -101,6 +113,9 @@
   <script src="/static/js/views/user_catalog.js"></script>
   <script src="/static/js/views/admin_management.js"></script>
   <script src="/static/js/views/settings.js"></script>
+  <script src="/static/js/views/scanner.js"></script>
+  <script src="/static/js/views/voice_product.js"></script>
+  <script src="/static/js/views/ai_assistant.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>

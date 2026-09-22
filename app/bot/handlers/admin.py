@@ -10,22 +10,26 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, CommandObject
 
-from app.config import HEAD_ADMIN_ID, is_head_admin
+from app.config import HEAD_ADMIN_ID, is_head_admin, is_admin
 from app.database.db import db
 from app.bot.keyboards import webapp_admin_keyboard, webapp_head_admin_keyboard
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 router = Router()
 
 async def is_user_admin(telegram_id: int | str | None) -> bool:
-    """Check if user is Head Admin or active Admin."""
+    """Check if user is Head Admin, in ADMIN_IDS, or active Admin in DB."""
     if not telegram_id:
         return False
-    if is_head_admin(telegram_id):
+    if is_head_admin(telegram_id) or is_admin(telegram_id):
         return True
     try:
         tid = int(telegram_id)
         row = await db.fetchrow("SELECT role, status FROM admins WHERE telegram_id = $1", tid)
-        return bool(row and row["status"] == "ACTIVE")
+        if row and row["status"] == "ACTIVE":
+            return True
+        user_row = await db.fetchrow("SELECT role FROM users WHERE telegram_id = $1", tid)
+        return bool(user_row and user_row["role"] in ("HEAD_ADMIN", "SUPER_ADMIN", "ADMIN"))
     except Exception:
         return False
 
@@ -33,7 +37,7 @@ def format_sum(amount: int) -> str:
     """Format sum into readable Uzbek So'm string."""
     return f"{int(amount):,} so'm".replace(",", " ")
 
-async def show_status(target: Message, user_id: int):
+async def show_status(target: Message, user_id: int, edit: bool = False):
     """Ombor va kassa tezkor holati — parallel tezkor so'rovlar."""
     if not await is_user_admin(user_id):
         await target.answer("❌ Ushbu buyruq faqat adminlar uchun.")
@@ -100,14 +104,28 @@ async def show_status(target: Message, user_id: int):
 
     is_head = is_head_admin(user_id)
     kb = webapp_head_admin_keyboard() if is_head else webapp_admin_keyboard()
-    await target.answer(text, reply_markup=kb)
+    if edit:
+        try:
+            await target.edit_text(text, reply_markup=kb, parse_mode="HTML")
+            return
+        except Exception:
+            pass
+    await target.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("admin"))
 @router.message(Command("status"))
 async def cmd_status(message: Message):
-    await show_status(message, message.from_user.id)
+    await show_status(message, message.from_user.id, edit=False)
 
-async def show_stock(target: Message, user_id: int):
+def sub_action_keyboard(refresh_cmd: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🔙 Bosh menyu", callback_data="cmd:status"),
+            InlineKeyboardButton(text="🔄 Yangilash", callback_data=refresh_cmd)
+        ]
+    ])
+
+async def show_stock(target: Message, user_id: int, edit: bool = False):
     """Kam qolgan yoki tugagan mahsulotlar ogohlantirishi."""
     if not await is_user_admin(user_id):
         await target.answer("❌ Ushbu buyruq faqat adminlar uchun.")
@@ -121,8 +139,16 @@ async def show_stock(target: Message, user_id: int):
         LIMIT 15
     """)
 
+    kb = sub_action_keyboard("cmd:stock")
     if not low_items:
-        await target.answer("✅ <b>Barcha mahsulotlar yetarli!</b>\n\nOmborda kam qolgan yoki tugagan tovarlar yo'q.")
+        text = "✅ <b>Barcha mahsulotlar yetarli!</b>\n\nOmborda kam qolgan yoki tugagan tovarlar yo'q."
+        if edit:
+            try:
+                await target.edit_text(text, reply_markup=kb, parse_mode="HTML")
+                return
+            except Exception:
+                pass
+        await target.answer(text, reply_markup=kb, parse_mode="HTML")
         return
 
     text = f"⚠️ <b>KAM QOLGAN VA TUGAGAN TOVARLAR ({len(low_items)} ta ko'rsatilmoqda):</b>\n\n"
@@ -137,14 +163,20 @@ async def show_stock(target: Message, user_id: int):
         )
 
     text += "<i>Yangi partiya kirim qilish uchun ilovadagi Kirim bo'limidan foydalaning.</i>"
-    await target.answer(text)
+    if edit:
+        try:
+            await target.edit_text(text, reply_markup=kb, parse_mode="HTML")
+            return
+        except Exception:
+            pass
+    await target.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("stock"))
 @router.message(Command("inventory"))
 async def cmd_stock(message: Message):
-    await show_stock(message, message.from_user.id)
+    await show_stock(message, message.from_user.id, edit=False)
 
-async def show_balance(target: Message, user_id: int):
+async def show_balance(target: Message, user_id: int, edit: bool = False):
     """Kassa balansi ma'lumotnomasi."""
     if not await is_user_admin(user_id):
         await target.answer("❌ Ushbu buyruq faqat adminlar uchun.")
@@ -163,13 +195,20 @@ async def show_balance(target: Message, user_id: int):
         f"{last_desc}\n\n"
         "Shaffoflik: Kassa summasidagi har bir o'zgarish avtomatik tranzaksiya orqali asoslangan."
     )
-    await target.answer(text)
+    kb = sub_action_keyboard("cmd:balance")
+    if edit:
+        try:
+            await target.edit_text(text, reply_markup=kb, parse_mode="HTML")
+            return
+        except Exception:
+            pass
+    await target.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("balance"))
 async def cmd_balance(message: Message):
-    await show_balance(message, message.from_user.id)
+    await show_balance(message, message.from_user.id, edit=False)
 
-async def show_sales(target: Message, user_id: int):
+async def show_sales(target: Message, user_id: int, edit: bool = False):
     """Bugungi sotuvlar hisoboti."""
     if not await is_user_admin(user_id):
         await target.answer("❌ Ushbu buyruq faqat adminlar uchun.")
@@ -212,13 +251,20 @@ async def show_sales(target: Message, user_id: int):
     else:
         text += "<i>Hozircha sotuvlar qayd etilmagan.</i>\n"
 
-    await target.answer(text)
+    kb = sub_action_keyboard("cmd:sales")
+    if edit:
+        try:
+            await target.edit_text(text, reply_markup=kb, parse_mode="HTML")
+            return
+        except Exception:
+            pass
+    await target.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("sales"))
 async def cmd_sales(message: Message):
-    await show_sales(message, message.from_user.id)
+    await show_sales(message, message.from_user.id, edit=False)
 
-async def show_purchases(target: Message, user_id: int):
+async def show_purchases(target: Message, user_id: int, edit: bool = False):
     """Bugungi xaridlar (kirim) hisoboti — parallel tezkor so'rov."""
     if not await is_user_admin(user_id):
         await target.answer("❌ Ushbu buyruq faqat adminlar uchun.")
@@ -259,11 +305,18 @@ async def show_purchases(target: Message, user_id: int):
     else:
         text += "<i>Hozircha xaridlar qayd etilmagan.</i>\n"
 
-    await target.answer(text)
+    kb = sub_action_keyboard("cmd:purchases")
+    if edit:
+        try:
+            await target.edit_text(text, reply_markup=kb, parse_mode="HTML")
+            return
+        except Exception:
+            pass
+    await target.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("purchases"))
 async def cmd_purchases(message: Message):
-    await show_purchases(message, message.from_user.id)
+    await show_purchases(message, message.from_user.id, edit=False)
 
 @router.message(Command("transactions"))
 async def cmd_transactions(message: Message):
@@ -423,27 +476,27 @@ async def cmd_search(message: Message, command: CommandObject):
 @router.callback_query(F.data == "cmd:status")
 async def cb_status(query: CallbackQuery):
     await query.answer()
-    await show_status(query.message, query.from_user.id)
+    await show_status(query.message, query.from_user.id, edit=True)
 
 @router.callback_query(F.data == "cmd:stock")
 async def cb_stock(query: CallbackQuery):
     await query.answer()
-    await show_stock(query.message, query.from_user.id)
+    await show_stock(query.message, query.from_user.id, edit=True)
 
 @router.callback_query(F.data == "cmd:balance")
 async def cb_balance(query: CallbackQuery):
     await query.answer()
-    await show_balance(query.message, query.from_user.id)
+    await show_balance(query.message, query.from_user.id, edit=True)
 
 @router.callback_query(F.data == "cmd:sales")
 async def cb_sales(query: CallbackQuery):
     await query.answer()
-    await show_sales(query.message, query.from_user.id)
+    await show_sales(query.message, query.from_user.id, edit=True)
 
 @router.callback_query(F.data == "cmd:purchases")
 async def cb_purchases(query: CallbackQuery):
     await query.answer()
-    await show_purchases(query.message, query.from_user.id)
+    await show_purchases(query.message, query.from_user.id, edit=True)
 
 @router.callback_query(F.data == "cmd:search_hint")
 async def cb_search_hint(query: CallbackQuery):

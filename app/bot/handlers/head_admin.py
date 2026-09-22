@@ -8,7 +8,7 @@ import asyncio
 import secrets
 from datetime import datetime, timezone, timedelta
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command, CommandObject
 
 from app.config import HEAD_ADMIN_ID, is_head_admin
@@ -57,8 +57,26 @@ async def check_head_admin(user_id: int | str | None) -> bool:
     except Exception:
         return False
 
-async def show_admins_list(target_message: Message, user_id: int):
-    """Barcha adminlar ro'yxatini chiqarish."""
+def admins_list_keyboard(co_admins: list) -> InlineKeyboardMarkup:
+    buttons = []
+    for a in co_admins:
+        tid = a["telegram_id"]
+        name = (f"{a['first_name']} {a['last_name']}".strip() or a.get("username") or str(tid))[:16]
+        buttons.append([
+            InlineKeyboardButton(text=f"🚫 O'chirish: {name}", callback_data=f"revoke_admin:{tid}")
+        ])
+    buttons.append([
+        InlineKeyboardButton(text="➕ Taklif Havolasi", callback_data="cmd:invite"),
+        InlineKeyboardButton(text="👥 Foydalanuvchilar", callback_data="cmd:users")
+    ])
+    buttons.append([
+        InlineKeyboardButton(text="🔙 Boshqaruv", callback_data="cmd:status"),
+        InlineKeyboardButton(text="🔄 Yangilash", callback_data="cmd:admins")
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+async def show_admins_list(target_message: Message, user_id: int, edit: bool = False):
+    """Barcha adminlar ro'yxatini chiqarish (Yagona Bosh Admin uchun)."""
     if not await check_head_admin(user_id):
         await target_message.answer("❌ Bu buyruq faqat Bosh Admin (Head Admin) uchun ruxsat etilgan.")
         return
@@ -78,26 +96,53 @@ async def show_admins_list(target_message: Message, user_id: int):
     if not co_admins:
         text += "<i>Hozircha qo'shimcha operatsion adminlar mavjud emas.</i>\n\n"
         text += "Yangi admin qo'shish uchun: <code>/invite_admin</code> yoki <code>/addadmin &lt;id&gt;</code>"
-        await target_message.answer(text, reply_markup=webapp_head_admin_keyboard())
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="➕ Taklif Havolasi", callback_data="cmd:invite"),
+                InlineKeyboardButton(text="👥 Foydalanuvchilar", callback_data="cmd:users")
+            ],
+            [
+                InlineKeyboardButton(text="🔙 Boshqaruv", callback_data="cmd:status"),
+                InlineKeyboardButton(text="🔄 Yangilash", callback_data="cmd:admins")
+            ]
+        ])
+        if edit:
+            try:
+                await target_message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+                return
+            except Exception:
+                pass
+        await target_message.answer(text, reply_markup=kb, parse_mode="HTML")
         return
 
     text += f"👨‍💼 <b>Operatsion Adminlar ({len(co_admins)} ta):</b>\n\n"
-    await target_message.answer(text)
-
-    for a in co_admins:
+    for i, a in enumerate(co_admins, 1):
         name = f"{a['first_name']} {a['last_name']}".strip() or "Noma'lum"
-        uname = f"@{a['username']}" if a['username'] else "username yo'q"
-        card_text = (
-            f"👤 <b>{name}</b> ({uname})\n"
-            f"🆔 Telegram ID: <code>{a['telegram_id']}</code>\n"
-            f"🟢 Status: Faol Admin"
+        uname = f"@{a['username']}" if a.get("username") else "username yo'q"
+        joined = format_tashkent_time(a.get("created_at"))
+        joined_str = f" | 📅 {joined}" if joined else ""
+        text += (
+            f"<b>{i}. {name}</b> ({uname})\n"
+            f"   🆔 Telegram ID: <code>{a['telegram_id']}</code> | 🟢 Faol{joined_str}\n\n"
         )
-        await target_message.answer(card_text, reply_markup=admin_action_keyboard(a["telegram_id"]))
+
+    kb = admins_list_keyboard(co_admins)
+    if edit:
+        try:
+            await target_message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+            return
+        except Exception:
+            pass
+    await target_message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("admins"))
+@router.message(Command("adminlar"))
+@router.message(F.text.in_({"Adminlar", "adminlar", "/admins", "/adminlar", "👥 Adminlar"}))
 async def cmd_admins(message: Message):
     """Barcha adminlar ro'yxati (Faqat Bosh Admin uchun)."""
-    await show_admins_list(message, message.from_user.id)
+    if not message.from_user:
+        return
+    await show_admins_list(message, message.from_user.id, edit=False)
 
 async def show_invite_options(target_message: Message, user_id: int):
     """Admin qo'shish variantlarini ko'rsatish."""
@@ -139,7 +184,7 @@ async def cb_invite_by_id(query: CallbackQuery):
 @router.callback_query(F.data == "invite_opt:by_link")
 async def cb_invite_by_link(query: CallbackQuery):
     """15 daqiqalik bir martalik taklif havolasi generatsiya qilish."""
-    if not check_head_admin(query.from_user.id):
+    if not await check_head_admin(query.from_user.id):
         await query.answer("❌ Ruxsat berilmagan.", show_alert=True)
         return
 
@@ -396,7 +441,7 @@ async def cb_revoke_admin(query: CallbackQuery):
 @router.callback_query(F.data == "cmd:admins")
 async def cb_admins(query: CallbackQuery):
     await query.answer()
-    await show_admins_list(query.message, query.from_user.id)
+    await show_admins_list(query.message, query.from_user.id, edit=True)
 
 @router.callback_query(F.data == "cmd:invite")
 async def cb_invite(query: CallbackQuery):
@@ -477,9 +522,13 @@ async def show_users_list(target_message: Message, user_id: int, page: int = 1, 
     await target_message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 @router.message(Command("users"))
-@router.message(F.text.in_({"Foydalanuvchilar", "Foydalanuvchilar ro‘yxati", "/users"}))
+@router.message(Command("userlar"))
+@router.message(Command("foydalanuvchilar"))
+@router.message(F.text.in_({"Users", "users", "userlar", "/users", "Foydalanuvchilar", "Foydalanuvchilar ro‘yxati", "Foydalanuvchilar ro'yxati", "👥 Foydalanuvchilar"}))
 async def cmd_users(message: Message):
     """Foydalanuvchilar ro'yxatini chiqarish."""
+    if not message.from_user:
+        return
     await show_users_list(message, message.from_user.id, page=1, edit=False)
 
 @router.callback_query(F.data == "cmd:users")

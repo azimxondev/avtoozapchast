@@ -23,12 +23,18 @@ const ProductsView = {
     container.innerHTML = `
       <!-- Toolbar -->
       <div class="catalog-toolbar">
-        <div style="display:flex;gap:10px;align-items:center">
-          <div class="search-box-wrapper">
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="search-box-wrapper" style="flex:1">
             <span class="search-icon">🔍</span>
             <input type="text" id="product-search-input" class="search-input" placeholder="Mahsulot nomi, SKU, avtomobil modeli..." value="${Utils.escapeHtml(this.state.q)}">
           </div>
+          <button class="btn btn-secondary" style="flex-shrink:0;padding:8px 12px" onclick="ScannerView.open()" title="Shtrix-kod yoki QR skanerlash">
+            <span>📷</span> Skaner
+          </button>
           ${State.isStaffOrAdmin() ? `
+          <button class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;background:rgba(37,99,235,0.15);color:var(--brand-blue);border:1px solid rgba(37,99,235,0.3)" onclick="VoiceProductAssistant.open()" title="Ovoz orqali mahsulot qo'shish">
+            <span>🎙️</span> Ovozli
+          </button>
           <button class="btn btn-primary" style="flex-shrink:0" onclick="ProductsView.openAddModal()">
             <span>➕</span> Qo'shish
           </button>
@@ -159,7 +165,7 @@ const ProductsView = {
     return `
       <div class="product-card" onclick="ProductsView.openDetailModal(${p.id})">
         <div class="product-image-box">
-          <img src="${p.image_url || 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=400'}" alt="${Utils.escapeHtml(p.name)}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=400'">
+          <img src="${p.image_url || 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600'}" alt="${Utils.escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600'">
           <span class="product-badge-condition ${p.condition === 'NEW' ? 'condition-new' : 'condition-used'}">
             ${p.condition === 'NEW' ? 'Yangi' : 'Ishlatilgan'}
           </span>
@@ -255,8 +261,8 @@ const ProductsView = {
             <button class="modal-close-btn" onclick="ProductsView.closeModal()">✕</button>
           </div>
           <div class="modal-body">
-            <div style="height:180px;border-radius:var(--radius-md);overflow:hidden;margin-bottom:16px;background:var(--bg-surface-elevated)">
-              <img src="${product.image_url || 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=600'}" style="width:100%;height:100%;object-fit:cover">
+            <div style="height:190px;border-radius:var(--radius-md);overflow:hidden;margin-bottom:16px;background:linear-gradient(180deg, #131d31 0%, #0a0f1d 100%)">
+              <img src="${product.image_url || 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600'}" alt="${Utils.escapeHtml(product.name)}" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600'">
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
@@ -409,6 +415,14 @@ const ProductsView = {
             </div>
 
             <div class="form-group">
+              <label class="form-label">Shtrix-kod / Barcode (Ixtiyoriy)</label>
+              <div style="display:flex;gap:6px">
+                <input type="text" name="barcode" class="form-control" placeholder="4780001234567...">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="ScannerView.open()" title="Kameradan skanerlash">📷</button>
+              </div>
+            </div>
+
+            <div class="form-group">
               <label class="form-label">Rasm havolasi (URL)</label>
               <input type="url" name="image_url" class="form-control" placeholder="https://images.unsplash.com/...">
             </div>
@@ -449,6 +463,7 @@ const ProductsView = {
       quantity: parseInt(formData.get("quantity") || 0),
       min_stock: parseInt(formData.get("min_stock") || 2),
       shelf_location: formData.get("shelf_location") || "",
+      barcode: formData.get("barcode") || "",
       condition: formData.get("condition") || "NEW",
       image_url: formData.get("image_url") || "",
       description: formData.get("description") || ""
@@ -523,6 +538,14 @@ const ProductsView = {
               </div>
 
               <div class="form-group">
+                <label class="form-label">Shtrix-kod / Barcode</label>
+                <div style="display:flex;gap:6px">
+                  <input type="text" name="barcode" class="form-control" value="${Utils.escapeHtml(p.barcode || '')}">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="ScannerView.open()" title="Skaner">📷</button>
+                </div>
+              </div>
+
+              <div class="form-group">
                 <label class="form-label">Tavsif</label>
                 <textarea name="description" class="form-control" rows="2">${Utils.escapeHtml(p.description || '')}</textarea>
               </div>
@@ -554,6 +577,7 @@ const ProductsView = {
       purchase_price: parseInt(formData.get("purchase_price")),
       selling_price: parseInt(formData.get("selling_price")),
       shelf_location: formData.get("shelf_location") || "",
+      barcode: formData.get("barcode") || "",
       min_stock: parseInt(formData.get("min_stock") || 2),
       description: formData.get("description") || ""
     };

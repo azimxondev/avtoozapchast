@@ -12,6 +12,8 @@ from app.api.analytics import router as analytics_router
 from app.api.settings import router as settings_router
 from app.api.audit import router as audit_router
 from app.api.admin_management import router as admin_management_router
+from app.api.scanner import router as scanner_router
+from app.api.ai_voice import router as ai_voice_router
 
 api_router = APIRouter(prefix="/api")
 
@@ -29,3 +31,5 @@ api_router.include_router(analytics_router)
 api_router.include_router(settings_router)
 api_router.include_router(audit_router)
 api_router.include_router(admin_management_router)
+api_router.include_router(scanner_router)
+api_router.include_router(ai_voice_router)

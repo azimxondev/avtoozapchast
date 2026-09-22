@@ -79,21 +79,30 @@ async def lifespan(app: FastAPI):
                         BotCommand(command="users", description="👥 Foydalanuvchilar ro'yxati va soni"),
                         BotCommand(command="help", description="ℹ️ Yordam va qo'llanma")
                     ]
+                    from app.config import HEAD_ADMIN_ID, ADMIN_IDS
+                    admin_targets = set(ADMIN_IDS)
                     if HEAD_ADMIN_ID:
+                        admin_targets.add(HEAD_ADMIN_ID)
+                    for aid in admin_targets:
                         try:
-                            await bot_instance.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=HEAD_ADMIN_ID))
+                            await bot_instance.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=aid))
                         except Exception:
                             pass
-                    print("[BOT] Telegram buyruqlari muvaffaqiyatli ro'yxatga olindi (User va Admin alohida).")
+                    print("[BOT] Telegram buyruqlari muvaffaqiyatli ro'yxatga olindi (User va barcha Adminlar).")
                 except Exception as c_err:
                     print(f"[BOT COMMANDS NOTE] {c_err}")
 
-                try:
-                    await dp.start_polling(bot_instance, allowed_updates=dp.resolve_used_update_types())
-                except asyncio.CancelledError:
-                    pass
-                except Exception as b_err:
-                    print(f"[BOT ERROR] Polling xatosi: {b_err}")
+                while True:
+                    try:
+                        await bot_instance.delete_webhook(drop_pending_updates=True)
+                        print("[BOT] Webhook tozalandi, polling boshlanmoqda...")
+                        await dp.start_polling(bot_instance, allowed_updates=dp.resolve_used_update_types())
+                        break
+                    except asyncio.CancelledError:
+                        break
+                    except Exception as b_err:
+                        print(f"[BOT ERROR] Polling xatosi: {b_err}. 5 soniyada qayta urinilmoqda...")
+                        await asyncio.sleep(5)
 
             _bot_task = asyncio.create_task(_start_bot_polling())
             print("[BOT] Telegram bot polling ishga tushdi.")

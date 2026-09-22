@@ -30,6 +30,7 @@ class ProductCreate(BaseModel):
     min_stock: Optional[int] = 2
     unit: Optional[str] = "dona"
     shelf_location: Optional[str] = ""
+    barcode: Optional[str] = ""
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
@@ -47,6 +48,7 @@ class ProductUpdate(BaseModel):
     min_stock: Optional[int] = None
     unit: Optional[str] = None
     shelf_location: Optional[str] = None
+    barcode: Optional[str] = None
     is_active: Optional[bool] = None
 
 @router.get("/meta/cars")
@@ -88,6 +90,7 @@ async def list_products(
         conditions.append(f"""(
             p.name LIKE ${p_idx} OR
             p.sku LIKE ${p_idx} OR
+            p.barcode LIKE ${p_idx} OR
             p.brand LIKE ${p_idx} OR
             p.car_brand LIKE ${p_idx} OR
             p.car_model LIKE ${p_idx} OR
@@ -254,8 +257,8 @@ async def create_product(payload: ProductCreate, admin: CurrentUser = Depends(re
         INSERT INTO products (
             name, sku, category_id, brand, car_brand, car_model, compatible_years,
             description, image_url, condition, purchase_price, selling_price,
-            quantity, min_stock, unit, shelf_location, is_active, is_deleted
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 1, 0)
+            quantity, min_stock, unit, shelf_location, barcode, is_active, is_deleted
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 1, 0)
     """,
         payload.name.strip(), payload.sku.strip(), payload.category_id,
         payload.brand.strip() if payload.brand else "",
@@ -266,7 +269,8 @@ async def create_product(payload: ProductCreate, admin: CurrentUser = Depends(re
         payload.image_url.strip() if payload.image_url else "",
         payload.condition, payload.purchase_price, payload.selling_price,
         payload.quantity, payload.min_stock or 2, payload.unit or "dona",
-        payload.shelf_location.strip() if payload.shelf_location else ""
+        payload.shelf_location.strip() if payload.shelf_location else "",
+        payload.barcode.strip() if payload.barcode else ""
     )
 
     # If initial quantity > 0 and purchase price > 0, record initial stock-in transaction
@@ -331,6 +335,7 @@ async def update_product(product_id: int, payload: ProductUpdate, admin: Current
     min_s = payload.min_stock if payload.min_stock is not None else current["min_stock"]
     unit = payload.unit if payload.unit is not None else current["unit"]
     shelf = payload.shelf_location.strip() if payload.shelf_location is not None else current["shelf_location"]
+    barcode = payload.barcode.strip() if payload.barcode is not None else (current.get("barcode") or "")
     active = int(payload.is_active) if payload.is_active is not None else current["is_active"]
 
     await db.execute("""
@@ -338,9 +343,9 @@ async def update_product(product_id: int, payload: ProductUpdate, admin: Current
             name = $2, sku = $3, category_id = $4, brand = $5, car_brand = $6,
             car_model = $7, compatible_years = $8, description = $9, image_url = $10,
             condition = $11, purchase_price = $12, selling_price = $13, min_stock = $14,
-            unit = $15, shelf_location = $16, is_active = $17, updated_at = CURRENT_TIMESTAMP
+            unit = $15, shelf_location = $16, barcode = $17, is_active = $18, updated_at = CURRENT_TIMESTAMP
         WHERE id = $1
-    """, product_id, name, sku, cat_id, brand, car_brand, car_model, compat, desc, img, cond, p_price, s_price, min_s, unit, shelf, active)
+    """, product_id, name, sku, cat_id, brand, car_brand, car_model, compat, desc, img, cond, p_price, s_price, min_s, unit, shelf, barcode, active)
 
     # Audit log
     changes = []

@@ -54,6 +54,43 @@ async def list_admins(user: CurrentUser = Depends(require_super_admin)):
         })
     return {"status": "success", "admins": admins_list}
 
+@router.get("/users")
+async def list_all_users_for_head_admin(q: Optional[str] = None, user: CurrentUser = Depends(require_super_admin)):
+    """Barcha foydalanuvchilar va adminlar ro'yxati va statistikasi (Faqat Bosh Admin)."""
+    import asyncio
+    if q and q.strip():
+        pattern = f"%{q.strip()}%"
+        rows = await db.fetch("""
+            SELECT id, telegram_id, full_name, username, phone_number, role, is_active, created_at, last_start_at
+            FROM users
+            WHERE full_name LIKE $1 OR username LIKE $1 OR phone_number LIKE $1 OR CAST(telegram_id AS TEXT) LIKE $1
+            ORDER BY id DESC
+            LIMIT 100
+        """, pattern)
+    else:
+        rows = await db.fetch("""
+            SELECT id, telegram_id, full_name, username, phone_number, role, is_active, created_at, last_start_at
+            FROM users
+            ORDER BY id DESC
+            LIMIT 100
+        """)
+
+    total_count, admins_count, customers_count = await asyncio.gather(
+        db.fetchval("SELECT COUNT(*) FROM users"),
+        db.fetchval("SELECT COUNT(*) FROM users WHERE role IN ('HEAD_ADMIN', 'ADMIN')"),
+        db.fetchval("SELECT COUNT(*) FROM users WHERE role = 'USER' OR role IS NULL")
+    )
+
+    return {
+        "status": "success",
+        "counts": {
+            "total": total_count or 0,
+            "admins": admins_count or 0,
+            "customers": customers_count or 0
+        },
+        "users": [dict(r) for r in rows]
+    }
+
 @router.post("/admins/by-id")
 async def add_admin_by_id(data: AddAdminByIdRequest, user: CurrentUser = Depends(require_super_admin)):
     """Telegram ID orqali yangi admin qo'shish (Faqat Bosh Admin)."""
@@ -122,7 +159,7 @@ async def revoke_admin(telegram_id: int, user: CurrentUser = Depends(require_sup
     await db.execute("""
         INSERT INTO audit_logs (user_id, user_name, action, target_entity, target_id, new_values)
         VALUES ($1, $2, 'ADMIN_REVOKED', 'admin', $3, 'Admin huquqi bekor qilindi')
-    """, user.telegram_id, user.full_name, telegram_id)
+    """, user.telegram_id, user.full_name, str(telegram_id))
 
     return {
         "status": "success",

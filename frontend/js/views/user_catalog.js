@@ -115,7 +115,7 @@ const UserCatalogView = {
           ${items.map(p => `
             <div class="product-card" onclick="ProductsView.openDetailModal(${p.id})">
               <div class="product-image-box">
-                <img src="${p.image_url || 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=400'}" alt="${Utils.escapeHtml(p.name)}" loading="lazy">
+                <img src="${p.image_url || 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600'}" alt="${Utils.escapeHtml(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600';">
                 <span class="product-badge-condition ${p.condition === 'NEW' ? 'condition-new' : 'condition-used'}">
                   ${p.condition === 'NEW' ? 'Yangi' : 'Ishlatilgan'}
                 </span>

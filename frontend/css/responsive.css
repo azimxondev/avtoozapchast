@@ -41,6 +41,40 @@
 
 /* Mobile Devices (max 480px) */
 @media (max-width: 480px) {
+  .app-header {
+    padding: 0 10px;
+    height: 56px;
+  }
+
+  .header-brand {
+    gap: 7px;
+  }
+
+  .header-logo-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .header-title-group h1 {
+    font-size: 14px;
+  }
+
+  .header-title-group span {
+    display: none;
+  }
+
+  .header-actions {
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .header-actions .btn-ghost {
+    padding: 3px 5px !important;
+    min-width: 28px;
+    height: 28px;
+  }
+
   .app-container {
     padding: 12px 12px 90px 12px;
   }

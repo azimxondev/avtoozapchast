@@ -78,29 +78,39 @@ const App = {
     const badge = document.getElementById("header-role-badge");
     if (!badge) return;
 
+    const actual = State.actualRole;
+
+    // Faqat Bosh Admin va Adminlar uchun ko'rinadi — Oddiy mijozlar uchun yashiriladi
+    if (actual === "USER" && !State.isUserPreview) {
+      badge.style.display = "none";
+      badge.innerHTML = "";
+      badge.onclick = null;
+      return;
+    }
+
+    badge.style.display = "inline-flex";
+
     if (State.isUserPreview) {
       badge.className = "role-badge role-preview-active clickable";
-      badge.innerHTML = `<span>👁️ Mijoz Rejimi</span> <span style="font-size:10px; opacity:0.85; margin-left:4px;">↩ Qaytish</span>`;
+      badge.innerHTML = `<span class="preview-dot"></span><span>Mijoz rejimi</span> <span class="badge-arrow">↩</span>`;
       badge.title = "Boshqaruv (Admin) rejimiga qaytish uchun bosing";
       badge.onclick = () => App.toggleUserPreview();
       return;
     }
 
-    const actual = State.actualRole;
     if (actual === "HEAD_ADMIN" || actual === "SUPER_ADMIN") {
       badge.className = "role-badge role-super-admin clickable";
-      badge.innerHTML = `<span>👑 Bosh Admin</span> <span style="font-size:11px; margin-left:4px; opacity:0.75;">⇄</span>`;
+      badge.innerHTML = `<span>👑 Bosh Admin</span> <span class="badge-arrow">⇄</span>`;
       badge.title = "Mijoz (Xaridor) ko'rinishiga o'tish uchun bosing";
       badge.onclick = () => App.toggleUserPreview();
     } else if (actual === "ADMIN" || actual === "STAFF") {
       badge.className = "role-badge role-admin clickable";
-      badge.innerHTML = `<span>⚡ Admin</span> <span style="font-size:11px; margin-left:4px; opacity:0.75;">⇄</span>`;
+      badge.innerHTML = `<span>⚡ Admin</span> <span class="badge-arrow">⇄</span>`;
       badge.title = "Mijoz (Xaridor) ko'rinishiga o'tish uchun bosing";
       badge.onclick = () => App.toggleUserPreview();
     } else {
-      badge.className = "role-badge role-user";
-      badge.innerHTML = `<span>👤 Mijoz</span>`;
-      badge.title = "Mijoz profili";
+      badge.style.display = "none";
+      badge.innerHTML = "";
       badge.onclick = null;
     }
   },

@@ -11,6 +11,7 @@ from aiogram.filters import CommandStart, Command, CommandObject
 from app.config import (
     HEAD_ADMIN_ID,
     is_head_admin,
+    is_admin,
     SHOP_NAME,
     SHOP_PHONE,
     SHOP_TELEGRAM,
@@ -31,9 +32,17 @@ async def get_user_role(telegram_id: int) -> str:
     """Determine role: 'HEAD_ADMIN', 'ADMIN', or 'USER'."""
     if is_head_admin(telegram_id):
         return "HEAD_ADMIN"
-    row = await db.fetchrow("SELECT role, status FROM admins WHERE telegram_id = $1", telegram_id)
-    if row and row["status"] == "ACTIVE":
-        return row["role"]
+    if is_admin(telegram_id):
+        return "ADMIN"
+    try:
+        row = await db.fetchrow("SELECT role, status FROM admins WHERE telegram_id = $1", telegram_id)
+        if row and row["status"] == "ACTIVE":
+            return row["role"]
+        u_row = await db.fetchrow("SELECT role FROM users WHERE telegram_id = $1", telegram_id)
+        if u_row and u_row["role"] in ("HEAD_ADMIN", "SUPER_ADMIN", "ADMIN"):
+            return "ADMIN"
+    except Exception:
+        pass
     return "USER"
 
 @router.message(CommandStart(deep_link=True))
@@ -147,7 +156,7 @@ async def cmd_start_deep_link(message: Message, command: CommandObject):
     await db.execute("""
         INSERT INTO audit_logs (user_id, user_name, action, target_entity, target_id, new_values)
         VALUES ($1, $2, 'ADMIN_INVITE_ACCEPTED', 'admin', $3, $4)
-    """, user.id, user.full_name, user.id, f"Accepted invite token: {masked_tok}")
+    """, user.id, user.full_name, str(user.id), f"Accepted invite token: {masked_tok}")
 
     # 5. Bosh Adminga xabarnoma
     await notify_new_admin_joined(user.full_name, user.id, user.username or "")
@@ -161,12 +170,17 @@ async def cmd_start_deep_link(message: Message, command: CommandObject):
     )
 
 @router.message(CommandStart())
+@router.message(Command("start"))
+@router.message(Command("menu"))
+@router.message(F.text.in_({"Start", "start", "/start", "Menyu", "Bosh sahifa", "🏠 Bosh sahifa"}))
 async def cmd_start(message: Message):
     """
     Oddiy /start buyrug'i:
     - Bosh Admin / Admin: Ombor & Buxgalteriya ERP boshqaruvi
     - Mijoz: Avtomobil ehtiyot qismlari katalogi
     """
+    if not message.from_user:
+        return
     user = message.from_user
     role = await get_user_role(user.id)
 
@@ -227,8 +241,12 @@ async def cmd_start(message: Message):
         await message.answer(welcome_text)
 
 @router.message(Command("help"))
+@router.message(Command("yordam"))
+@router.message(F.text.in_({"Yordam", "yordam", "Help", "/help", "ℹ️ Yordam"}))
 async def cmd_help(message: Message):
     """Rolga mos yordam ma'lumotnomasi."""
+    if not message.from_user:
+        return
     role = await get_user_role(message.from_user.id)
     
     text = "📋 <b>AUTO SKLAD — BOT BUYRUQLARI</b>\n\n"
@@ -261,8 +279,12 @@ async def cmd_help(message: Message):
     await message.answer(text)
 
 @router.message(Command("info"))
+@router.message(Command("manzil"))
+@router.message(F.text.in_({"Manzil", "manzil", "Info", "/info", "📍 Manzil & Ish vaqti"}))
 async def cmd_info(message: Message):
     """Do'kon haqida to'liq ma'lumot."""
+    if not message.from_user:
+        return
     text = (
         f"ℹ️ <b>{SHOP_NAME} HAQIDA MA'LUMOT</b>\n\n"
         f"📍 <b>Manzil:</b> {SHOP_ADDRESS}\n"
@@ -275,8 +297,12 @@ async def cmd_info(message: Message):
     await message.answer(text)
 
 @router.message(Command("contact"))
+@router.message(Command("aloqa"))
+@router.message(F.text.in_({"Aloqa", "aloqa", "Contact", "/contact", "📞 Sotuvchi bilan bog'lanish"}))
 async def cmd_contact(message: Message):
     """Sotuvchi bilan bog'lanish."""
+    if not message.from_user:
+        return
     text = (
         f"📞 <b>SOTUVCHI BILAN BOG'LANISH</b>\n\n"
         f"Savollaringiz yoki buyurtmalar bo'lsa, quyidagi raqam yoki Telegram orqali murojaat qilishingiz mumkin:\n\n"
@@ -291,8 +317,12 @@ from app.bot.keyboards import contact_request_keyboard
 from aiogram.types import ReplyKeyboardRemove
 
 @router.message(Command("profile"))
+@router.message(Command("profil"))
+@router.message(F.text.in_({"Profil", "profil", "Profile", "/profile", "👤 Profilim"}))
 async def cmd_profile(message: Message):
     """Foydalanuvchi profili va telefon raqami holati."""
+    if not message.from_user:
+        return
     user = message.from_user
     role = await get_user_role(user.id)
     
@@ -365,7 +395,7 @@ async def handle_contact_verification(message: Message):
     await db.execute("""
         INSERT INTO audit_logs (user_id, user_name, action, target_entity, target_id, new_values)
         VALUES ($1, $2, 'PHONE_VERIFIED', 'user', $3, $4)
-    """, message.from_user.id, message.from_user.full_name, message.from_user.id, f"Telefon tasdiqlandi: {masked}")
+    """, message.from_user.id, message.from_user.full_name, str(message.from_user.id), f"Telefon tasdiqlandi: {masked}")
 
     await message.answer(
         f"✅ <b>Telefon raqamingiz muvaffaqiyatli tasdiqlandi:</b> <code>{masked}</code>\n\n"
@@ -394,3 +424,75 @@ async def cb_info(query: CallbackQuery):
 async def cb_profile(query: CallbackQuery):
     await query.answer()
     await cmd_profile(query.message)
+
+# ==============================================================================
+# AI VOICE & SCANNER BOT EXTENSIONS
+# ==============================================================================
+
+@router.message(Command("scan"))
+@router.message(Command("scanner"))
+async def cmd_scanner(message: Message):
+    """Skaner yo'riqnomasi va WebApp orqali kamerani ochish."""
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+    from app.config import WEBAPP_URL
+    role = await get_user_role(message.from_user.id)
+    url = f"{WEBAPP_URL}/?role={role.lower()}" if WEBAPP_URL else "http://localhost:8000"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📷 Skanerni ochish (Kamera)", web_app=WebAppInfo(url=url))]
+    ])
+    await message.answer(
+        "📷 <b>QR va Shtrix-kod Skaneri</b>\n\n"
+        "Mahsulot shtrix-kodini yoki QR kodini tezkor skanerlash orqali uning qoldig'i, "
+        "narxi va ombordagi joylashuvini aniqlashingiz mumkin.\n\n"
+        "Skanerni ochish uchun quyidagi tugmani bosing:",
+        reply_markup=kb
+    )
+
+@router.message(Command("ai"))
+async def cmd_ai_assistant(message: Message, command: CommandObject):
+    """Telegram bot orqali AI Yordamchiga savol berish."""
+    query = command.args or ""
+    if not query.strip():
+        await message.answer(
+            "🤖 <b>Avto Sklad AI Ovozli Yordamchi</b>\n\n"
+            "Savolingizni /ai buyrug'idan so'ng yozing yoki to'g'ridan-to'g'ri ovozli xabar (Voice) yuboring.\n\n"
+            "Masalan:\n"
+            "• <code>/ai BMW bamperdan nechta qoldi?</code>\n"
+            "• <code>/ai Bugun nechta mahsulot sotildi?</code>\n"
+            "• <code>/ai Kam qolgan tovarlarni ko'rsat</code>"
+        )
+        return
+
+    from app.services.ai_service import process_assistant_query
+    from app.api.auth import CurrentUser
+
+    role = await get_user_role(message.from_user.id)
+    current_user = CurrentUser(
+        id=message.from_user.id,
+        telegram_id=message.from_user.id,
+        full_name=message.from_user.full_name,
+        username=message.from_user.username or "",
+        role=role,
+        is_admin=role in ("HEAD_ADMIN", "ADMIN"),
+        is_super_admin=role == "HEAD_ADMIN"
+    )
+
+    res = await process_assistant_query(query, current_user)
+    await message.answer(res["answer"])
+
+@router.message(F.voice)
+async def handle_bot_voice_message(message: Message):
+    """Ovozli xabarlar uchun yo'riqnoma va WebApp AI yordamchisiga yo'naltirish."""
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+    from app.config import WEBAPP_URL
+    role = await get_user_role(message.from_user.id)
+    url = f"{WEBAPP_URL}/?role={role.lower()}" if WEBAPP_URL else "http://localhost:8000"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎙️ AI Ovozli Yordamchini ochish", web_app=WebAppInfo(url=url))]
+    ])
+    await message.answer(
+        "🎙️ <b>Ovozli xabar qabul qilindi!</b>\n\n"
+        "Ovoz orqali mahsulot qo'shish va AI ovozli suhbatidan to'liq foydalanish uchun "
+        "Avto Sklad Mini App'dagi ovozli yordamchini oching:",
+        reply_markup=kb
+    )

@@ -19,11 +19,25 @@ from app.config import (
 )
 
 CAR_BRANDS = [
-    "BMW", "MERCEDES", "AUDI", "CHEVROLET", "DAEWOO", "TOYOTA", "HYUNDAI",
-    "KIA", "VOLKSWAGEN", "NISSAN", "HONDA", "LADA", "BYD", "GEELY", "CHERY"
+    "BMW", "MERCEDES", "MERCEDES-BENZ", "AUDI", "CHEVROLET", "DAEWOO", "TOYOTA", "HYUNDAI",
+    "KIA", "VOLKSWAGEN", "NISSAN", "HONDA", "LADA", "BYD", "GEELY", "CHERY", "TESLA",
+    "LEXUS", "FORD", "MAZDA", "SKODA", "RENAULT", "OPEL", "MITSUBISHI", "LAND ROVER",
+    "RANGE ROVER", "PORSCHE", "VOLVO", "SUBARU", "HAVAL", "CHANGAN", "JAC", "JETOUR",
+    "EXEED", "GAC", "TANK", "ZEEKR", "LIXIANG", "LI AUTO", "AVATR", "FERRARI",
+    "LAMBORGHINI", "PEUGEOT", "CITROEN", "FIAT", "SUZUKI", "INFINITI", "ACURA",
+    "GENESIS", "CADILLAC", "DODGE", "JEEP", "CHRYSLER"
 ]
 
 CAR_MODELS = {
+    "MODEL 3": ("Tesla", "Model 3"),
+    "MODEL Y": ("Tesla", "Model Y"),
+    "MODEL S": ("Tesla", "Model S"),
+    "MODEL X": ("Tesla", "Model X"),
+    "TAHOE": ("Chevrolet", "Tahoe"),
+    "EQUINOX": ("Chevrolet", "Equinox"),
+    "TRAILBLAZER": ("Chevrolet", "Trailblazer"),
+    "TRAVERSE": ("Chevrolet", "Traverse"),
+    "MONZA": ("Chevrolet", "Monza"),
     "COBALT": ("Chevrolet", "Cobalt"),
     "KOBALT": ("Chevrolet", "Cobalt"),
     "GENTRA": ("Chevrolet", "Gentra"),
@@ -92,6 +106,16 @@ CAR_MODELS = {
     "SONG": ("BYD", "Song Plus")
 }
 
+# Modifiers for part position (old, orqa, chap, o'ng, tepa, past)
+POSITION_KEYWORDS = {
+    "old": ["old", "oldi", "oldinda", "oldingi", "front", "передний", "передняя", "переднее", "передние"],
+    "orqa": ["orqa", "orqasi", "orqadagi", "orqangi", "rear", "back", "zadniy", "задний", "задняя", "заднее", "задние"],
+    "chap": ["chap", "chapdagi", "chapi", "left", "левый", "левая", "левое", "левые"],
+    "o'ng": ["o'ng", "ong", "o'ngdagi", "ongdagi", "o'ngi", "ongi", "right", "правый", "правая", "правое", "правые"],
+    "tepa": ["tepa", "tepasi", "yuqori", "top", "upper", "верхний", "верхняя"],
+    "past": ["past", "pastki", "pastdagi", "bottom", "lower", "нижний", "нижняя", "lip"]
+}
+
 PART_KEYWORDS = {
     # Yon ko'zgu & Bakavoy
     "bakavoy": ("Yon Ko'zgusi (Bakavoy)", ["kuzov", "body", "oyna", "bakavoy", "zerkalo"]),
@@ -126,6 +150,7 @@ PART_KEYWORDS = {
     "fara": ("Fara", ["optika", "optics", "chiroq", "fara"]),
     "farasi": ("Fara", ["optika", "optics", "chiroq", "fara"]),
     "фара": ("Fara", ["optika", "optics", "chiroq", "fara"]),
+    "фары": ("Fara", ["optika", "optics", "chiroq", "fara"]),
     "headlight": ("Fara", ["optika", "optics", "chiroq", "fara"]),
     "chiroq": ("Chiroq", ["optika", "optics", "chiroq"]),
     "stop": ("Stop signal", ["optika", "optics"]),
@@ -139,14 +164,23 @@ PART_KEYWORDS = {
     "капот": ("Kapot", ["kuzov", "body"]),
     "hood": ("Kapot", ["kuzov", "body"]),
     "krilo": ("Krilo", ["kuzov", "body"]),
+    "krilosi": ("Krilo", ["kuzov", "body"]),
     "qanot": ("Krilo (Qanot)", ["kuzov", "body"]),
+    "qanoti": ("Krilo (Qanot)", ["kuzov", "body"]),
     "крыло": ("Krilo", ["kuzov", "body"]),
     "fender": ("Krilo", ["kuzov", "body"]),
+    "podkrilnik": ("Podkrilnik", ["kuzov", "body"]),
+    "подкрыльник": ("Podkrilnik", ["kuzov", "body"]),
     "eshik": ("Eshik", ["kuzov", "body"]),
+    "eshigi": ("Eshik", ["kuzov", "body"]),
     "дверь": ("Eshik", ["kuzov", "body"]),
     "door": ("Eshik", ["kuzov", "body"]),
     "panjara": ("Panjara (Reshyotka)", ["kuzov", "body"]),
     "gril": ("Panjara (Gril)", ["kuzov", "body"]),
+    "reshyotka": ("Panjara (Reshyotka)", ["kuzov", "body"]),
+    "решетка": ("Panjara (Reshyotka)", ["kuzov", "body"]),
+    "lip": ("Bamper Lip", ["kuzov", "body", "bamper"]),
+    "spoyler": ("Spoyler", ["kuzov", "body"]),
     
     # Tormoz
     "kalodka": ("Tormoz kalodkasi", ["tormoz", "brake"]),
@@ -169,6 +203,8 @@ PART_KEYWORDS = {
     "stoyka": ("Stoyka", ["xodovoy", "podveska"]),
     "granata": ("Granata (SHRUS)", ["transmissiya", "shrus"]),
     "shrus": ("Granata (SHRUS)", ["transmissiya", "shrus"]),
+    "rychag": ("Rychag", ["xodovoy", "podveska"]),
+    "saylentblok": ("Saylentblok", ["xodovoy", "podveska"]),
     
     # Dvigatel & Sovutish
     "radiator": ("Radiator", ["sovutish", "radiator", "cooling"]),
@@ -193,6 +229,12 @@ PART_KEYWORDS = {
     "свеча": ("Svecha", ["elektr", "spark"]),
     "pompa": ("Pompa (Suv nasosi)", ["sovutish", "pump"]),
     "nasos": ("Nasos / Pompa", ["dvigatel", "pump"]),
+    "glushitel": ("Glushitel", ["dvigatel", "glushitel"]),
+    "rul": ("Rul / Boshqaruv", ["rul", "steering"]),
+    "shina": ("Shina / Balon", ["shina", "balon", "tire"]),
+    "balon": ("Shina / Balon", ["shina", "balon", "tire"]),
+    "pokrishka": ("Shina / Balon", ["shina", "balon", "tire"]),
+    "tire": ("Shina / Balon", ["shina", "balon", "tire"]),
 }
 
 # Prompt injection blocklist
@@ -267,10 +309,56 @@ def normalize_phonetic_uzbek(text: str) -> str:
         (r"\bstok\b", "stock"),
         (r"\bproduc?tlar?\b", "mahsulotlar"),
         (r"\btovarlar\b", "mahsulotlar"),
+        (r"\boldi\b", "old"),
+        (r"\borqasi\b", "orqa"),
+        (r"\bbamperi\b", "bamper"),
+        (r"\bfarasi\b", "fara"),
+        (r"\bkapoti\b", "kapot"),
+        (r"\beshigi\b", "eshik"),
+        (r"\boynasi\b", "oyna"),
+        (r"\bkrilosi\b", "krilo"),
+        (r"\bqanoti\b", "qanot"),
+        (r"\bпередний\b", "old"),
+        (r"\bпередняя\b", "old"),
+        (r"\bзадний\b", "orqa"),
+        (r"\bзадняя\b", "orqa"),
+        (r"\bбампер\b", "bamper"),
+        (r"\bфара\b", "fara"),
+        (r"\bкапот\b", "kapot"),
+        (r"\bдверь\b", "eshik"),
+        (r"\bстекло\b", "oyna"),
+        (r"\bзеркало\b", "bakavoy"),
+        (r"\bколодки\b", "kalodka"),
     ]
     for pattern, repl in replacements:
         t = re.sub(pattern, repl, t, flags=re.IGNORECASE)
     return t
+
+def detect_user_intent(text: str) -> str:
+    """
+    Detect user inquiry intent:
+    - 'price_and_stock': both price and quantity
+    - 'stock': remaining stock / availability of pieces
+    - 'price': item price
+    - 'availability': whether item is available in warehouse
+    - 'details': full product specifications / information
+    """
+    t = text.lower()
+    has_price = bool(re.search(r"\b(narxi|narhi|narx|pul|so['‘`]?m|som|qanchadan|stoit|price|cost)\b", t)) or ("qancha" in t and "qoldiq" not in t and "nechta" not in t)
+    has_qty = bool(re.search(r"\b(nechta|necta|nchta|qoldiq|qoldig['‘`]?i|qoldi|soni|miqdori|skolko|shtuk|how\s*many)\b", t))
+
+    if has_price and has_qty:
+        return "price_and_stock"
+    if has_qty:
+        return "stock"
+    if has_price or re.search(r"\b(qancha|nech\s*pul)\b", t):
+        return "price"
+    if re.search(r"\b(bormi|bomi|bor\s*mi|mavjudmi|topiladimi|est|available)\b", t):
+        return "availability"
+    if re.search(r"\b(haqida|ma'lumot|malumot|tavsif|xarakteristika|qanday|qanaqa|opisanie|info|details)\b", t):
+        return "details"
+
+    return "availability"
 
 def detect_language(text: str) -> str:
     """Detect primarily uzbek, russian, or english."""
@@ -391,54 +479,113 @@ def detect_is_stock_update(text: str) -> bool:
 
 def extract_entities(text: str) -> Dict[str, Any]:
     """
-    Extracts automotive entities (brand, model, part type, raw name).
-    Uses phonetic normalization to catch typos.
+    Extracts automotive entities (brand, model, part type, position, raw part query, intent).
+    Uses phonetic normalization to catch typos and handles multiline/multilingual phrases.
     """
     t = normalize_phonetic_uzbek(text)
     detected_brand = ""
     detected_model = ""
     detected_part = ""
     detected_part_key = ""
+    detected_position = ""
+    detected_position_label = ""
     matched_category_hint = []
 
-    # Detect Car Brand
+    # 1. Detect Car Brand
     for b in CAR_BRANDS:
         if re.search(r"\b" + re.escape(b.lower()) + r"\b", t):
             detected_brand = b if len(b) <= 3 else b.title()
             break
 
-    # Detect Car Model
-    for m_key, (brand_hint, model_name) in CAR_MODELS.items():
+    # 2. Detect Car Model (sorted by length descending, e.g. "Nexia 3" before "Nexia")
+    for m_key, (brand_hint, model_name) in sorted(CAR_MODELS.items(), key=lambda x: len(x[0]), reverse=True):
         if re.search(r"\b" + re.escape(m_key.lower()) + r"\b", t):
             detected_model = model_name
             if not detected_brand:
                 detected_brand = brand_hint
             break
 
-    # Detect Part Name
-    for p_key, (part_canonical, cat_hints) in PART_KEYWORDS.items():
+    # 3. Detect Position Modifiers (old, orqa, chap, o'ng, tepa, past)
+    pos_labels = {
+        "old": "Old",
+        "orqa": "Orqa",
+        "chap": "Chap",
+        "o'ng": "O'ng",
+        "tepa": "Tepa",
+        "past": "Pastki"
+    }
+    for p_type, aliases in POSITION_KEYWORDS.items():
+        for alias in aliases:
+            if re.search(r"\b" + re.escape(alias) + r"\b", t):
+                detected_position = p_type
+                detected_position_label = pos_labels.get(p_type, "")
+                break
+        if detected_position:
+            break
+
+    # 4. Detect Part Name from PART_KEYWORDS (sorted by length descending)
+    for p_key, (part_canonical, cat_hints) in sorted(PART_KEYWORDS.items(), key=lambda x: len(x[0]), reverse=True):
         if re.search(r"\b" + re.escape(p_key.lower()) + r"\b", t):
             detected_part = part_canonical
             detected_part_key = p_key
             matched_category_hint.extend(cat_hints)
             break
 
-    # Build clean product title
+    # 4b. Dynamic Model Extraction: If no brand/model matched from dictionary,
+    # extract words appearing before the part/position as the vehicle/product model.
+    if not detected_model and not detected_brand:
+        anchor_term = detected_position or detected_part_key
+        if anchor_term:
+            all_tokens = re.findall(r"[\w']+", t)
+            preceding_tokens = []
+            for tok in all_tokens:
+                if tok.lower() == anchor_term.lower() or (anchor_term and tok.lower().startswith(anchor_term[:4])):
+                    break
+                if tok.lower() not in {"salom", "iltimos", "menga", "kerak", "agar", "bor", "bormi", "bomi"} and not tok.isdigit() and len(tok) >= 2:
+                    preceding_tokens.append(tok.title())
+            if preceding_tokens:
+                detected_model = " ".join(preceding_tokens)
+
+    # 5. Extract raw part query excluding brand/model and stop tokens
+    stop_tokens = {
+        "nechta", "necta", "nchta", "qoldi", "topib", "ber", "bor", "bormi", "bomi", "menga", 
+        "narxi", "narhi", "qancha", "qanca", "pul", "so'm", "som", "yana", "iltimos", "kerak",
+        "dona", "ta", "nechi", "necha", "skolko", "stoit", "how", "many", "much", "mahsulot",
+        "haqida", "malumot", "bosa", "bo'lsa", "agar", "qanaqa", "qanday", "mavjudmi",
+        "qo'sh", "qush", "soni", "miqdori", "narx", "price", "stock", "left", "salom",
+        "uchun", "borligi", "mavjudligi", "bilan", "ekan"
+    }
+    cleaned_words = []
+    for w in re.findall(r"[\w']+", t):
+        w_lower = w.lower()
+        if w_lower in stop_tokens or w.isdigit() or len(w) < 2:
+            continue
+        if detected_brand and w_lower in detected_brand.lower():
+            continue
+        if detected_model and w_lower in detected_model.lower():
+            continue
+        cleaned_words.append(w)
+
+    raw_part_query = " ".join(cleaned_words).strip()
+    if not detected_part and raw_part_query:
+        detected_part = raw_part_query.title()
+        detected_part_key = cleaned_words[-1].lower() if cleaned_words else ""
+
+    # Construct clean title
     title_parts = []
     if detected_brand:
         title_parts.append(detected_brand)
     if detected_model and detected_model not in title_parts:
         title_parts.append(detected_model)
-    if detected_part:
+    if detected_position_label:
+        title_parts.append(detected_position_label)
+    if detected_part and detected_part not in title_parts:
         title_parts.append(detected_part)
 
-    # Fallback to cleaned text if no specific part matched
-    if not title_parts:
-        cleaned = re.sub(r"\b\d+[\s\w]*", "", text).strip()
-        cleaned = re.sub(r"(qo'sh|qush|narxi|dona|ta|bor|ming|som|сум|цена|add|price)\b.*", "", cleaned, flags=re.I).strip()
-        fallback_name = cleaned.title() if len(cleaned) >= 3 else "Avto Ehtiyot Qism"
-    else:
-        fallback_name = " ".join(title_parts)
+    fallback_name = " ".join(title_parts) if title_parts else (raw_part_query.title() if raw_part_query else "Avto Ehtiyot Qism")
+
+    # Intent
+    intent = detect_user_intent(text)
 
     # Generate smart SKU
     sku_prefix = (detected_brand[:3] if detected_brand else "AVT").upper()
@@ -454,6 +601,10 @@ def extract_entities(text: str) -> Dict[str, Any]:
         "car_model": detected_model or "Umumiy",
         "part_name": detected_part,
         "part_key": detected_part_key,
+        "position": detected_position,
+        "position_label": detected_position_label,
+        "raw_part_query": raw_part_query,
+        "intent": intent,
         "sku": sku,
         "category_hints": matched_category_hint
     }
@@ -462,25 +613,41 @@ async def search_products_full_db(query_text: str, entities: Dict[str, Any]) -> 
     """
     Exhaustively searches the products database for matching parts with ranking.
     Returns up to 4 closest matching products.
-    Strictly adheres to car_model if specified by user to avoid wrong part recommendations.
+    Strictly adheres to car_model if specified by user to avoid wrong part recommendations:
+    If user asks for a car model that is not in the database, returns an empty list.
     """
     car_model = entities.get("car_model")
     car_brand = entities.get("car_brand")
     part_key = entities.get("part_key")
-    brand_or_model = car_model or car_brand
+    position = entities.get("position")
+    brand_or_model = car_model if (car_model and car_model.lower() != "umumiy") else car_brand
 
     stop_words = {
         "nechta", "necta", "nchta", "qoldi", "topib", "ber", "bor", "bormi", "bomi", "menga", 
         "narxi", "narhi", "qancha", "qanca", "pul", "so'm", "som", "yana", "iltimos", "kerak",
         "dona", "ta", "nechi", "necha", "skolko", "stoit", "how", "many", "much", "mahsulot",
-        "disam", "desam", "haqida", "malumot", "bosa", "bo'lsa", "agar"
+        "disam", "desam", "haqida", "malumot", "bosa", "bo'lsa", "agar", "qanaqa", "qanday",
+        "qo'sh", "qush", "soni", "miqdori", "narx", "price", "stock", "left"
     }
-    raw_words = [w for w in re.findall(r"[\w']+", query_text.lower()) if len(w) >= 3 and not w.isdigit() and w not in stop_words]
+    raw_words = [w for w in re.findall(r"[\w']+", query_text.lower()) if len(w) >= 2 and not w.isdigit() and w not in stop_words]
 
-    # CASE A: A specific car model or brand was specified (e.g. Spark, Nexia, Cobalt, Gentra, Damas, Matiz, Tracker, Malibu)
+    # CASE A: A specific car model or brand was specified (e.g. Spark, Nexia, Cobalt, Gentra, Damas, Matiz, Tracker, Malibu, BMW, X5)
     if brand_or_model and brand_or_model.lower() != "umumiy":
-        # 1. Search brand/model + part_key
-        if part_key:
+        # 0. Check if this car model/brand exists in database
+        model_exists = await db.fetchval("""
+            SELECT 1 FROM products
+            WHERE is_deleted = 0
+              AND (LOWER(car_model) LIKE LOWER($1) OR LOWER(car_brand) LIKE LOWER($1) OR LOWER(name) LIKE LOWER($1))
+            LIMIT 1
+        """, f"%{brand_or_model}%")
+
+        if not model_exists:
+            # Strictly do not return parts of another model (e.g. do not return Damas bamper for BMW X5)
+            return []
+
+        # 1. Exact match: brand/model + position (e.g. 'old') + part_key (e.g. 'bamper')
+        if position and part_key:
+            pos_term = "old" if position == "old" else ("orqa" if position == "orqa" else ("chap" if position == "chap" else "o'ng"))
             rows = await db.fetch("""
                 SELECT p.*, c.name as category_name
                 FROM products p
@@ -488,13 +655,43 @@ async def search_products_full_db(query_text: str, entities: Dict[str, Any]) -> 
                 WHERE p.is_deleted = 0
                   AND (LOWER(p.car_model) LIKE LOWER($1) OR LOWER(p.car_brand) LIKE LOWER($1) OR LOWER(p.name) LIKE LOWER($1))
                   AND (LOWER(p.name) LIKE LOWER($2) OR LOWER(p.description) LIKE LOWER($2))
+                  AND (LOWER(p.name) LIKE LOWER($3) OR LOWER(p.description) LIKE LOWER($3))
                 ORDER BY (p.quantity > 0) DESC, p.quantity DESC, p.id DESC
                 LIMIT 4
-            """, f"%{brand_or_model}%", f"%{part_key}%")
+            """, f"%{brand_or_model}%", f"%{pos_term}%", f"%{part_key}%")
             if rows:
                 return [dict(r) for r in rows]
 
-        # 2. Search brand/model + other meaningful query words
+        # 2. Search brand/model + part_key
+        if part_key:
+            opposite_pos = "orqa" if position == "old" else ("old" if position == "orqa" else "")
+            if opposite_pos:
+                rows = await db.fetch("""
+                    SELECT p.*, c.name as category_name
+                    FROM products p
+                    LEFT JOIN categories c ON c.id = p.category_id
+                    WHERE p.is_deleted = 0
+                      AND (LOWER(p.car_model) LIKE LOWER($1) OR LOWER(p.car_brand) LIKE LOWER($1) OR LOWER(p.name) LIKE LOWER($1))
+                      AND (LOWER(p.name) LIKE LOWER($2) OR LOWER(p.description) LIKE LOWER($2))
+                      AND LOWER(p.name) NOT LIKE LOWER($3)
+                    ORDER BY (p.quantity > 0) DESC, p.quantity DESC, p.id DESC
+                    LIMIT 4
+                """, f"%{brand_or_model}%", f"%{part_key}%", f"%{opposite_pos}%")
+            else:
+                rows = await db.fetch("""
+                    SELECT p.*, c.name as category_name
+                    FROM products p
+                    LEFT JOIN categories c ON c.id = p.category_id
+                    WHERE p.is_deleted = 0
+                      AND (LOWER(p.car_model) LIKE LOWER($1) OR LOWER(p.car_brand) LIKE LOWER($1) OR LOWER(p.name) LIKE LOWER($1))
+                      AND (LOWER(p.name) LIKE LOWER($2) OR LOWER(p.description) LIKE LOWER($2))
+                    ORDER BY (p.quantity > 0) DESC, p.quantity DESC, p.id DESC
+                    LIMIT 4
+                """, f"%{brand_or_model}%", f"%{part_key}%")
+            if rows:
+                return [dict(r) for r in rows]
+
+        # 3. Search brand/model + other meaningful query words
         for w in raw_words:
             if w.lower() in brand_or_model.lower() or brand_or_model.lower() in w.lower():
                 continue
@@ -512,10 +709,25 @@ async def search_products_full_db(query_text: str, entities: Dict[str, Any]) -> 
                 return [dict(r) for r in rows]
 
         # If user explicitly asked for a specific car model, but NO part matched for that car model,
-        # NEVER return parts from another car model (e.g. do not return Nexia bakavoy for Spark)!
+        # NEVER return parts from another car model!
         return []
 
     # CASE B: No specific car model was requested (general part search)
+    if position and part_key:
+        pos_term = "old" if position == "old" else ("orqa" if position == "orqa" else ("chap" if position == "chap" else "o'ng"))
+        rows = await db.fetch("""
+            SELECT p.*, c.name as category_name
+            FROM products p
+            LEFT JOIN categories c ON c.id = p.category_id
+            WHERE p.is_deleted = 0
+              AND (LOWER(p.name) LIKE LOWER($1) OR LOWER(p.description) LIKE LOWER($1))
+              AND (LOWER(p.name) LIKE LOWER($2) OR LOWER(p.description) LIKE LOWER($2))
+            ORDER BY (p.quantity > 0) DESC, p.quantity DESC, p.id DESC
+            LIMIT 4
+        """, f"%{pos_term}%", f"%{part_key}%")
+        if rows:
+            return [dict(r) for r in rows]
+
     if part_key:
         rows = await db.fetch("""
             SELECT p.*, c.name as category_name
@@ -1013,9 +1225,7 @@ async def process_assistant_query(query: str, current_user: CurrentUser) -> Dict
     # 14. Intent: FULL DATABASE PRODUCT SEARCH & STOCK / PRICE INQUIRIES
     entities = extract_entities(norm_q)
     matches = await search_products_full_db(norm_q, entities)
-
-    is_qty_query = bool(re.search(r"\b(nechta|necta|nchta|qancha|qoldi|bor\s*mi|bormi|bomi|dona|skolko|how\s*many)\b", q_lower))
-    is_price_query = bool(re.search(r"\b(narxi|narhi|pul|so'm|som|qanchadan|stoit|price|cost|how\s*much)\b", q_lower))
+    user_intent = entities.get("intent") or detect_user_intent(q)
 
     if matches:
         if len(matches) == 1:
@@ -1024,43 +1234,56 @@ async def process_assistant_query(query: str, current_user: CurrentUser) -> Dict
             price = p.get("selling_price", 0)
             unit = p.get("unit", "dona")
             sku = p.get("sku", "")
-            shelf = p.get("shelf_location", "A-01")
+            shelf = p.get("shelf_location", "")
+            cat_name = p.get("category_name", "Kuzov")
+            desc = (p.get("description") or "").strip()
 
             if qty == 0:
-                status_text = "🔴 Hozirda tugagan (0 dona)"
-                v_status = "omborda hozircha qolmagan"
+                stock_badge = "🔴 Hozirda tugagan (0 dona)"
+                v_status = "omborda hozircha tugagan"
             elif qty <= p.get("min_stock", 2):
-                status_text = f"🟡 Kam qoldi ({qty} {unit})"
+                stock_badge = f"🟡 Kam qoldi ({qty} {unit})"
                 v_status = f"kam qolgan, {qty} {unit} mavjud"
             else:
-                status_text = f"🟢 Omborda bor ({qty} {unit})"
+                stock_badge = f"🟢 Mavjud ({qty} {unit})"
                 v_status = f"omborda {qty} {unit} mavjud"
 
-            if is_qty_query:
-                ans = (
-                    f"📦 Omborda <b>{p['name']}</b> dan <b>{qty} {unit}</b> bor! {status_text}\n\n"
-                    f"• Narxi: <b>{price:,} UZS</b>\n"
-                    f"• Tokcha (Polka): <b>{shelf}</b>\n"
-                    f"• Artikul (SKU): <code>{sku}</code>"
-                )
-                v_ans = f"Omborda {p['name']} dan {qty} {unit} bor. Narxi {price:,} so'm."
-            elif is_price_query:
-                ans = (
-                    f"💰 <b>{p['name']}</b> narxi: <b>{price:,} UZS</b>.\n\n"
-                    f"• Ombordagi qoldiq: <b>{qty} {unit}</b> ({status_text})\n"
-                    f"• Tokcha (Polka): <b>{shelf}</b>\n"
-                    f"• Artikul (SKU): <code>{sku}</code>"
-                )
-                v_ans = f"{p['name']} narxi {price:,} so'm. Omborda {qty} {unit} mavjud."
+            # Intent-aware dynamic headline
+            if user_intent == "availability":
+                if qty > 0:
+                    header = f"✅ Ha, <b>{p['name']}</b> omborda mavjud."
+                else:
+                    header = f"⚠️ <b>{p['name']}</b> bazada mavjud, ammo hozirda qoldiq tugagan (0 dona)."
+            elif user_intent == "price":
+                header = f"💰 <b>{p['name']}</b> narxi: <b>{price:,} so‘m</b>"
+            elif user_intent == "stock":
+                header = f"📊 Omborda <b>{p['name']}</b> dan <b>{qty} {unit}</b> qolgan ({stock_badge})"
+            elif user_intent == "price_and_stock":
+                header = f"✅ <b>{p['name']}</b> narxi va qoldig‘i:"
             else:
-                ans = (
-                    f"📦 <b>{p['name']}</b>\n\n"
-                    f"• Holati: <b>{status_text}</b>\n"
-                    f"• Narxi: <b>{price:,} UZS</b>\n"
-                    f"• Tokcha (Polka): <b>{shelf}</b>\n"
-                    f"• Artikul (SKU): <code>{sku}</code>"
-                )
-                v_ans = f"{p['name']}, {v_status}. Narxi {price:,} so'm."
+                header = f"✅ <b>Mahsulot ma'lumotlari:</b>"
+
+            lines = [
+                header,
+                "",
+                f"📦 <b>Mahsulot:</b> {p['name']}",
+                f"💰 <b>Narxi:</b> {price:,} so‘m",
+                f"📊 <b>Qoldiq:</b> {qty} {unit} ({stock_badge})",
+                f"📁 <b>Kategoriya:</b> {cat_name}"
+            ]
+            if desc and not desc.startswith("Ovoz orqali"):
+                lines.append(f"📝 <b>Tavsif:</b> {desc}")
+            
+            extra_details = []
+            if shelf:
+                extra_details.append(f"📍 Polka: <b>{shelf}</b>")
+            if sku:
+                extra_details.append(f"🏷️ Artikul: <code>{sku}</code>")
+            if extra_details:
+                lines.append(" | ".join(extra_details))
+
+            ans = "\n".join(lines)
+            v_ans = f"{p['name']}, narxi {price:,} so'm. {v_status}."
 
             return {
                 "answer": ans,
@@ -1074,20 +1297,32 @@ async def process_assistant_query(query: str, current_user: CurrentUser) -> Dict
         else:
             # Multiple matches found
             items_list = []
-            for p in matches:
+            for idx, p in enumerate(matches, 1):
                 p_qty = p.get("quantity", 0)
                 p_price = p.get("selling_price", 0)
                 p_unit = p.get("unit", "dona")
-                p_shelf = p.get("shelf_location", "A-01")
-                st = "🟢" if p_qty > 2 else ("🟡" if p_qty > 0 else "🔴")
-                items_list.append(f"• <b>{p['name']}</b>\n  Narxi: <b>{p_price:,} UZS</b> | Qoldiq: <b>{p_qty} {p_unit}</b> {st} | Polka: <b>{p_shelf}</b>")
+                p_shelf = p.get("shelf_location", "")
+                p_cat = p.get("category_name", "Kuzov")
+                st = "🟢" if p_qty > 2 else ("🟡" if p_qty > 0 else "🔴 Tugagan")
+                item_str = (
+                    f"{idx}️⃣ <b>{p['name']}</b>\n"
+                    f"   💰 Narxi: <b>{p_price:,} so‘m</b> | 📊 Qoldiq: <b>{p_qty} {p_unit}</b> ({st})\n"
+                    f"   📁 Kategoriya: {p_cat}"
+                )
+                if p_shelf:
+                    item_str += f" | 📍 Polka: {p_shelf}"
+                items_list.append(item_str)
 
-            if is_price_query:
-                header = f"💰 <b>Topilgan mahsulotlar narxlari ({len(matches)} ta):</b>"
-            elif is_qty_query:
-                header = f"📦 <b>Topilgan mahsulotlar qoldig'i ({len(matches)} ta):</b>"
+            search_label = f"{entities.get('car_model') or entities.get('car_brand') or ''} {entities.get('part_name') or ''}".strip()
+            if not search_label:
+                search_label = "So‘ralgan qism"
+
+            if user_intent == "price":
+                header = f"💰 <b>{search_label} bo‘yicha topilgan narxlar ({len(matches)} ta):</b>"
+            elif user_intent == "stock":
+                header = f"📦 <b>{search_label} bo‘yicha ombordagi qoldiqlar ({len(matches)} ta):</b>"
             else:
-                header = f"🔍 <b>Topilgan mahsulotlar ({len(matches)} ta):</b>"
+                header = f"🔍 <b>{search_label} bo‘yicha topilgan mahsulotlar ({len(matches)} ta):</b>"
 
             ans = f"{header}\n\n" + "\n\n".join(items_list)
             v_ans = f"Topilgan mahsulotlar: " + ", ".join([f"{p['name']} ({p['selling_price']:,} so'm)" for p in matches[:2]])
@@ -1103,18 +1338,20 @@ async def process_assistant_query(query: str, current_user: CurrentUser) -> Dict
 
     # 15. Fallback: Product not found or general inquiry
     req_model = entities.get("car_model") or entities.get("car_brand")
-    req_part = entities.get("part_name")
+    req_part = entities.get("raw_part_query") or entities.get("part_name")
+
     if req_model and req_model.lower() != "umumiy" and req_part:
-        part_desc = f"<b>{req_model}</b> uchun <i>{req_part}</i>"
+        product_display = f"{req_model} {req_part}"
     elif req_model and req_model.lower() != "umumiy":
-        part_desc = f"<b>{req_model}</b> uchun so'ralgan ehtiyot qism"
+        product_display = f"{req_model} uchun so‘ralgan mahsulot"
     elif req_part:
-        part_desc = f"<i>{req_part}</i>"
+        product_display = req_part
     else:
-        part_desc = f"<i>\"{q}\"</i>"
+        product_display = f"\"{q}\""
 
     ans = (
-        f"Kechirasiz, omborimizda {part_desc} hozirda mavjud emas yoki tugagan. ❌\n\n"
+        f"❌ <b>{product_display}</b> bazada topilmadi.\n\n"
+        f"Kechirasiz, ushbu mahsulot hozirda omborimizda mavjud emas.\n\n"
         f"📦 <b>Buyurtma berish yoki keltirish vaqtini aniqlashtirish uchun:</b>\n"
         f"📞 Telefon: <b>{SHOP_PHONE}</b>\n"
         f"💬 Telegram: <b>{SHOP_TELEGRAM}</b>\n"

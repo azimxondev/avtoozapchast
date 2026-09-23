@@ -131,17 +131,17 @@ const UserCatalogView = {
               <div class="product-body">
                 <div class="product-sku">${p.sku} ${p.brand ? `• ${p.brand}` : ''}</div>
                 <h3 class="product-name">${Utils.escapeHtml(p.name)}</h3>
-                <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">
-                  Mos: <strong>${p.car_model || 'Universal'}</strong> (${p.compatible_years || 'Barcha yillar'})
+                <div style="font-size:10.5px;color:var(--text-dim);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p.car_model || 'Universal'}">
+                  Mos: <strong>${p.car_model || 'Universal'}</strong>
                 </div>
                 <div class="stock-pill ${p.quantity > 0 ? 'stock-in' : 'stock-out'}">
-                  ${p.quantity > 0 ? `● Sotuvda mavjud (${p.quantity} ${p.unit})` : `● Qolmagan (Buyurtmaga)`}
+                  ${p.quantity > 0 ? `● ${p.quantity} ${p.unit} bor` : `● Buyurtmaga`}
                 </div>
                 <div class="product-pricing">
                   <div class="product-selling-price">${Utils.formatUZS(p.selling_price)}</div>
                 </div>
-                <button class="btn btn-primary btn-sm" style="margin-top:10px;width:100%" onclick="event.stopPropagation(); ProductsView.contactSeller(${p.id})">
-                  Sotuvchi bilan bog'lanish
+                <button class="btn btn-primary btn-sm" style="margin-top:4px;width:100%" onclick="event.stopPropagation(); ProductsView.contactSeller(${p.id})">
+                  💬 Bog'lanish
                 </button>
               </div>
             </div>

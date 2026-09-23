@@ -35,12 +35,13 @@
   }
 
   .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+    gap: 10px;
   }
 }
 
-/* Mobile Devices (max 480px) */
-@media (max-width: 480px) {
+/* Mobile Devices (max 640px) */
+@media (max-width: 640px) {
   .app-header {
     padding: 0 10px;
     height: 56px;
@@ -76,7 +77,7 @@
   }
 
   .app-container {
-    padding: 12px 12px 90px 12px;
+    padding: 10px 10px 85px 10px;
   }
 
   .hero-balance-amount {
@@ -117,8 +118,80 @@
   }
 
   .products-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .product-card {
+    border-radius: 8px !important;
+  }
+
+  .product-image-box {
+    height: 92px !important;
+  }
+
+  .product-badge-condition {
+    top: 4px !important;
+    left: 4px !important;
+    padding: 1px 5px !important;
+    font-size: 8px !important;
+  }
+
+  .product-badge-shelf {
+    top: 4px !important;
+    right: 4px !important;
+    font-size: 8.5px !important;
+    padding: 1px 4px !important;
+  }
+
+  .product-body {
+    padding: 5px 6px 7px 6px !important;
+  }
+
+  .product-sku {
+    font-size: 8.5px !important;
+    margin-bottom: 1px !important;
+  }
+
+  .product-name {
+    font-size: 11px !important;
+    height: 26px !important;
+    line-height: 1.2 !important;
+    margin-bottom: 2px !important;
+  }
+
+  .car-tag {
+    font-size: 8.5px !important;
+    padding: 0 4px !important;
+  }
+
+  .stock-pill {
+    font-size: 8.5px !important;
+    padding: 1px 4px !important;
+    margin-bottom: 3px !important;
+  }
+
+  .product-pricing {
+    padding-top: 3px !important;
+    margin-top: auto !important;
+  }
+
+  .product-selling-price {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+  }
+
+  .product-cost-price {
+    font-size: 9px !important;
+  }
+
+  .product-card .btn-sm {
+    padding: 3px 5px !important;
+    font-size: 10px !important;
+    margin-top: 4px !important;
+    height: 25px !important;
+    border-radius: 5px !important;
   }
 
   .card {

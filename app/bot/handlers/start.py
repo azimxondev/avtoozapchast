@@ -520,3 +520,32 @@ async def handle_bot_voice_message(message: Message):
         "Avto Sklad Mini App'dagi ovozli yordamchini oching:",
         reply_markup=kb
     )
+
+@router.message(F.text)
+async def handle_user_quick_answer_text(message: Message):
+    """
+    Foydalanuvchi bot chatiga to'g'ridan-to'g'ri yozgan har qanday
+    mahsulot savoli uchun avtomatik AI Quick Answer.
+    Masalan: 'Spark oldi bamperi qancha?', 'Cobalt fara bormi?', 'BMW X5 bamperi bormi?'
+    """
+    text = (message.text or "").strip()
+    if not text or text.startswith("/"):
+        return
+
+    from app.services.ai_service import process_assistant_query
+    from app.api.auth import CurrentUser
+
+    role = await get_user_role(message.from_user.id)
+    current_user = CurrentUser(
+        id=message.from_user.id,
+        telegram_id=message.from_user.id,
+        full_name=message.from_user.full_name,
+        username=message.from_user.username or "",
+        role=role,
+        is_admin=role in ("HEAD_ADMIN", "ADMIN"),
+        is_super_admin=role == "HEAD_ADMIN"
+    )
+
+    res = await process_assistant_query(text, current_user)
+    await message.answer(res["answer"])
+

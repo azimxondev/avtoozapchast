@@ -119,20 +119,21 @@ input.search-input:focus {
 /* Product Cards Grid */
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .product-card {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   transition: var(--transition);
   position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .product-card:hover {
@@ -141,10 +142,10 @@ input.search-input:focus {
   box-shadow: var(--shadow-md);
 }
 
-/* Product Image Box — Proportional, Automotive-Tailored Aspect Ratio */
+/* Product Image Box — Compact & Automotive Tailored */
 .product-image-box {
   width: 100%;
-  height: 175px;
+  height: 105px;
   background: linear-gradient(180deg, #131d31 0%, #0a0f1d 100%);
   position: relative;
   overflow: hidden;
@@ -168,8 +169,8 @@ input.search-input:focus {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 40px;
-  background: linear-gradient(to top, rgba(13, 19, 33, 0.65) 0%, transparent 100%);
+  height: 28px;
+  background: linear-gradient(to top, rgba(13, 19, 33, 0.6) 0%, transparent 100%);
   pointer-events: none;
 }
 
@@ -179,89 +180,94 @@ input.search-input:focus {
 
 .product-badge-condition {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
-  font-size: 10px;
+  top: 6px;
+  left: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
+  z-index: 1;
 }
 
-.condition-new { background: rgba(16, 185, 129, 0.9); color: white; }
-.condition-used { background: rgba(245, 158, 11, 0.9); color: white; }
+.condition-new { background: rgba(16, 185, 129, 0.92); color: white; }
+.condition-used { background: rgba(245, 158, 11, 0.92); color: white; }
 
 .product-badge-shelf {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(4px);
   color: #94A3B8;
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 1;
 }
 
 /* Product Card Content */
 .product-body {
-  padding: 14px;
+  padding: 8px 9px 9px 9px;
   display: flex;
   flex-direction: column;
   flex: 1;
 }
 
 .product-sku {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 600;
   color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .product-name {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text-main);
-  line-height: 1.35;
-  margin-bottom: 6px;
+  line-height: 1.25;
+  margin-bottom: 3px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  height: 38px;
+  height: 30px;
 }
 
 .product-car-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 10px;
+  gap: 3px;
+  margin-bottom: 6px;
 }
 
 .car-tag {
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: 11px;
-  padding: 2px 6px;
+  font-size: 9.5px;
+  padding: 1px 5px;
   border-radius: var(--radius-sm);
 }
 
 /* Stock Status Pill */
 .stock-pill {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  border-radius: 4px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-bottom: 10px;
+  gap: 4px;
+  margin-bottom: 6px;
   width: fit-content;
 }
 
@@ -272,19 +278,19 @@ input.search-input:focus {
 /* Price Area */
 .product-pricing {
   margin-top: auto;
-  padding-top: 10px;
+  padding-top: 6px;
   border-top: 1px solid var(--border);
 }
 
 .product-selling-price {
-  font-size: 17px;
+  font-size: 14.5px;
   font-weight: 800;
   color: var(--text-main);
-  letter-spacing: -0.3px;
+  letter-spacing: -0.2px;
 }
 
 .product-cost-price {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
 }
 
@@ -292,8 +298,8 @@ input.search-input:focus {
 .product-card-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-top: 12px;
+  gap: 5px;
+  margin-top: 6px;
 }
 
 /* Pagination Bar */

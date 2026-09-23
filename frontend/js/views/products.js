@@ -177,13 +177,13 @@ const ProductsView = {
           <h3 class="product-name" title="${Utils.escapeHtml(p.name)}">${Utils.escapeHtml(p.name)}</h3>
 
           ${carTags.length > 0 ? `
-          <div class="product-car-tags">
-            ${carTags.slice(0, 3).map(ct => `<span class="car-tag">${Utils.escapeHtml(ct)}</span>`).join('')}
+          <div class="product-car-tags" style="margin-bottom:5px;gap:3px">
+            ${carTags.slice(0, 2).map(ct => `<span class="car-tag" style="font-size:9.5px;padding:1px 5px">${Utils.escapeHtml(ct)}</span>`).join('')}
           </div>
           ` : ''}
 
           <div class="stock-pill ${stockClass}">
-            <span>●</span> ${p.quantity} ${p.unit} (${p.stock_label})
+            <span>●</span> ${p.quantity} ${p.unit}
           </div>
 
           <div class="product-pricing">
@@ -201,8 +201,8 @@ const ProductsView = {
             </button>
           </div>
           ` : `
-          <button class="btn btn-primary btn-sm" style="margin-top:10px;width:100%" onclick="event.stopPropagation(); ProductsView.contactSeller(${p.id})">
-            Sotuvchi bilan bog'lanish
+          <button class="btn btn-primary btn-sm" style="margin-top:4px;width:100%" onclick="event.stopPropagation(); ProductsView.contactSeller(${p.id})">
+            💬 Bog'lanish
           </button>
           `}
         </div>
